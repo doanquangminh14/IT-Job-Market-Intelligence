@@ -66,3 +66,25 @@ Kết quả hiển thị qua **Streamlit**. Thứ tự triển khai: MVP trướ
 | **Silver** | Đã clean, chuẩn hóa, dedup, validate | Là thứ nạp vào PostgreSQL |
 | **PostgreSQL** | Lưu quan hệ chuẩn hóa, có ràng buộc | App/analytics đọc từ đây |
 | **Gold** | Bảng tổng hợp/feature phục vụ dashboard và recommender | Tạo lại được từ Silver/DB |
+
+---
+
+## 4. Recommendation Architecture
+
+```text
+Candidate profile
+   ↓
+Hard Filtering        (location, min salary, work mode, experience tối đa quá lệch)
+   ↓
+Candidate Generation  (còn ~vài trăm job)
+   ↓
+Content Score  = 0.50 skill + 0.30 semantic + 0.10 experience + 0.10 preference  (baseline, sẽ tune)
+CF Score       (chỉ khi user có lịch sử)
+   ↓
+Hybrid = 0.7 × Content + 0.3 × CF   (baseline)
+   ↓
+Ranking → Top N → Skill Gap + Explanation
+```
+
+- **Cold start**: User mới → Content-Based; User cũ → Hybrid; Job mới → Content-Based.
+- **Hard filter trước ranking**: Vì điều kiện cứng (ví dụ: lương tối thiểu) không nên bị "bù" bởi điểm skill cao. Việc này cũng giúp giảm số lượng job cần chấm điểm và embed.
