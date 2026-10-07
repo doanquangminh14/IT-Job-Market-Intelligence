@@ -30,3 +30,20 @@ recommendation:
     click: 2
     save: 3
     apply: 5
+
+sources:
+  source_01_vietjobs:
+    code: source_01
+    name: VietJobs (Hugging Face dataset)
+    access_method: dataset
+    is_snapshot: true
+    hf_repo_id: dinhieufam/VietJobs
+    license_note: "TODO - verify on dataset card"
+  source_02_arbeitnow:
+    code: source_02
+    name: Arbeitnow Job Board API
+    access_method: api
+    is_snapshot: false
+    base_url: https://www.arbeitnow.com/api/job-board-api
+    max_pages: 3
+    license_note: "Public API, no key. Read arbeitnow.com terms before publishing data."
