@@ -5,6 +5,7 @@ polars>=0.20.0
 pyarrow>=14.0.0
 pydantic>=2.0.0
 pyyaml>=6.0
+huggingface_hub>=0.23
 
 # Database & ORM
 SQLAlchemy>=2.0.0
