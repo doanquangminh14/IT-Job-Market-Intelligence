@@ -1,0 +1,32 @@
+project:
+  name: it-job-market-intelligence
+
+paths:
+  raw: data/raw
+  bronze: data/bronze
+  silver: data/silver
+  gold: data/gold
+  logs: logs
+
+ingestion:
+  timeout_seconds: 30
+  max_retries: 3
+  backoff_seconds: 2
+  rate_limit_per_second: 1
+  user_agent: "it-job-market-intelligence/0.1 (student project)"
+
+recommendation:
+  # Baseline weights, sẽ được evaluation và tune ở Task 17
+  content_weights:
+    skill: 0.50
+    semantic: 0.30
+    experience: 0.10
+    preference: 0.10
+  hybrid_weights:
+    content: 0.70
+    cf: 0.30
+  interaction_weights:
+    view: 1
+    click: 2
+    save: 3
+    apply: 5
