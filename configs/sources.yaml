@@ -5,6 +5,9 @@ sources:
     enabled: true
     base_url: "https://topdev.vn"
     listing_url: "https://topdev.vn/viec-lam/tim-kiem?job_categories_ids=2%2C3%2C4%2C5%2C6%2C7%2C8%2C9%2C10%2C11%2C12%2C13%2C67&page={page}"
+    pagination:
+      start_page: 1             # Trang bắt đầu cào
+      max_pages: 10             # Số trang tối đa quét qua (có thể thay đổi tuỳ nhu cầu)
     rate_limit:
       delay_min: 1.2
       delay_max: 2.0
@@ -24,6 +27,9 @@ sources:
     default_payload:
       query: "it"
       jobFunctionId: [{"parentId": 5, "childrenIds": [-1]}]
+    pagination:
+      start_page: 0
+      hits_per_page: 50
     rate_limit:
       delay_min: 0.5
       delay_max: 1.0
