@@ -36,6 +36,16 @@ def clean_html(raw_html: str) -> str:
     return soup.get_text(separator="\n", strip=True)
 
 
+def fix_encoding(text: Any) -> str:
+    """Khắc phục lỗi mã hóa Unicode escape dạng double-encoded UTF-8 nếu có"""
+    if not text:
+        return ""
+    try:
+        return str(text).encode('latin1').decode('utf-8')
+    except Exception:
+        return str(text)
+
+
 class TopDevCrawler(BaseCrawler):
     def __init__(self, config_path: str = "configs/sources.yaml"):
         # 1. Đọc file cấu hình sources.yaml
@@ -178,7 +188,11 @@ class TopDevCrawler(BaseCrawler):
             json.dump(details_list, f, ensure_ascii=False, indent=2)
 
     def fetch_job_list_page(self, page: int) -> List[Dict[str, Any]]:
-        """Cào danh sách URL và Job ID từ trang tìm kiếm TopDev"""
+        """
+        Cào danh sách job từ trang tìm kiếm TopDev.
+        Trích xuất đầy đủ thông tin: title, company, logo, lương, địa điểm, kinh nghiệm
+        ngay từ bước listing để các job chưa cào chi tiết (pending) vẫn có dữ liệu hoàn chỉnh.
+        """
         url = self.listing_url_template.format(page=page)
         self.logger.info(f"Đang quét danh sách tại trang {page}: {url}")
 
@@ -188,13 +202,77 @@ class TopDevCrawler(BaseCrawler):
                 self.logger.warning(f"Trang {page} trả về HTTP status {resp.status_code}")
                 return []
 
-            # Trích xuất URL từ Next.js RSC payload
+            # Trích xuất payload Next.js RSC
             pushes = re.findall(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)', resp.text, re.DOTALL)
             decoded = "".join(pushes).encode('utf-8').decode('unicode_escape', errors='ignore')
-            matches = re.findall(r'/viec-lam/([a-zA-Z0-9\-_]+-(\d{5,8}))', decoded)
 
             found_items = []
             seen = set()
+
+            # 1. Trích xuất các object job đầy đủ từ Next.js payload bằng raw_decode
+            decoder = json.JSONDecoder()
+            pattern = re.compile(r'\{"id":(\d{5,8}),"title":"')
+
+            for m in pattern.finditer(decoded):
+                start = m.start()
+                try:
+                    obj, _ = decoder.raw_decode(decoded[start:])
+                    if isinstance(obj, dict) and "id" in obj and "title" in obj and "company" in obj:
+                        jid = str(obj.get("id"))
+                        if jid in seen:
+                            continue
+                        seen.add(jid)
+
+                        title = fix_encoding(obj.get("title", ""))
+                        slug = obj.get("slug", "")
+                        detail_url = obj.get("detail_url") or f"https://topdev.vn/viec-lam/{slug}-{jid}"
+
+                        comp = obj.get("company", {})
+                        comp_name = fix_encoding(comp.get("display_name", ""))
+                        comp_logo = comp.get("image_logo", "") or ""
+
+                        addr = obj.get("addresses", {})
+                        loc = fix_encoding(addr.get("sort_addresses") or addr.get("address_region_list") or "")
+                        loc = loc.strip(" -")
+
+                        sal_obj = obj.get("salary", {})
+                        if sal_obj.get("is_negotiable") == "1":
+                            salary = "Thương lượng"
+                        elif sal_obj.get("min") and sal_obj.get("max") and (sal_obj.get("min") > 0 or sal_obj.get("max") > 0):
+                            currency = sal_obj.get("currency", "VND")
+                            salary = f"{sal_obj['min']:,} - {sal_obj['max']:,} {currency}"
+                        elif sal_obj.get("value"):
+                            salary = fix_encoding(sal_obj.get("value"))
+                        else:
+                            salary = "Thương lượng"
+
+                        exp = fix_encoding(obj.get("experiences_str", ""))
+                        posted_at = obj.get("published", {}).get("date") or obj.get("created_at") or ""
+
+                        found_items.append({
+                            "source": "topdev",
+                            "source_job_id": jid,
+                            "job_url": detail_url,
+                            "company_logo_url": comp_logo,
+                            "title_raw": title,
+                            "company_name_raw": comp_name,
+                            "location_raw": loc,
+                            "salary_raw": salary,
+                            "experience_raw": exp,
+                            "posted_at_raw": str(posted_at),
+                            "crawled_at": datetime.now().isoformat(),
+                            "detail_status": "pending",
+                            "detail_attempts": 0,
+                            "detail_http_status": None,
+                            "detail_error": "",
+                            "detail_file": "",
+                            "detail_crawled_at": None
+                        })
+                except Exception:
+                    continue
+
+            # 2. Fallback: Nếu còn link nào chưa được parse qua object, bổ sung qua regex slug
+            matches = re.findall(r'/viec-lam/([a-zA-Z0-9\-_]+-(\d{5,8}))', decoded)
             for slug, jid in matches:
                 if jid not in seen:
                     seen.add(jid)
@@ -218,7 +296,7 @@ class TopDevCrawler(BaseCrawler):
                         "detail_crawled_at": None
                     })
 
-            self.logger.info(f"-> Trang {page} tìm thấy {len(found_items)} job links.")
+            self.logger.info(f"-> Trang {page} tìm thấy {len(found_items)} jobs với đầy đủ thông tin tóm tắt.")
             return found_items
 
         except Exception as e:
@@ -514,14 +592,38 @@ class TopDevCrawler(BaseCrawler):
                         continue
         return retry_items
 
+    def _get_next_run_index(self) -> int:
+        """
+        Tìm số thứ tự lần cào tiếp theo trong ngày hôm nay:
+        Ví dụ: nếu đã có TC001.json hoặc page_001.json -> trả về 2.
+        """
+        max_idx = 0
+        if os.path.exists(self.details_dir):
+            for f in os.listdir(self.details_dir):
+                m = re.match(r"^TC(\d+)\.json$", f)
+                if m:
+                    idx = int(m.group(1))
+                    if idx > max_idx:
+                        max_idx = idx
+
+        if os.path.exists(self.listings_dir):
+            for f in os.listdir(self.listings_dir):
+                m = re.match(r"^page_(\d+)\.json$", f)
+                if m:
+                    idx = int(m.group(1))
+                    if idx > max_idx:
+                        max_idx = idx
+
+        return max_idx + 1
+
     def run(self, target_success_count: int = 100) -> Dict[str, Any]:
         """
         Thực thi quy trình cào:
         1. Tạo cấu trúc thư mục listings/YYYY-MM-DD/ và details/YYYY-MM-DD/
-        2. Ưu tiên cào lại các job cũ bị lỗi/pending trước đó.
-        3. Nếu chưa đủ 100 job, quét các trang mới (lưu page_001.json, page_002.json...)
-        4. Cào chi tiết và lưu TC001.json, TC002.json...
-        5. Dừng ngay khi đạt đủ target_success_count (100 job).
+        2. Gom TOÀN BỘ listings của lần cào này vào DUY NHẤT 1 file: page_XXX.json
+        3. Gom TOÀN BỘ details của lần cào này vào DUY NHẤT 1 file: TCXXX.json
+        4. Ưu tiên cào lại các job cũ bị lỗi/pending trước đó.
+        5. Nếu chưa đủ 100 job, quét các trang mới và cào tiếp cho đến khi đủ target.
         """
         self.logger.info("=" * 70)
         self.logger.info(f"BẮT ĐẦU CRAWL TOPDEV - MỤC TIÊU: {target_success_count} JOBS THÀNH CÔNG")
@@ -533,13 +635,21 @@ class TopDevCrawler(BaseCrawler):
         crawled_job_ids = self._get_all_crawled_job_ids()
         self.logger.info(f"Tổng số job chi tiết đã cào thành công từ trước: {len(crawled_job_ids)}")
 
-        # Xác định file TCxxx.json duy nhất cho phiên cào này
-        current_tc_idx = self._get_next_tc_index()
-        current_tc_filename = f"TC{current_tc_idx:03d}.json"
+        # Xác định số thứ tự phiên cào hôm nay
+        current_run_idx = self._get_next_run_index()
+        current_tc_filename = f"TC{current_run_idx:03d}.json"
         current_tc_filepath = os.path.join(self.details_dir, current_tc_filename)
-        self.logger.info(f"Tất cả các job thành công của phiên này sẽ được lưu chung vào: {current_tc_filename}")
 
+        current_listing_filename = f"page_{current_run_idx:03d}.json"
+        current_listing_filepath = os.path.join(self.listings_dir, current_listing_filename)
+
+        self.logger.info(f"Tất cả listings phiên này sẽ lưu chung vào: {current_listing_filename}")
+        self.logger.info(f"Tất cả details phiên này sẽ lưu chung vào : {current_tc_filename}")
+
+        session_listings_list: List[Dict[str, Any]] = []
         session_details_list: List[Dict[str, Any]] = []
+        seen_listing_ids: Set[str] = set()
+
         session_success_count = 0
         failed_count_session = 0
 
@@ -573,7 +683,7 @@ class TopDevCrawler(BaseCrawler):
             else:
                 failed_count_session += 1
 
-            # Cập nhật lại file page_XXX.json chứa job này
+            # Cập nhật lại file listing gốc chứa job này
             try:
                 with open(page_file_path, "r", encoding="utf-8") as f:
                     page_items = json.load(f)
@@ -593,42 +703,43 @@ class TopDevCrawler(BaseCrawler):
 
         while session_success_count < target_success_count and current_page <= max_page_limit:
             needed = target_success_count - session_success_count
-            self.logger.info(f"Cần thêm {needed} job thành công. Đang xử lý page {current_page}...")
+            self.logger.info(f"Cần thêm {needed} job thành công. Đang quét trang web {current_page}...")
 
-            page_file_name = f"page_{current_page:03d}.json"
-            page_file_path = os.path.join(self.listings_dir, page_file_name)
+            page_items = self.fetch_job_list_page(current_page)
+            if not page_items:
+                self.logger.warning(f"Không có dữ liệu từ page {current_page}. Chuyển sang page tiếp theo.")
+                current_page += 1
+                continue
 
-            # Kiểm tra nếu trang hôm nay đã được cào từ trước
-            if os.path.exists(page_file_path):
-                try:
-                    with open(page_file_path, "r", encoding="utf-8") as f:
-                        page_items = json.load(f)
-                    self.logger.info(f"Đã có sẵn file {page_file_name} với {len(page_items)} jobs.")
-                except Exception:
-                    page_items = self.fetch_job_list_page(current_page)
-                    self._save_page_listing(current_page, page_items)
-            else:
-                page_items = self.fetch_job_list_page(current_page)
-                if not page_items:
-                    self.logger.warning(f"Không có dữ liệu từ page {current_page}. Chuyển sang page tiếp theo.")
-                    current_page += 1
-                    continue
-                self._save_page_listing(current_page, page_items)
+            # Lọc job mới chưa từng gặp
+            new_jobs = []
+            for itm in page_items:
+                jid = str(itm["source_job_id"])
+                if jid not in seen_listing_ids and jid not in crawled_job_ids:
+                    seen_listing_ids.add(jid)
+                    session_listings_list.append(itm)
+                    new_jobs.append(itm)
 
-            # Duyệt từng job trong trang để cào detail
-            for idx, itm in enumerate(page_items):
+            # Lưu toàn bộ listing tích lũy của phiên này vào duy nhất 1 file page_XXX.json
+            with open(current_listing_filepath, "w", encoding="utf-8") as f:
+                json.dump(session_listings_list, f, ensure_ascii=False, indent=2)
+
+            self.logger.info(f"Trang {current_page}: Thu thập thêm {len(new_jobs)} jobs mới chưa cào.")
+
+            # Duyệt từng job mới tìm được để cào detail
+            for itm in new_jobs:
                 if session_success_count >= target_success_count:
                     break
 
                 jid = str(itm["source_job_id"])
-                # Nếu job này đã thành công trước đó thì bỏ qua
-                if jid in crawled_job_ids or itm.get("detail_status") == "success":
-                    continue
-
                 detail_res, updated_item = self.fetch_job_detail_with_retry(itm)
+
+                # Cập nhật thông tin trong listing item
+                itm.update(updated_item)
+
                 if detail_res:
                     session_details_list.append(detail_res)
-                    updated_item["detail_file"] = current_tc_filename
+                    itm["detail_file"] = current_tc_filename
                     crawled_job_ids.add(jid)
                     session_success_count += 1
 
@@ -641,9 +752,9 @@ class TopDevCrawler(BaseCrawler):
                 else:
                     failed_count_session += 1
 
-                # Cập nhật và lưu lại file page_XXX.json ngay lập tức
-                page_items[idx] = updated_item
-                self._save_page_listing(current_page, page_items)
+                # Cập nhật và lưu lại file listing duy nhất của phiên này
+                with open(current_listing_filepath, "w", encoding="utf-8") as f:
+                    json.dump(session_listings_list, f, ensure_ascii=False, indent=2)
 
                 time.sleep(random.uniform(self.delay_min, self.delay_max))
 
@@ -657,6 +768,7 @@ class TopDevCrawler(BaseCrawler):
         self.logger.info("=" * 70)
         self.logger.info(f"- Số job cào thành công phiên này : {session_success_count}/{target_success_count}")
         self.logger.info(f"- Số job lỗi trong phiên này      : {failed_count_session}")
+        self.logger.info(f"- File listing đã lưu             : {current_listing_filename} ({len(session_listings_list)} listings)")
         self.logger.info(f"- File detail đã lưu              : {current_tc_filename} ({len(session_details_list)} jobs)")
         self.logger.info(f"- Thư mục listings                : {self.listings_dir}")
         self.logger.info(f"- Thư mục details                 : {self.details_dir}")
@@ -665,7 +777,9 @@ class TopDevCrawler(BaseCrawler):
         return {
             "session_success_count": session_success_count,
             "failed_count": failed_count_session,
-            "saved_file": current_tc_filename,
+            "saved_listing_file": current_listing_filename,
+            "saved_detail_file": current_tc_filename,
+            "total_listings_in_file": len(session_listings_list),
             "total_jobs_in_file": len(session_details_list),
             "listings_dir": self.listings_dir,
             "details_dir": self.details_dir
