@@ -15,6 +15,12 @@ class JobListingRaw(BaseModel):
     experience_raw: Optional[str] = ""
     posted_at_raw: Optional[str] = ""
     crawled_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    # --- CÁC TRƯỜNG TRACKING TRẠNG THÁI ---
+    detail_status: str = "pending"        
+    detail_attempts: int = 0                
+    detail_http_status: Optional[int] = None
+    detail_error: Optional[str] = ""        
+    detail_crawled_at: Optional[str] = None 
 
 class JobDetailRaw(BaseModel):
     detail_id: str
