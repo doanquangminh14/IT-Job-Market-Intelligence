@@ -1,0 +1,37 @@
+sources:
+  topdev:
+    name: "TopDev"
+    crawl_type: "html"          # html | api | browser
+    enabled: true
+    base_url: "https://topdev.vn"
+    listing_url: "https://topdev.vn/viec-lam/tim-kiem?job_categories_ids=2%2C3%2C4%2C5%2C6%2C7%2C8%2C9%2C10%2C11%2C12%2C13%2C67&page={page}"
+    rate_limit:
+      delay_min: 1.2
+      delay_max: 2.0
+      timeout: 20
+
+  vietnamworks:
+    name: "VietnamWorks"
+    crawl_type: "api"
+    enabled: true
+    base_url: "https://www.vietnamworks.com"
+    api_endpoint: "https://ms.vietnamworks.com/job-search/v1.0/search"
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+      Origin: "https://www.vietnamworks.com"
+      Referer: "https://www.vietnamworks.com/"
+    default_payload:
+      query: "it"
+      jobFunctionId: [{"parentId": 5, "childrenIds": [-1]}]
+    rate_limit:
+      delay_min: 0.5
+      delay_max: 1.0
+      timeout: 20
+
+  itviec:                       # Sau này mở rộng thêm web mới rất dễ
+    name: "ITViec"
+    crawl_type: "html"
+    enabled: false
+    base_url: "https://itviec.com"
+    listing_url: "https://itviec.com/it-jobs?page={page}"
