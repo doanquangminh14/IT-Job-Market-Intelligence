@@ -418,7 +418,45 @@ class TopDevCrawler(BaseCrawler):
                             if val.get("minValue") or val.get("maxValue"):
                                 salary_raw = f"{val.get('minValue', '')} - {val.get('maxValue', '')} {val.get('unitText', '')}".strip()
 
-                    # 5. Company Box: Ngành nghề, Quy mô công ty, Quốc gia
+                    # 5. Company Info & Overview từ RSC stream
+                    comp_overview = ""
+                    comp_detail_url = ""
+                    comp_address_str = ""
+
+                    comp_pattern = re.compile(r'\{"id":\d+,"display_name":"[^"]+","image_logo":')
+                    decoder = json.JSONDecoder()
+                    for m in comp_pattern.finditer(decoded):
+                        start = m.start()
+                        try:
+                            c_obj, _ = decoder.raw_decode(decoded[start:])
+                            if isinstance(c_obj, dict) and "display_name" in c_obj and "description" in c_obj:
+                                raw_desc = c_obj.get("description", "")
+                                comp_overview = fix_encoding(clean_html(raw_desc))
+                                comp_detail_url = c_obj.get("detail_url") or c_obj.get("website") or ""
+                                if not comp_name and c_obj.get("display_name"):
+                                    comp_name = fix_encoding(c_obj.get("display_name"))
+                                if not comp_logo and c_obj.get("image_logo"):
+                                    comp_logo = c_obj.get("image_logo")
+                                break
+                        except Exception:
+                            continue
+
+                    if comp_detail_url:
+                        comp_url = comp_detail_url
+
+                    # Trích xuất địa chỉ công ty chi tiết từ RSC stream
+                    m_ref = re.search(r'full_addresses":\s*"\$([a-zA-Z0-9]+)"', decoded)
+                    if m_ref:
+                        ref_id = m_ref.group(1)
+                        m_arr = re.search(r'\b' + ref_id + r':(\[[^\]]+\])', decoded)
+                        if m_arr:
+                            try:
+                                addrs = json.loads(m_arr.group(1))
+                                comp_address_str = "; ".join([fix_encoding(a) for a in addrs if a])
+                            except Exception:
+                                pass
+
+                    # 6. Company Box: Ngành nghề, Quy mô công ty, Quốc gia
                     industry_raw = ""
                     company_size_raw = ""
                     for row in soup.find_all("div", class_=lambda c: c and "items-center" in c and "justify-between" in c):
@@ -434,7 +472,7 @@ class TopDevCrawler(BaseCrawler):
                     if not industry_raw:
                         industry_raw = str(ld_data.get("industry") or "Information Technology")
 
-                    # 6. Các Section chi tiết: 1 Vai trò, 2 Kỹ năng, 3 Quyền lợi
+                    # 7. Các Section chi tiết: 1 Vai trò, 2 Kỹ năng, 3 Quyền lợi
                     responsibilities_raw = ""
                     requirements_raw = ""
                     benefits_raw = ""
@@ -511,16 +549,16 @@ class TopDevCrawler(BaseCrawler):
                         "company_name_raw": comp_name,
                         "company_url": comp_url,
                         "company_size_raw": company_size_raw,
-                        "company_location_raw": location_raw,
+                        "company_location_raw": comp_address_str or location_raw,
                         "industry_raw": industry_raw,
                         "salary_raw": salary_raw,
                         "experience_raw": experience_raw,
                         "education_raw": "",
                         "location_raw": location_raw,
-                        "work_mode_raw": work_mode_raw,
+                        "work_mode_raw": work_mode_raw or "Onsite",
                         "employment_type_raw": level_raw,
                         "working_time_raw": working_time_raw,
-                        "overview_raw": "",
+                        "overview_raw": comp_overview,
                         "responsibilities_raw": responsibilities_raw,
                         "requirements_raw": requirements_raw,
                         "benefits_raw": benefits_raw,
