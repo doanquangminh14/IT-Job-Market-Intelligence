@@ -683,6 +683,105 @@ class TopCVCrawler(BaseCrawler):
             "details_dir": self.details_dir
         }
 
+    def retry_failed_jobs(self, target_date: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Tìm và cào lại tất cả các jobs có trạng thái 'failed' trong các file listings.
+        Nếu thành công, lưu bổ sung vào file detail và cập nhật lại file listing.
+        """
+        date_str = target_date or self.today_str
+        listing_folder = os.path.join(self.base_raw_dir, "listings", date_str)
+        detail_folder = os.path.join(self.base_raw_dir, "details", date_str)
+
+        if not os.path.exists(listing_folder):
+            self.logger.warning(f"Không tìm thấy thư mục listings của ngày {date_str}: {listing_folder}")
+            return {"total_failed": 0, "recovered": 0, "still_failed": 0}
+
+        listing_files = sorted([f for f in os.listdir(listing_folder) if f.startswith("page_") and f.endswith(".json")])
+        if not listing_files:
+            self.logger.warning(f"Không có file listings nào trong ngày {date_str}.")
+            return {"total_failed": 0, "recovered": 0, "still_failed": 0}
+
+        self.logger.info("=" * 70)
+        self.logger.info(f"BẮT ĐẦU CÀO BÙ (RETRY FAILED) CHO TOPCV - NGÀY: {date_str}")
+        self.logger.info("=" * 70)
+
+        total_failed = 0
+        recovered = 0
+        still_failed = 0
+
+        os.makedirs(detail_folder, exist_ok=True)
+        detail_files = sorted([f for f in os.listdir(detail_folder) if f.startswith("TCV") and f.endswith(".json")])
+        if detail_files:
+            target_detail_file = detail_files[-1]
+            target_detail_path = os.path.join(detail_folder, target_detail_file)
+            with open(target_detail_path, "r", encoding="utf-8") as f:
+                try:
+                    detail_records = json.load(f)
+                except Exception:
+                    detail_records = []
+        else:
+            target_detail_file = "TCV001.json"
+            target_detail_path = os.path.join(detail_folder, target_detail_file)
+            detail_records = []
+
+        for lf in listing_files:
+            lpath = os.path.join(listing_folder, lf)
+            with open(lpath, "r", encoding="utf-8") as f:
+                try:
+                    items = json.load(f)
+                except Exception:
+                    continue
+
+            failed_items = [itm for itm in items if itm.get("detail_status") == "failed"]
+            if not failed_items:
+                continue
+
+            self.logger.info(f"File {lf} có {len(failed_items)} jobs bị lỗi cần cào lại...")
+            total_failed += len(failed_items)
+
+            modified = False
+            for itm in failed_items:
+                jid = str(itm["source_job_id"])
+                title = itm.get("title_raw", "")
+                self.logger.info(f"-> Đang cào bù Job {jid}: '{title}'...")
+
+                detail_res, updated_item = self.fetch_job_detail_with_retry(itm)
+                itm.update(updated_item)
+
+                if detail_res:
+                    detail_records.append(detail_res)
+                    itm["detail_status"] = "success"
+                    itm["detail_file"] = target_detail_file
+                    itm["detail_error"] = ""
+                    itm["detail_crawled_at"] = datetime.now().isoformat()
+                    recovered += 1
+                    modified = True
+
+                    with open(target_detail_path, "w", encoding="utf-8") as df_file:
+                        json.dump(detail_records, df_file, ensure_ascii=False, indent=2)
+
+                    self.logger.info(f"   [CÀO BÙ THÀNH CÔNG] Đã lưu vào {target_detail_file}.")
+                else:
+                    still_failed += 1
+                    modified = True
+                    self.logger.warning(f"   [VẪN THẤT BẠI] Job {jid} vẫn chưa cào được.")
+
+                time.sleep(random.uniform(self.delay_min, self.delay_max))
+
+            if modified:
+                with open(lpath, "w", encoding="utf-8") as f:
+                    json.dump(items, f, ensure_ascii=False, indent=2)
+
+        self.logger.info("\n" + "=" * 70)
+        self.logger.info("TỔNG KẾT CÀO BÙ TOPCV")
+        self.logger.info("=" * 70)
+        self.logger.info(f"- Tổng số job lỗi tìm thấy: {total_failed}")
+        self.logger.info(f"- Cào bù thành công        : {recovered}")
+        self.logger.info(f"- Vẫn thất bại            : {still_failed}")
+        self.logger.info("=" * 70)
+
+        return {"total_failed": total_failed, "recovered": recovered, "still_failed": still_failed}
+
 
 if __name__ == "__main__":
     crawler = TopCVCrawler()

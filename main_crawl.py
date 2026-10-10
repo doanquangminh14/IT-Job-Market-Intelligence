@@ -30,6 +30,17 @@ def main():
         default=100,
         help="Số lượng jobs chi tiết thành công cần cào cho mỗi nguồn (mặc định: 100)"
     )
+    parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Chế độ cào bù: Quét và thử cào lại tất cả các jobs bị lỗi (failed) trong file listing"
+    )
+    parser.add_argument(
+        "--date",
+        type=str,
+        default=None,
+        help="Ngày cần cào bù định dạng YYYY-MM-DD (mặc định: ngày hôm nay)"
+    )
     args = parser.parse_args()
 
     crawler_map = {
@@ -39,6 +50,40 @@ def main():
     }
 
     selected_sources = list(crawler_map.keys()) if args.source == "all" else [args.source]
+
+    # XỬ LÝ CHẾ ĐỘ CÀO BÙ (RETRY FAILED)
+    if args.retry_failed:
+        print("=" * 70)
+        print(" IT JOB MARKET INTELLIGENCE - CHẾ ĐỘ CÀO BÙ (RETRY FAILED) ")
+        print(f" Thời gian bắt đầu : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f" Nguồn chỉ định    : {', '.join([crawler_map[s][0] for s in selected_sources])}")
+        print("=" * 70 + "\n")
+
+        overall_results = {}
+        for src_key in selected_sources:
+            src_name, crawler_cls = crawler_map[src_key]
+            print(f"\n>>> [CÀO BÙ NGUỒN: {src_name.upper()}] <<<")
+            try:
+                crawler = crawler_cls()
+                result = crawler.retry_failed_jobs(target_date=args.date)
+                overall_results[src_name] = result
+            except Exception as e:
+                print(f"[X] Gặp lỗi khi cào bù crawler {src_name}: {e}")
+                overall_results[src_name] = {"error": str(e)}
+
+        print("\n" + "=" * 70)
+        print(" TỔNG KẾT TOÀN BỘ PHIÊN CÀO BÙ ")
+        print("=" * 70)
+        for src_name, res in overall_results.items():
+            if "error" in res:
+                print(f"- {src_name:<15}: [THẤT BẠI] Lỗi: {res['error']}")
+            else:
+                tf = res.get("total_failed", 0)
+                rc = res.get("recovered", 0)
+                sf = res.get("still_failed", 0)
+                print(f"- {src_name:<15}: Tổng lỗi tìm thấy: {tf} | Cứu thành công: {rc} | Vẫn lỗi: {sf}")
+        print("=" * 70)
+        return
 
     print("=" * 70)
     print(" IT JOB MARKET INTELLIGENCE - CRAWLER RUNNER ")
