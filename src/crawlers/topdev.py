@@ -112,8 +112,10 @@ class TopDevCrawler(BaseCrawler):
         console_handler.setFormatter(log_format)
         logger.addHandler(console_handler)
 
-        # File Handler ghi vào thư mục details ngày
-        log_file_path = os.path.join(self.details_dir, "topdev_crawl.log")
+        # File Handler ghi vào thư mục logs chung
+        logs_dir = os.path.join(PROJECT_ROOT, "logs")
+        os.makedirs(logs_dir, exist_ok=True)
+        log_file_path = os.path.join(logs_dir, "topdev.log")
         file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
         file_handler.setFormatter(log_format)
         logger.addHandler(file_handler)
