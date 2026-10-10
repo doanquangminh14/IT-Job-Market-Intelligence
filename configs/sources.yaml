@@ -46,8 +46,8 @@ sources:
       start_page: 1
       max_pages: 10
     rate_limit:
-      delay_min: 1.0
-      delay_max: 2.0
+      delay_min: 2.0
+      delay_max: 3.5
       timeout: 20
 
   itviec:                       # Sau này mở rộng thêm web mới rất dễ
