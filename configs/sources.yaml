@@ -36,6 +36,20 @@ sources:
       delay_max: 1.0
       timeout: 20
 
+  topcv:
+    name: "TopCV"
+    crawl_type: "html"
+    enabled: true
+    base_url: "https://www.topcv.vn"
+    listing_url: "https://www.topcv.vn/tim-viec-lam-cong-nghe-thong-tin-cr257?type_keyword=1&disable_auto_detect_type_keyword=1&page={page}&category_family=r257&saturday_status=0&sba=1"
+    pagination:
+      start_page: 1
+      max_pages: 10
+    rate_limit:
+      delay_min: 1.0
+      delay_max: 2.0
+      timeout: 20
+
   itviec:                       # Sau này mở rộng thêm web mới rất dễ
     name: "ITViec"
     crawl_type: "html"
