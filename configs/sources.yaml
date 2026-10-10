@@ -24,6 +24,7 @@ sources:
       Content-Type: "application/json"
       Origin: "https://www.vietnamworks.com"
       Referer: "https://www.vietnamworks.com/"
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     default_payload:
       query: "it"
       jobFunctionId: [{"parentId": 5, "childrenIds": [-1]}]

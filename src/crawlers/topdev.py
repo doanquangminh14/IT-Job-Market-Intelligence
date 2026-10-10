@@ -247,6 +247,7 @@ class TopDevCrawler(BaseCrawler):
                             salary = "Thương lượng"
 
                         exp = fix_encoding(obj.get("experiences_str", ""))
+                        skills = fix_encoding(obj.get("skills_str") or ", ".join(obj.get("skills_arr", []) if isinstance(obj.get("skills_arr"), list) else []))
                         posted_at = obj.get("published", {}).get("date") or obj.get("created_at") or ""
 
                         found_items.append({
@@ -259,6 +260,7 @@ class TopDevCrawler(BaseCrawler):
                             "location_raw": loc,
                             "salary_raw": salary,
                             "experience_raw": exp,
+                            "skills_raw": skills,
                             "posted_at_raw": str(posted_at),
                             "crawled_at": datetime.now().isoformat(),
                             "detail_status": "pending",
@@ -286,6 +288,7 @@ class TopDevCrawler(BaseCrawler):
                         "location_raw": "",
                         "salary_raw": "",
                         "experience_raw": "",
+                        "skills_raw": "",
                         "posted_at_raw": "",
                         "crawled_at": datetime.now().isoformat(),
                         "detail_status": "pending",
@@ -491,6 +494,7 @@ class TopDevCrawler(BaseCrawler):
                         "location_raw": location_raw,
                         "salary_raw": salary_raw,
                         "experience_raw": experience_raw,
+                        "skills_raw": skills_raw or updated_listing.get("skills_raw", ""),
                         "posted_at_raw": posted_at,
                         "detail_status": "success",
                         "detail_error": "",

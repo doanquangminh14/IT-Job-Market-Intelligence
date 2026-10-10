@@ -13,6 +13,7 @@ class JobListingRaw(BaseModel):
     location_raw: Optional[str] = ""
     salary_raw: Optional[str] = ""
     experience_raw: Optional[str] = ""
+    skills_raw: Optional[str] = ""
     posted_at_raw: Optional[str] = ""
     crawled_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     # --- CÁC TRƯỜNG TRACKING TRẠNG THÁI ---
