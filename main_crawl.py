@@ -1,5 +1,6 @@
 import argparse
 import sys
+from datetime import datetime
 
 if sys.stdout.encoding != 'utf-8':
     try:
@@ -8,30 +9,70 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 from src.crawlers.topdev import TopDevCrawler
+from src.crawlers.vietnamworks import VietnamWorksCrawler
+from src.crawlers.topcv import TopCVCrawler
+
 
 def main():
-    parser = argparse.ArgumentParser(description="IT Job Market Intelligence Crawler Runner")
+    parser = argparse.ArgumentParser(
+        description="IT Job Market Intelligence - Bộ điều phối cào dữ liệu đa nền tảng"
+    )
     parser.add_argument(
         "--source",
         type=str,
-        default="topdev",
-        choices=["topdev", "vietnamworks", "all"],
-        help="Nguồn tuyển dụng cần cào (mặc định: topdev)"
+        default="all",
+        choices=["topdev", "vietnamworks", "topcv", "all"],
+        help="Nguồn tuyển dụng cần cào: topdev | vietnamworks | topcv | all (mặc định: all)"
     )
     parser.add_argument(
         "--target",
         type=int,
         default=100,
-        help="Số lượng jobs thành công cần cào mỗi lần chạy (mặc định: 100)"
+        help="Số lượng jobs chi tiết thành công cần cào cho mỗi nguồn (mặc định: 100)"
     )
     args = parser.parse_args()
 
-    if args.source in ["topdev", "all"]:
-        print(f"[*] Khởi động crawler TopDev với mục tiêu {args.target} jobs...")
-        crawler = TopDevCrawler()
-        crawler.run(target_success_count=args.target)
+    crawler_map = {
+        "topdev": ("TopDev", TopDevCrawler),
+        "vietnamworks": ("VietnamWorks", VietnamWorksCrawler),
+        "topcv": ("TopCV", TopCVCrawler),
+    }
 
-    # Sau này bổ sung vietnamworks crawler tại đây
+    selected_sources = list(crawler_map.keys()) if args.source == "all" else [args.source]
+
+    print("=" * 70)
+    print(" IT JOB MARKET INTELLIGENCE - CRAWLER RUNNER ")
+    print(f" Thời gian bắt đầu : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f" Nguồn chỉ định    : {', '.join([crawler_map[s][0] for s in selected_sources])}")
+    print(f" Mục tiêu mỗi nguồn: {args.target} jobs thành công")
+    print("=" * 70 + "\n")
+
+    overall_results = {}
+
+    for src_key in selected_sources:
+        src_name, crawler_cls = crawler_map[src_key]
+        print(f"\n>>> [BẮT ĐẦU NGUỒN: {src_name.upper()}] (Target: {args.target} jobs) <<<")
+        try:
+            crawler = crawler_cls()
+            result = crawler.run(target_success_count=args.target)
+            overall_results[src_name] = result
+        except Exception as e:
+            print(f"[X] Gặp lỗi nghiêm trọng khi chạy crawler {src_name}: {e}")
+            overall_results[src_name] = {"error": str(e), "session_success_count": 0}
+
+    print("\n" + "=" * 70)
+    print(" TỔNG KẾT TOÀN BỘ PHIÊN CHẠY CRAWLER ")
+    print("=" * 70)
+    for src_name, res in overall_results.items():
+        if "error" in res:
+            print(f"- {src_name:<15}: [THẤT BẠI] Lỗi: {res['error']}")
+        else:
+            success = res.get("session_success_count", 0)
+            failed = res.get("failed_count", 0)
+            saved_file = res.get("saved_detail_file", "")
+            print(f"- {src_name:<15}: {success}/{args.target} thành công (Lỗi/Bỏ qua: {failed}) | File: {saved_file}")
+    print("=" * 70)
+
 
 if __name__ == "__main__":
     main()
