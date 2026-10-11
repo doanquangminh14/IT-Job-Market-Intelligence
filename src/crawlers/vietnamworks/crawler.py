@@ -267,7 +267,9 @@ class VietnamWorksCrawler(BaseCrawler):
         self.logger.info("\n" + "=" * 70)
         self.logger.info("BÁO CÁO TỔNG KẾT PHIÊN CÀO VIETNAMWORKS")
         self.logger.info("=" * 70)
-        self.logger.info(f"- Số job cào thành công phiên này : {session_success_count}/{target_success_count}")
+        self.logger.info(f"- Tổng job thành công phiên này   : {session_success_count}/{target_success_count}")
+        self.logger.info(f"  + Từ hàng đợi chờ cũ (Pending)  : 0 jobs (API không dùng queue)")
+        self.logger.info(f"  + Từ các trang web mới cào      : {session_success_count} jobs")
         self.logger.info(f"- File listing đã lưu             : {current_listing_filename} ({len(session_listings)} listings)")
         self.logger.info(f"- File detail đã lưu              : {current_vnw_filename} ({len(session_details)} jobs)")
         self.logger.info(f"- Thư mục listings                : {self.listings_dir}")
@@ -276,7 +278,10 @@ class VietnamWorksCrawler(BaseCrawler):
 
         return {
             "session_success_count": session_success_count,
+            "pending_success_count": 0,
+            "new_success_count": session_success_count,
             "failed_count": 0,
+            "remaining_pending_count": 0,
             "saved_listing_file": current_listing_filename,
             "saved_detail_file": current_vnw_filename,
             "total_listings_in_file": len(session_listings),

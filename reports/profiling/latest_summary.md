@@ -1,7 +1,7 @@
 # 📋 Báo Cáo Kiểm Kê & Profiling Dữ Liệu Tuyển Dụng IT
 
 > **Phạm vi khảo sát**: `ALL_TIME`  
-> **Thời điểm tạo báo cáo**: `2026-10-11 11:42:32`  
+> **Thời điểm tạo báo cáo**: `2026-10-11 12:27:03`  
 > **Số nguồn dữ liệu**: `3` (TopCV, TopDev, VietnamWorks)
 
 ---
@@ -10,12 +10,12 @@
 
 | Chỉ số kiểm kê | Giá trị | Ý nghĩa thực tế |
 | :--- | :--- | :--- |
-| **Tổng số listing thu thập** | **613** | Số lượng tin đã quét qua từ trang tìm kiếm |
-| **Crawl detail thành công** | **536** | Số lượng tin đã có đầy đủ nội dung chi tiết |
-| **Crawl detail thất bại** | **0** | Tin gặp lỗi HTTP hoặc WAF (Cần cào bù) |
-| **Tin trong hàng đợi (Pending)** | **77** | Tin đã lưu listing nhưng chờ phiên cào tiếp |
+| **Tổng số listing thu thập** | **763** | Số lượng tin đã quét qua từ trang tìm kiếm |
+| **Crawl detail thành công** | **736** | Số lượng tin đã có đầy đủ nội dung chi tiết |
+| **Crawl detail thất bại** | **6** | Tin gặp lỗi HTTP hoặc WAF (Cần cào bù) |
+| **Tin trong hàng đợi (Pending)** | **21** | Tin đã lưu listing nhưng chờ phiên cào tiếp |
 | **URL bị trùng nội bộ sàn** | **9** | Các tin cùng 1 sàn bị trùng lặp link |
-| **Tin trùng chéo giữa các sàn** | **3** | Cùng 1 công ty đăng tuyển chéo trên nhiều sàn |
+| **Tin trùng chéo giữa các sàn** | **5** | Cùng 1 công ty đăng tuyển chéo trên nhiều sàn |
 
 ---
 
@@ -23,9 +23,9 @@
 
 | Nguồn | Listings | Details OK | URL Trùng | Lương cụ thể | Thương lượng | Có Hạn nộp | Ngôn ngữ chủ đạo |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **topcv** | 291 | 214 | 9 | 124 (57.9%) | 90 (42.1%) | 100.0% | `vi` |
+| **topcv** | 341 | 314 | 9 | 176 (56.1%) | 138 (43.9%) | 100.0% | `vi` |
 | **topdev** | 120 | 120 | 0 | 5 (4.2%) | 115 (95.8%) | 100.0% | `vi` |
-| **vietnamworks** | 202 | 202 | 0 | 58 (28.7%) | 144 (71.3%) | 100.0% | `vi` |
+| **vietnamworks** | 302 | 302 | 0 | 94 (31.1%) | 208 (68.9%) | 100.0% | `vi` |
 
 ---
 
@@ -55,9 +55,9 @@ Bảng đánh giá tỷ lệ **bị thiếu (missing)** của các trường d�
 
 | Nguồn | Tiếng Việt (`vi`) | Tiếng Anh (`en`) | Song ngữ (`mixed`) | Khác / Ngắn |
 | :--- | :--- | :--- | :--- | :--- |
-| **topcv** | 157 (73.4%) | 33 (15.4%) | 23 (10.7%) | 1 (0.5%) |
+| **topcv** | 227 (72.3%) | 40 (12.7%) | 46 (14.6%) | 1 (0.3%) |
 | **topdev** | 68 (56.7%) | 33 (27.5%) | 18 (15.0%) | 1 (0.8%) |
-| **vietnamworks** | 125 (61.9%) | 65 (32.2%) | 7 (3.5%) | 5 (2.5%) |
+| **vietnamworks** | 190 (62.9%) | 95 (31.5%) | 11 (3.6%) | 6 (2.0%) |
 
 ---
 
@@ -71,8 +71,10 @@ Bảng đánh giá tỷ lệ **bị thiếu (missing)** của các trường d�
 
 ## 6. Mẫu Tin Đăng Tuyển Trùng Chéo Sàn (Cross-Portal Duplicates)
 
-Hệ thống phát hiện **3** vị trí xuất hiện đồng thời trên từ 2 sàn trở lên:
+Hệ thống phát hiện **5** vị trí xuất hiện đồng thời trên từ 2 sàn trở lên:
 
 1. **Database Engineer Dba** tại **Công Ty Tnhh Lg Cns Việt Nam** (Xuất hiện trên: `topcv, vietnamworks`)
 2. **Ai Expert Khối Công Nghệ Thông Tin 2026Td450200** tại **Ngân Hàng Tmcp Quân Đội Mbbank** (Xuất hiện trên: `topcv, vietnamworks`)
-3. **System Security Engineer Senior** tại **Cyberlogitec Vietnam Co Ltd** (Xuất hiện trên: `vietnamworks, topdev`)
+3. **Ai Software Engineer Pythongocc Backend Ai Agents Khối Công Nghệ Thông Tin 2026Td450888** tại **Ngân Hàng Tmcp Quân Đội Mbbank** (Xuất hiện trên: `topcv, vietnamworks`)
+4. **Senior Ai Engineer Computer Visionnlpllm Khối Công Nghệ Thông Tin 2026Td450878** tại **Ngân Hàng Tmcp Quân Đội Mbbank** (Xuất hiện trên: `topcv, vietnamworks`)
+5. **System Security Engineer Senior** tại **Cyberlogitec Vietnam Co Ltd** (Xuất hiện trên: `topdev, vietnamworks`)
