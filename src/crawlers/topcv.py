@@ -587,14 +587,41 @@ class TopCVCrawler(BaseCrawler):
         updated_listing["detail_error"] = last_error
         return None, updated_listing
 
+    def _collect_pending_jobs(self, crawled_job_ids: Set[str]) -> List[Tuple[str, int, Dict[str, Any]]]:
+        """
+        Quét tất cả các file page_xxx.json trong thư mục listings của ngày hôm nay,
+        tìm các job có detail_status là 'pending' hoặc chưa có trong crawled_job_ids
+        để ưu tiên cào detail trước khi mở web tìm kiếm mới.
+        """
+        pending_items = []
+        if not os.path.exists(self.listings_dir):
+            return pending_items
+
+        seen_jids = set()
+        for f in sorted(os.listdir(self.listings_dir)):
+            if f.startswith("page_") and f.endswith(".json"):
+                page_path = os.path.join(self.listings_dir, f)
+                try:
+                    with open(page_path, "r", encoding="utf-8") as pf:
+                        items = json.load(pf)
+                    for idx, item in enumerate(items):
+                        jid = str(item.get("source_job_id", ""))
+                        status = item.get("detail_status", "pending")
+                        if jid and jid not in crawled_job_ids and jid not in seen_jids and status in ("pending", "failed"):
+                            seen_jids.add(jid)
+                            pending_items.append((page_path, idx, item))
+                except Exception:
+                    continue
+        return pending_items
+
     def run(self, target_success_count: int = 100) -> Dict[str, Any]:
         """
         Thực thi quy trình cào TopCV:
         1. Tạo cấu trúc thư mục listings/YYYY-MM-DD/ và details/YYYY-MM-DD/
         2. Gom TOÀN BỘ listings phiên này vào 1 file: page_XXX.json
         3. Gom TOÀN BỘ details phiên này vào 1 file: TCVXXX.json
-        4. Tự động deduplicate không cào lại job cũ đã có
-        5. Phân trang cho tới khi đạt target_success_count jobs thành công
+        4. Ưu tiên cào sạch các job Pending cũ trong ngày trước khi quét trang mới.
+        5. Phân trang linh động với cơ chế Smart Stop khi hết dữ liệu trên web.
         """
         self.logger.info("=" * 70)
         self.logger.info(f"BẮT ĐẦU CRAWL TOPCV - MỤC TIÊU: {target_success_count} JOBS THÀNH CÔNG")
@@ -621,8 +648,56 @@ class TopCVCrawler(BaseCrawler):
 
         session_success_count = 0
         failed_count_session = 0
+
+        # ==============================================================
+        # GIAI ĐOẠN 1: CÀO CÁC JOB PENDING / CHƯA HOÀN TẤT TỪ TRƯỚC
+        # ==============================================================
+        pending_candidates = self._collect_pending_jobs(crawled_job_ids)
+        if pending_candidates:
+            self.logger.info(f"Phát hiện {len(pending_candidates)} jobs đang ở trạng thái chờ (pending). Ưu tiên cào trước...")
+
+        for page_file_path, item_idx, job_item in pending_candidates:
+            if session_success_count >= target_success_count:
+                self.logger.info(f"Đã đạt đủ {target_success_count} jobs mục tiêu từ hàng đợi pending! Dừng phiên sớm.")
+                break
+
+            jid = str(job_item["source_job_id"])
+            detail_res, updated_item = self.fetch_job_detail_with_retry(job_item)
+
+            if detail_res:
+                session_details.append(detail_res)
+                updated_item["detail_file"] = current_tcv_filename
+                crawled_job_ids.add(jid)
+                session_success_count += 1
+
+                with open(current_tcv_filepath, "w", encoding="utf-8") as f:
+                    json.dump(session_details, f, ensure_ascii=False, indent=2)
+
+                self.logger.info(
+                    f"-> [PENDING -> SUCCESS] Job {jid}: '{detail_res['title_raw']}' đã lưu vào {current_tcv_filename} "
+                    f"({len(session_details)} jobs). Tiến độ: {session_success_count}/{target_success_count}"
+                )
+            else:
+                failed_count_session += 1
+
+            # Cập nhật lại file listing gốc chứa job này
+            try:
+                with open(page_file_path, "r", encoding="utf-8") as f:
+                    page_items = json.load(f)
+                page_items[item_idx] = updated_item
+                with open(page_file_path, "w", encoding="utf-8") as f:
+                    json.dump(page_items, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                self.logger.warning(f"Không thể cập nhật file listing {page_file_path}: {e}")
+
+            time.sleep(random.uniform(self.delay_min, self.delay_max))
+
+        # ==============================================================
+        # GIAI ĐOẠN 2: QUÉT THÊM TRANG MỚI NẾU CHƯA ĐỦ TARGET JOBS
+        # ==============================================================
         current_page = self.start_page
         max_page_limit = self.start_page + self.max_pages
+        empty_page_count = 0
 
         while session_success_count < target_success_count and current_page <= max_page_limit:
             needed = target_success_count - session_success_count
@@ -630,10 +705,16 @@ class TopCVCrawler(BaseCrawler):
 
             page_items = self.fetch_job_list_page(current_page)
             if not page_items:
-                self.logger.warning(f"Không nhận được job nào ở trang {current_page}. Chuyển trang tiếp theo sau khi nghỉ...")
+                empty_page_count += 1
+                self.logger.warning(f"Không nhận được job nào ở trang {current_page}.")
+                if empty_page_count >= 2:
+                    self.logger.info(f"Đã chạm trang cuối cùng hoặc hết dữ liệu từ website (trang {current_page}). Dừng quét trang mới.")
+                    break
                 current_page += 1
                 time.sleep(random.uniform(self.delay_min, self.delay_max))
                 continue
+
+            empty_page_count = 0
 
             new_jobs = []
             for itm in page_items:
