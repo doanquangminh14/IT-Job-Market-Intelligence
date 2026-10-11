@@ -1,44 +1,35 @@
-import os
-import sys
-import re
 import json
-import time
-import random
 import logging
+import os
+import random
+import re
+import sys
+import time
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import yaml
 from bs4 import BeautifulSoup
 from curl_cffi import requests
 
-# Đảm bảo đường dẫn gốc của project luôn nằm trong sys.path
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
-
-if sys.stdout.encoding != 'utf-8':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except Exception:
-        pass
-
-from src.crawlers.base import BaseCrawler, parse_relative_deadline
-from src.schemas.job import JobListingRaw, JobDetailRaw
-
-
-def clean_html(raw_html: str) -> str:
-    """Loại bỏ các thẻ HTML và định dạng text gọn gàng"""
-    if not raw_html:
-        return ""
-    soup = BeautifulSoup(raw_html, "html.parser")
-    return soup.get_text(separator="\n", strip=True)
+from src.crawlers.base import BaseCrawler, PROJECT_ROOT
+from src.crawlers.topcv.parser import (
+    parse_job_card,
+    parse_job_detail_html,
+    parse_company_overview_html
+)
 
 
 class TopCVCrawler(BaseCrawler):
+    """
+    Crawler thu thập dữ liệu tuyển dụng IT từ TopCV:
+    - Cơ chế Hàng đợi Pending thông minh (ưu tiên cào sạch các job pending trước)
+    - Giới hạn trang linh động & Smart Early Stopping khi hết trang web
+    - Session Chrome impersonation chống 403 / Cloudflare WAF
+    - Quản lý và lưu trữ file listing và detail phân đoạn sạch sẽ
+    """
+
     def __init__(self, config_path: str = "configs/sources.yaml"):
-        # 1. Đọc file cấu hình sources.yaml
         full_config_path = os.path.join(PROJECT_ROOT, config_path)
         if not os.path.exists(full_config_path):
             raise FileNotFoundError(f"Không tìm thấy file cấu hình tại: {full_config_path}")
@@ -49,27 +40,22 @@ class TopCVCrawler(BaseCrawler):
 
         super().__init__(topcv_cfg)
 
-        # 2. Tham số cào & đường dẫn
         self.listing_url_template = self.config.get(
             "listing_url",
             "https://www.topcv.vn/tim-viec-lam-cong-nghe-thong-tin-cr257?type_keyword=1&disable_auto_detect_type_keyword=1&page={page}&category_family=r257&saturday_status=0&sba=1"
         )
         pagination = self.config.get("pagination", {})
         self.start_page = int(pagination.get("start_page", 1))
-        self.max_pages = int(pagination.get("max_pages", 20))
+        self.max_pages = int(pagination.get("max_pages", 50))
 
         rate_limit = self.config.get("rate_limit", {})
-        self.delay_min = float(rate_limit.get("delay_min", 1.0))
-        self.delay_max = float(rate_limit.get("delay_max", 2.0))
+        self.delay_min = float(rate_limit.get("delay_min", 2.0))
+        self.delay_max = float(rate_limit.get("delay_max", 3.5))
         self.timeout = int(rate_limit.get("timeout", 20))
 
-        # Cấu hình retry cho cào chi tiết: 10s, 20s, 30s
         self.retry_delays = [10, 20, 30]
         self.max_retries = len(self.retry_delays)
 
-        # 3. Cấu trúc thư mục lưu trữ JSON thuần túy theo ngày
-        # data/raw/topcv/listings/YYYY-MM-DD/
-        # data/raw/topcv/details/YYYY-MM-DD/
         self.today_str = datetime.now().strftime("%Y-%m-%d")
         self.base_raw_dir = os.path.join(PROJECT_ROOT, "data", "raw", "topcv")
         self.listings_dir = os.path.join(self.base_raw_dir, "listings", self.today_str)
@@ -78,7 +64,6 @@ class TopCVCrawler(BaseCrawler):
         os.makedirs(self.listings_dir, exist_ok=True)
         os.makedirs(self.details_dir, exist_ok=True)
 
-        # 4. Logger, Session & Company Overview Cache
         self.logger = self._setup_logger()
         self.session = requests.Session(impersonate="chrome124")
         self.headers = {
@@ -88,7 +73,6 @@ class TopCVCrawler(BaseCrawler):
         self.company_cache: Dict[str, str] = {}
 
     def _setup_logger(self) -> logging.Logger:
-        """Thiết lập logger ghi ra cả Terminal và File log trong thư mục details của ngày hôm nay"""
         logger = logging.getLogger("TopCVCrawler")
         logger.setLevel(logging.INFO)
 
@@ -104,7 +88,6 @@ class TopCVCrawler(BaseCrawler):
         console_handler.setFormatter(log_format)
         logger.addHandler(console_handler)
 
-        # File Handler ghi vào thư mục logs chung
         logs_dir = os.path.join(PROJECT_ROOT, "logs")
         os.makedirs(logs_dir, exist_ok=True)
         log_file_path = os.path.join(logs_dir, "topcv.log")
@@ -115,7 +98,6 @@ class TopCVCrawler(BaseCrawler):
         return logger
 
     def _get_all_crawled_job_ids(self) -> Set[str]:
-        """Quét tất cả các file TCVxxx.json trong thư mục details để lấy danh sách job_id đã cào"""
         crawled_ids: Set[str] = set()
         details_root = os.path.join(self.base_raw_dir, "details")
         if not os.path.exists(details_root):
@@ -130,22 +112,16 @@ class TopCVCrawler(BaseCrawler):
                     file_path = os.path.join(folder_path, file_name)
                     try:
                         with open(file_path, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            if isinstance(data, list):
-                                for item in data:
-                                    jid = str(item.get("source_job_id", ""))
-                                    if jid:
-                                        crawled_ids.add(jid)
-                            elif isinstance(data, dict):
-                                jid = str(data.get("source_job_id", ""))
+                            records = json.load(f)
+                            for rec in records:
+                                jid = str(rec.get("source_job_id", ""))
                                 if jid:
                                     crawled_ids.add(jid)
                     except Exception:
-                        continue
+                        pass
         return crawled_ids
 
     def _get_next_run_index(self) -> int:
-        """Tìm số thứ tự phiên cào tiếp theo trong ngày hôm nay: ví dụ TCV001.json, page_001.json"""
         max_idx = 0
         if os.path.exists(self.details_dir):
             for f in os.listdir(self.details_dir):
@@ -166,10 +142,6 @@ class TopCVCrawler(BaseCrawler):
         return max_idx + 1
 
     def fetch_job_list_page(self, page: int, max_retries: int = 3) -> List[Dict[str, Any]]:
-        """
-        Cào danh sách job từ trang tìm kiếm TopCV với cơ chế retry và khởi tạo lại session khi gặp 403/429.
-        Bóc tách đầy đủ: title, company, logo, lương, địa điểm, kinh nghiệm và skill tags ngay từ card listing.
-        """
         url = self.listing_url_template.format(page=page)
         self.logger.info(f"Đang quét danh sách TopCV tại trang {page}: {url}")
 
@@ -183,83 +155,13 @@ class TopCVCrawler(BaseCrawler):
                     seen = set()
 
                     for card in cards:
-                        jid = card.get("data-job-id") or ""
-                        if not jid:
+                        item_rec = parse_job_card(card, page)
+                        if not item_rec:
                             continue
-                        jid = str(jid).strip()
+                        jid = item_rec["source_job_id"]
                         if jid in seen:
                             continue
                         seen.add(jid)
-
-                        # Tiêu đề & URL bài tuyển dụng
-                        title_el = card.select_one(".title a, h3 a, .job-title a")
-                        title = title_el.get_text(strip=True) if title_el else ""
-                        job_url = title_el.get("href") if title_el else ""
-                        if job_url and "?" in job_url:
-                            job_url = job_url.split("?")[0]
-
-                        # Công ty & Logo
-                        comp_el = card.select_one(".company, .company-name, a.company")
-                        comp_name = comp_el.get_text(strip=True) if comp_el else ""
-                        logo_el = card.select_one("img")
-                        comp_logo = logo_el.get("src") if logo_el else ""
-
-                        # Mức lương
-                        sal_el = card.select_one(".salary, .title-salary")
-                        salary = sal_el.get_text(strip=True) if sal_el else "Thoả thuận"
-
-                        # Địa điểm & Kinh nghiệm
-                        addr_el = card.select_one(".address")
-                        location = addr_el.get_text(strip=True) if addr_el else ""
-                        # Làm sạch nhãn địa điểm nếu có chữ '(mới)'
-                        location = location.replace("(mới)", "").strip()
-
-                        exp_el = card.select_one(".exp")
-                        experience = exp_el.get_text(strip=True) if exp_el else ""
-
-                        # Trích xuất toàn bộ tags & kỹ năng từ card (item-tag và tooltip remaining-items)
-                        tags: List[str] = []
-                        tag_container = card.select_one(".tag")
-                        if tag_container:
-                            for span in tag_container.select(".item-tag"):
-                                t_text = span.get("title") or span.get_text(strip=True)
-                                if t_text and t_text not in tags and not t_text.endswith("..."):
-                                    tags.append(t_text)
-                            rem = tag_container.select_one(".remaining-items")
-                            if rem:
-                                rem_title = rem.get("title") or rem.get("data-original-title") or rem.get("data-bs-title") or ""
-                                if rem_title:
-                                    for item in rem_title.split(","):
-                                        item = item.strip()
-                                        if item and item not in tags:
-                                            tags.append(item)
-
-                        skills_raw = ", ".join(tags)
-
-                        # Ngày đăng bài
-                        posted_el = card.select_one(".label-update, .address.label-update")
-                        posted_at = posted_el.get_text(strip=True) if posted_el else ""
-
-                        item_rec = {
-                            "source": "topcv",
-                            "source_job_id": jid,
-                            "job_url": job_url,
-                            "company_logo_url": comp_logo or "",
-                            "title_raw": title,
-                            "company_name_raw": comp_name,
-                            "location_raw": location,
-                            "salary_raw": salary,
-                            "experience_raw": experience,
-                            "skills_raw": skills_raw,
-                            "posted_at_raw": posted_at,
-                            "crawled_at": datetime.now().isoformat(),
-                            "detail_status": "pending",
-                            "detail_attempts": 0,
-                            "detail_http_status": None,
-                            "detail_error": "",
-                            "detail_file": "",
-                            "detail_crawled_at": None
-                        }
                         found_items.append(item_rec)
 
                     self.logger.info(f"-> Trang {page} tìm thấy {len(found_items)} jobs TopCV với đầy đủ thông tin tóm tắt.")
@@ -293,11 +195,6 @@ class TopCVCrawler(BaseCrawler):
         return []
 
     def _fetch_company_overview(self, company_url: str) -> str:
-        """
-        Truy cập trang hồ sơ công ty (company_url) để lấy nội dung giới thiệu công ty thật.
-        TopCV bị lỗi khi gán employerOverview trong JobPosting bằng chính mô tả công việc (JD).
-        Sử dụng bộ nhớ cache theo company_url để tránh cào lại nhiều lần cho cùng một công ty.
-        """
         if not company_url:
             return ""
         if company_url in self.company_cache:
@@ -306,19 +203,9 @@ class TopCVCrawler(BaseCrawler):
         try:
             resp = self.session.get(company_url, headers=self.headers, timeout=self.timeout)
             if resp.status_code == 200:
-                soup = BeautifulSoup(resp.text, "html.parser")
-                comp_box = soup.select_one(".company-info .content, .company-info .box-body, .company-info")
-                if comp_box:
-                    for h in comp_box.find_all(["h1", "h2", "h3", "h4"]):
-                        h.decompose()
-                    for btn in comp_box.select(".load-more, .show-less, .see-more, .read-more, a.btn-see-more"):
-                        btn.decompose()
-                    desc = clean_html(str(comp_box))
-                    # Xoá triệt để các chữ Xem thêm / Thu gọn thừa nếu còn sót
-                    desc = re.sub(r'\n?\s*(Xem thêm|Thu gọn)\s*$', '', desc, flags=re.IGNORECASE).strip()
-                    desc = re.sub(r'\n?\s*(Xem thêm|Thu gọn)\s*$', '', desc, flags=re.IGNORECASE).strip()
-                    self.company_cache[company_url] = desc
-                    return desc
+                desc = parse_company_overview_html(resp.text)
+                self.company_cache[company_url] = desc
+                return desc
         except Exception as e:
             self.logger.warning(f"Không thể lấy giới thiệu công ty từ {company_url}: {e}")
 
@@ -329,12 +216,6 @@ class TopCVCrawler(BaseCrawler):
         self,
         job_item: Dict[str, Any]
     ) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
-        """
-        Cào chi tiết một job TopCV với cơ chế Retry 3 lần (10s, 20s, 30s):
-        - Bóc tách toàn diện qua Schema JSON-LD JobPosting và DOM HTML
-        - Bóc tách Mô tả (responsibilities), Yêu cầu (requirements), Quyền lợi (benefits)
-        - Trích xuất thông tin công ty, trụ sở, học vấn, chế độ làm việc từ Sidebar và Thông tin chung
-        """
         job_url = job_item["job_url"]
         job_id = str(job_item["source_job_id"])
         updated_listing = dict(job_item)
@@ -348,219 +229,27 @@ class TopCVCrawler(BaseCrawler):
                 updated_listing["detail_http_status"] = resp.status_code
 
                 if resp.status_code == 200:
+                    comp_url = ""
                     soup = BeautifulSoup(resp.text, "html.parser")
-                    ld_data: Dict[str, Any] = {}
-
-                    # 1. Trích xuất Schema JSON-LD JobPosting
                     for s in soup.find_all("script", type="application/ld+json"):
                         try:
-                            content = (s.string if s.string else s.text) or ""
-                            d = json.loads(content)
+                            d = json.loads((s.string if s.string else s.text) or "")
                             if d.get("@type") == "JobPosting":
-                                ld_data = d
+                                comp_url = (d.get("hiringOrganization") or {}).get("sameAs") or ""
                                 break
                         except Exception:
                             continue
 
-                    # Tiêu đề & Công ty
-                    title = ld_data.get("title") or job_item.get("title_raw", "")
-                    hiring_org = ld_data.get("hiringOrganization") or {}
-                    comp_name = hiring_org.get("name") or job_item.get("company_name_raw", "")
-                    comp_url = hiring_org.get("sameAs") or ""
-                    comp_logo = hiring_org.get("logo") or job_item.get("company_logo_url", "")
-
-                    # Địa chỉ làm việc chi tiết
-                    job_loc = ld_data.get("jobLocation") or {}
-                    addr_dict = job_loc.get("address") or {} if isinstance(job_loc, dict) else {}
-                    loc_parts = []
-                    if isinstance(addr_dict, dict):
-                        for k in ["streetAddress", "addressLocality", "addressRegion"]:
-                            val = addr_dict.get(k)
-                            if val and val not in loc_parts:
-                                loc_parts.append(val)
-                    location_raw = ", ".join(loc_parts) if loc_parts else job_item.get("location_raw", "")
-
-                    # Lương & Kinh nghiệm
-                    sal_obj = ld_data.get("baseSalary") or {}
-                    sal_val = sal_obj.get("value") if isinstance(sal_obj, dict) else ""
-                    if isinstance(sal_val, dict):
-                        salary_raw = str(sal_val.get("value") or sal_val.get("minValue") or job_item.get("salary_raw", ""))
-                    elif isinstance(sal_val, str) and sal_val:
-                        salary_raw = sal_val
-                    else:
-                        salary_raw = job_item.get("salary_raw", "Thương lượng")
-
-                    exp_req = ld_data.get("experienceRequirements") or {}
-                    months_exp = exp_req.get("monthsOfExperience") if isinstance(exp_req, dict) else None
-                    if months_exp:
-                        years = months_exp // 12
-                        experience_raw = f"{years} năm" if years > 0 else f"{months_exp} tháng"
-                    else:
-                        experience_raw = job_item.get("experience_raw", "")
-
-                    # 2. Bóc tách từ Sidebar Thông tin công ty (.box-company-info-detail)
-                    company_size_raw = ""
-                    company_location_raw = ""
-                    industry_raw = ld_data.get("industry") or ""
-
-                    for c_item in soup.select(".box-company-info-detail__list--item"):
-                        c_text = c_item.get_text(separator=" ", strip=True)
-                        c_text_lower = c_text.lower()
-                        if "quy mô" in c_text_lower:
-                            company_size_raw = re.sub(r"^quy\s*mô\s*:?\s*", "", c_text, flags=re.IGNORECASE).strip()
-                        elif "địa điểm" in c_text_lower:
-                            tooltip = c_item.select_one('[data-toggle="tooltip"], [title]')
-                            if tooltip and tooltip.get("title"):
-                                company_location_raw = tooltip.get("title").strip()
-                            else:
-                                company_location_raw = re.sub(r"^địa\s*điểm\s*:?\s*", "", c_text, flags=re.IGNORECASE).strip()
-                        elif "ngành nghề" in c_text_lower and not industry_raw:
-                            industry_raw = re.sub(r"^ngành\s*nghề\s*:?\s*", "", c_text, flags=re.IGNORECASE).strip()
-
-                    if not company_location_raw:
-                        company_location_raw = location_raw
-                    if not industry_raw:
-                        industry_raw = "Công nghệ thông tin / Phần mềm"
-
-                    # 3. Bóc tách từ Box Thông tin chung (.box-job-information-general-info-list__item)
-                    education_raw = ""
-                    work_mode_raw = ""
-                    emp_type_raw = ld_data.get("occupationalCategory") or ""
-                    working_time_raw = "Toàn thời gian" if ld_data.get("employmentType") == "FULL_TIME" else (str(ld_data.get("employmentType") or ""))
-
-                    for g_item in soup.select(".box-job-information-general-info-list__item"):
-                        g_text = g_item.get_text(separator=" ", strip=True)
-                        g_text_lower = g_text.lower()
-                        if "học vấn" in g_text_lower:
-                            education_raw = re.sub(r"^học\s*vấn\s*:?\s*", "", g_text, flags=re.IGNORECASE).strip()
-                        elif "hình thức làm việc" in g_text_lower:
-                            raw_wm = re.sub(r"^hình\s*thức\s*làm\s*việc\s*:?\s*", "", g_text, flags=re.IGNORECASE).strip()
-                            if "onsite" in raw_wm.lower() or "văn phòng" in raw_wm.lower():
-                                work_mode_raw = "Onsite"
-                            elif "remote" in raw_wm.lower() or "từ xa" in raw_wm.lower():
-                                work_mode_raw = "Remote"
-                            elif "hybrid" in raw_wm.lower():
-                                work_mode_raw = "Hybrid"
-                            else:
-                                work_mode_raw = raw_wm
-                        elif "cấp bậc" in g_text_lower and not emp_type_raw:
-                            emp_type_raw = re.sub(r"^cấp\s*bậc\s*:?\s*", "", g_text, flags=re.IGNORECASE).strip()
-                        elif "loại hình làm việc" in g_text_lower:
-                            working_time_raw = re.sub(r"^loại\s*hình\s*làm\s*việc\s*:?\s*", "", g_text, flags=re.IGNORECASE).strip()
-
-                    # Fallback work_mode nếu chưa có
-                    if not work_mode_raw:
-                        search_text = f"{title} {location_raw}"
-                        for wm in ["Full-remote", "Remote", "Hybrid", "Onsite", "Làm từ xa"]:
-                            if re.search(r'\b' + re.escape(wm) + r'\b', search_text, re.IGNORECASE):
-                                work_mode_raw = "Remote" if "remote" in wm.lower() or "từ xa" in wm.lower() else wm
-                                break
-                    if not work_mode_raw:
-                        work_mode_raw = "Onsite"
-
-                    # 4. Giới thiệu công ty (overview_raw) - Cào trang hồ sơ công ty thật
                     overview_raw = self._fetch_company_overview(comp_url)
-
-                    # Ngày đăng & Hạn nộp
-                    posted_at = str(ld_data.get("datePosted") or job_item.get("posted_at_raw", ""))
-                    deadline = str(ld_data.get("validThrough") or "")
-                    if not deadline:
-                        deadline = parse_relative_deadline(soup.get_text(separator=" ", strip=True))
-
-                    # 5. Bóc tách 3 phần: Mô tả công việc, Yêu cầu ứng viên, Quyền lợi
-                    responsibilities_raw = ""
-                    requirements_raw = ""
-                    benefits_raw = clean_html(ld_data.get("jobBenefits", ""))
-
-                    desc_html = ld_data.get("description", "")
-                    if desc_html:
-                        desc_soup = BeautifulSoup(desc_html, "html.parser")
-                        current_sec = ""
-                        resp_chunks, req_chunks, ben_chunks = [], [], []
-
-                        for el in desc_soup.children:
-                            if not el.name:
-                                continue
-                            txt = el.get_text(strip=True)
-                            if "mô tả công việc" in txt.lower():
-                                current_sec = "resp"
-                            elif "yêu cầu ứng viên" in txt.lower() or "yêu cầu công việc" in txt.lower():
-                                current_sec = "req"
-                            elif "quyền lợi" in txt.lower():
-                                current_sec = "ben"
-                            else:
-                                if current_sec == "resp":
-                                    resp_chunks.append(clean_html(str(el)))
-                                elif current_sec == "req":
-                                    req_chunks.append(clean_html(str(el)))
-                                elif current_sec == "ben":
-                                    ben_chunks.append(clean_html(str(el)))
-
-                        responsibilities_raw = "\n".join([c for c in resp_chunks if c])
-                        requirements_raw = "\n".join([c for c in req_chunks if c])
-                        if not benefits_raw:
-                            benefits_raw = "\n".join([c for c in ben_chunks if c])
-
-                    # Fallback nếu không chia theo h2
-                    if not responsibilities_raw:
-                        responsibilities_raw = clean_html(desc_html)
-
-                    # Kỹ năng
-                    skills_raw = job_item.get("skills_raw", "")
-                    now_iso = datetime.now().isoformat()
-
-                    # Cập nhật lại bản ghi listing
-                    updated_listing.update({
-                        "title_raw": title,
-                        "company_name_raw": comp_name,
-                        "company_logo_url": comp_logo,
-                        "location_raw": location_raw,
-                        "salary_raw": salary_raw,
-                        "experience_raw": experience_raw,
-                        "skills_raw": skills_raw,
-                        "posted_at_raw": posted_at,
-                        "detail_status": "success",
-                        "detail_error": "",
-                        "detail_crawled_at": now_iso
-                    })
-
-                    # Bản ghi Detail hoàn chỉnh
-                    detail_record = {
-                        "detail_id": f"topcv_{job_id}",
-                        "source": "topcv",
-                        "source_job_id": job_id,
-                        "job_url": job_url,
-                        "title_raw": title,
-                        "company_name_raw": comp_name,
-                        "company_url": comp_url,
-                        "company_size_raw": company_size_raw,
-                        "company_location_raw": company_location_raw,
-                        "industry_raw": industry_raw,
-                        "salary_raw": salary_raw,
-                        "experience_raw": experience_raw,
-                        "education_raw": education_raw,
-                        "location_raw": location_raw,
-                        "work_mode_raw": work_mode_raw,
-                        "employment_type_raw": emp_type_raw,
-                        "working_time_raw": working_time_raw,
-                        "overview_raw": overview_raw,
-                        "responsibilities_raw": responsibilities_raw,
-                        "requirements_raw": requirements_raw,
-                        "benefits_raw": benefits_raw,
-                        "required_skills_raw": skills_raw,
-                        "preferred_skills_raw": "",
-                        "published_at_raw": posted_at,
-                        "updated_at_raw": "",
-                        "deadline_raw": deadline,
-                        "crawled_at": now_iso
-                    }
-
-                    # Validate qua Pydantic schema
-                    JobDetailRaw(**detail_record)
+                    detail_record, updated_listing = parse_job_detail_html(
+                        resp.text,
+                        job_item,
+                        company_overview=overview_raw
+                    )
 
                     self.logger.info(
-                        f"-> [THÀNH CÔNG] Job {job_id}: '{title}' | Cty: '{comp_name}' | "
-                        f"Quy mô: '{company_size_raw}' | Trụ sở: '{company_location_raw[:35]}' | Học vấn: '{education_raw}'"
+                        f"-> [THÀNH CÔNG] Job {job_id}: '{detail_record['title_raw']}' | Cty: '{detail_record['company_name_raw']}' | "
+                        f"Quy mô: '{detail_record['company_size_raw']}' | Trụ sở: '{detail_record['company_location_raw'][:35]}' | Học vấn: '{detail_record['education_raw']}'"
                     )
                     return detail_record, updated_listing
 
@@ -588,11 +277,6 @@ class TopCVCrawler(BaseCrawler):
         return None, updated_listing
 
     def _collect_pending_jobs(self, crawled_job_ids: Set[str]) -> List[Tuple[str, int, Dict[str, Any]]]:
-        """
-        Quét tất cả các file page_xxx.json trong thư mục listings của ngày hôm nay,
-        tìm các job có detail_status là 'pending' hoặc chưa có trong crawled_job_ids
-        để ưu tiên cào detail trước khi mở web tìm kiếm mới.
-        """
         pending_items = []
         if not os.path.exists(self.listings_dir):
             return pending_items
@@ -615,14 +299,6 @@ class TopCVCrawler(BaseCrawler):
         return pending_items
 
     def run(self, target_success_count: int = 100) -> Dict[str, Any]:
-        """
-        Thực thi quy trình cào TopCV:
-        1. Tạo cấu trúc thư mục listings/YYYY-MM-DD/ và details/YYYY-MM-DD/
-        2. Gom TOÀN BỘ listings phiên này vào 1 file: page_XXX.json
-        3. Gom TOÀN BỘ details phiên này vào 1 file: TCVXXX.json
-        4. Ưu tiên cào sạch các job Pending cũ trong ngày trước khi quét trang mới.
-        5. Phân trang linh động với cơ chế Smart Stop khi hết dữ liệu trên web.
-        """
         self.logger.info("=" * 70)
         self.logger.info(f"BẮT ĐẦU CRAWL TOPCV - MỤC TIÊU: {target_success_count} JOBS THÀNH CÔNG")
         self.logger.info(f"Thư mục Listings: {self.listings_dir}")
@@ -649,9 +325,7 @@ class TopCVCrawler(BaseCrawler):
         session_success_count = 0
         failed_count_session = 0
 
-        # ==============================================================
-        # GIAI ĐOẠN 1: CÀO CÁC JOB PENDING / CHƯA HOÀN TẤT TỪ TRƯỚC
-        # ==============================================================
+        # GIAI ĐOẠN 1: Cào các job pending từ trước
         pending_candidates = self._collect_pending_jobs(crawled_job_ids)
         if pending_candidates:
             self.logger.info(f"Phát hiện {len(pending_candidates)} jobs đang ở trạng thái chờ (pending). Ưu tiên cào trước...")
@@ -680,7 +354,6 @@ class TopCVCrawler(BaseCrawler):
             else:
                 failed_count_session += 1
 
-            # Cập nhật lại file listing gốc chứa job này
             try:
                 with open(page_file_path, "r", encoding="utf-8") as f:
                     page_items = json.load(f)
@@ -692,9 +365,7 @@ class TopCVCrawler(BaseCrawler):
 
             time.sleep(random.uniform(self.delay_min, self.delay_max))
 
-        # ==============================================================
-        # GIAI ĐOẠN 2: QUÉT THÊM TRANG MỚI NẾU CHƯA ĐỦ TARGET JOBS
-        # ==============================================================
+        # GIAI ĐOẠN 2: Quét trang mới từ web nếu chưa đủ target
         current_page = self.start_page
         max_page_limit = self.start_page + self.max_pages
         empty_page_count = 0
@@ -724,7 +395,6 @@ class TopCVCrawler(BaseCrawler):
                     session_listings.append(itm)
                     new_jobs.append(itm)
 
-            # Lưu lũy kế listings của phiên
             with open(current_listing_filepath, "w", encoding="utf-8") as f:
                 json.dump(session_listings, f, ensure_ascii=False, indent=2)
 
@@ -750,7 +420,6 @@ class TopCVCrawler(BaseCrawler):
                     crawled_job_ids.add(jid)
                     session_success_count += 1
 
-                    # Lưu cập nhật lũy kế details của phiên
                     with open(current_tcv_filepath, "w", encoding="utf-8") as f:
                         json.dump(session_details, f, ensure_ascii=False, indent=2)
 
@@ -761,7 +430,6 @@ class TopCVCrawler(BaseCrawler):
                 else:
                     failed_count_session += 1
 
-                # Cập nhật lại file listing
                 with open(current_listing_filepath, "w", encoding="utf-8") as f:
                     json.dump(session_listings, f, ensure_ascii=False, indent=2)
 
@@ -770,9 +438,7 @@ class TopCVCrawler(BaseCrawler):
             current_page += 1
             time.sleep(random.uniform(self.delay_min, self.delay_max))
 
-        # ==============================================================
-        # BÁO CÁO TỔNG KẾT
-        # ==============================================================
+        # Báo cáo tổng kết
         self.logger.info("\n" + "=" * 70)
         self.logger.info("BÁO CÁO TỔNG KẾT PHIÊN CÀO TOPCV")
         self.logger.info("=" * 70)
@@ -796,10 +462,6 @@ class TopCVCrawler(BaseCrawler):
         }
 
     def retry_failed_jobs(self, target_date: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Tìm và cào lại tất cả các jobs có trạng thái 'failed' trong các file listings.
-        Nếu thành công, lưu bổ sung vào file detail và cập nhật lại file listing.
-        """
         date_str = target_date or self.today_str
         listing_folder = os.path.join(self.base_raw_dir, "listings", date_str)
         detail_folder = os.path.join(self.base_raw_dir, "details", date_str)
