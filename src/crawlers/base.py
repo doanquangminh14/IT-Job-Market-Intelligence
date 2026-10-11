@@ -7,6 +7,32 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 
+# Đường dẫn thư mục gốc của project
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def clean_html(html_text: str) -> str:
+    """Làm sạch HTML tag, giữ lại ngắt dòng và cấu trúc văn bản dễ đọc"""
+    if not html_text:
+        return ""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html_text, "html.parser")
+    for br in soup.find_all("br"):
+        br.replace_with("\n")
+    for tag in soup.find_all(["p", "div", "li", "h1", "h2", "h3", "h4"]):
+        tag.append("\n")
+    text = soup.get_text()
+    lines = [line.strip() for line in text.split("\n")]
+    return "\n".join([line for line in lines if line]).strip()
+
+
+def fix_encoding(text: str) -> str:
+    """Làm sạch khoảng trắng thừa và chuẩn hóa chuỗi text"""
+    if not text:
+        return ""
+    return re.sub(r'[ \t]+', ' ', str(text)).strip()
+
+
 def parse_relative_deadline(text: str, base_date: Optional[datetime] = None) -> str:
     """
     Phát hiện các mẫu thời gian tương đối như 'Còn 28 ngày', 'Hết hạn trong 11 ngày', '5 days left',
