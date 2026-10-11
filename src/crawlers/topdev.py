@@ -24,7 +24,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from src.crawlers.base import BaseCrawler
+from src.crawlers.base import BaseCrawler, parse_relative_deadline
 from src.schemas.job import JobListingRaw, JobDetailRaw
 
 
@@ -524,6 +524,8 @@ class TopDevCrawler(BaseCrawler):
 
                     posted_at = str(ld_data.get("datePosted") or "")
                     deadline = str(ld_data.get("validThrough") or "")
+                    if not deadline:
+                        deadline = parse_relative_deadline(full_text)
                     now_iso = datetime.now().isoformat()
 
                     # Cập nhật thông tin Listing

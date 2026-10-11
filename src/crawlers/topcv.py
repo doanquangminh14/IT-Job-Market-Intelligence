@@ -24,7 +24,7 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-from src.crawlers.base import BaseCrawler
+from src.crawlers.base import BaseCrawler, parse_relative_deadline
 from src.schemas.job import JobListingRaw, JobDetailRaw
 
 
@@ -165,111 +165,132 @@ class TopCVCrawler(BaseCrawler):
 
         return max_idx + 1
 
-    def fetch_job_list_page(self, page: int) -> List[Dict[str, Any]]:
+    def fetch_job_list_page(self, page: int, max_retries: int = 3) -> List[Dict[str, Any]]:
         """
-        Cào danh sách job từ trang tìm kiếm TopCV.
+        Cào danh sách job từ trang tìm kiếm TopCV với cơ chế retry và khởi tạo lại session khi gặp 403/429.
         Bóc tách đầy đủ: title, company, logo, lương, địa điểm, kinh nghiệm và skill tags ngay từ card listing.
         """
         url = self.listing_url_template.format(page=page)
         self.logger.info(f"Đang quét danh sách TopCV tại trang {page}: {url}")
 
-        try:
-            resp = self.session.get(url, headers=self.headers, timeout=self.timeout)
-            if resp.status_code != 200:
-                self.logger.warning(f"Trang {page} trả về HTTP status {resp.status_code}")
-                return []
+        for attempt in range(1, max_retries + 1):
+            try:
+                resp = self.session.get(url, headers=self.headers, timeout=self.timeout)
+                if resp.status_code == 200:
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    cards = soup.select(".job-item-search-result")
+                    found_items = []
+                    seen = set()
 
-            soup = BeautifulSoup(resp.text, "html.parser")
-            cards = soup.select(".job-item-search-result")
-            found_items = []
-            seen = set()
+                    for card in cards:
+                        jid = card.get("data-job-id") or ""
+                        if not jid:
+                            continue
+                        jid = str(jid).strip()
+                        if jid in seen:
+                            continue
+                        seen.add(jid)
 
-            for card in cards:
-                jid = card.get("data-job-id") or ""
-                if not jid:
-                    continue
-                jid = str(jid).strip()
-                if jid in seen:
-                    continue
-                seen.add(jid)
+                        # Tiêu đề & URL bài tuyển dụng
+                        title_el = card.select_one(".title a, h3 a, .job-title a")
+                        title = title_el.get_text(strip=True) if title_el else ""
+                        job_url = title_el.get("href") if title_el else ""
+                        if job_url and "?" in job_url:
+                            job_url = job_url.split("?")[0]
 
-                # Tiêu đề & URL bài tuyển dụng
-                title_el = card.select_one(".title a, h3 a, .job-title a")
-                title = title_el.get_text(strip=True) if title_el else ""
-                job_url = title_el.get("href") if title_el else ""
-                if job_url and "?" in job_url:
-                    job_url = job_url.split("?")[0]
+                        # Công ty & Logo
+                        comp_el = card.select_one(".company, .company-name, a.company")
+                        comp_name = comp_el.get_text(strip=True) if comp_el else ""
+                        logo_el = card.select_one("img")
+                        comp_logo = logo_el.get("src") if logo_el else ""
 
-                # Công ty & Logo
-                comp_el = card.select_one(".company, .company-name, a.company")
-                comp_name = comp_el.get_text(strip=True) if comp_el else ""
-                logo_el = card.select_one("img")
-                comp_logo = logo_el.get("src") if logo_el else ""
+                        # Mức lương
+                        sal_el = card.select_one(".salary, .title-salary")
+                        salary = sal_el.get_text(strip=True) if sal_el else "Thoả thuận"
 
-                # Mức lương
-                sal_el = card.select_one(".salary, .title-salary")
-                salary = sal_el.get_text(strip=True) if sal_el else "Thoả thuận"
+                        # Địa điểm & Kinh nghiệm
+                        addr_el = card.select_one(".address")
+                        location = addr_el.get_text(strip=True) if addr_el else ""
+                        # Làm sạch nhãn địa điểm nếu có chữ '(mới)'
+                        location = location.replace("(mới)", "").strip()
 
-                # Địa điểm & Kinh nghiệm
-                addr_el = card.select_one(".address")
-                location = addr_el.get_text(strip=True) if addr_el else ""
-                # Làm sạch nhãn địa điểm nếu có chữ '(mới)'
-                location = location.replace("(mới)", "").strip()
+                        exp_el = card.select_one(".exp")
+                        experience = exp_el.get_text(strip=True) if exp_el else ""
 
-                exp_el = card.select_one(".exp")
-                experience = exp_el.get_text(strip=True) if exp_el else ""
+                        # Trích xuất toàn bộ tags & kỹ năng từ card (item-tag và tooltip remaining-items)
+                        tags: List[str] = []
+                        tag_container = card.select_one(".tag")
+                        if tag_container:
+                            for span in tag_container.select(".item-tag"):
+                                t_text = span.get("title") or span.get_text(strip=True)
+                                if t_text and t_text not in tags and not t_text.endswith("..."):
+                                    tags.append(t_text)
+                            rem = tag_container.select_one(".remaining-items")
+                            if rem:
+                                rem_title = rem.get("title") or rem.get("data-original-title") or rem.get("data-bs-title") or ""
+                                if rem_title:
+                                    for item in rem_title.split(","):
+                                        item = item.strip()
+                                        if item and item not in tags:
+                                            tags.append(item)
 
-                # Trích xuất toàn bộ tags & kỹ năng từ card (item-tag và tooltip remaining-items)
-                tags: List[str] = []
-                tag_container = card.select_one(".tag")
-                if tag_container:
-                    for span in tag_container.select(".item-tag"):
-                        t_text = span.get("title") or span.get_text(strip=True)
-                        if t_text and t_text not in tags and not t_text.endswith("..."):
-                            tags.append(t_text)
-                    rem = tag_container.select_one(".remaining-items")
-                    if rem:
-                        rem_title = rem.get("title") or rem.get("data-original-title") or rem.get("data-bs-title") or ""
-                        if rem_title:
-                            for item in rem_title.split(","):
-                                item = item.strip()
-                                if item and item not in tags:
-                                    tags.append(item)
+                        skills_raw = ", ".join(tags)
 
-                skills_raw = ", ".join(tags)
+                        # Ngày đăng bài
+                        posted_el = card.select_one(".label-update, .address.label-update")
+                        posted_at = posted_el.get_text(strip=True) if posted_el else ""
 
-                # Ngày đăng bài
-                posted_el = card.select_one(".label-update, .address.label-update")
-                posted_at = posted_el.get_text(strip=True) if posted_el else ""
+                        item_rec = {
+                            "source": "topcv",
+                            "source_job_id": jid,
+                            "job_url": job_url,
+                            "company_logo_url": comp_logo or "",
+                            "title_raw": title,
+                            "company_name_raw": comp_name,
+                            "location_raw": location,
+                            "salary_raw": salary,
+                            "experience_raw": experience,
+                            "skills_raw": skills_raw,
+                            "posted_at_raw": posted_at,
+                            "crawled_at": datetime.now().isoformat(),
+                            "detail_status": "pending",
+                            "detail_attempts": 0,
+                            "detail_http_status": None,
+                            "detail_error": "",
+                            "detail_file": "",
+                            "detail_crawled_at": None
+                        }
+                        found_items.append(item_rec)
 
-                item_rec = {
-                    "source": "topcv",
-                    "source_job_id": jid,
-                    "job_url": job_url,
-                    "company_logo_url": comp_logo or "",
-                    "title_raw": title,
-                    "company_name_raw": comp_name,
-                    "location_raw": location,
-                    "salary_raw": salary,
-                    "experience_raw": experience,
-                    "skills_raw": skills_raw,
-                    "posted_at_raw": posted_at,
-                    "crawled_at": datetime.now().isoformat(),
-                    "detail_status": "pending",
-                    "detail_attempts": 0,
-                    "detail_http_status": None,
-                    "detail_error": "",
-                    "detail_file": "",
-                    "detail_crawled_at": None
-                }
-                found_items.append(item_rec)
+                    self.logger.info(f"-> Trang {page} tìm thấy {len(found_items)} jobs TopCV với đầy đủ thông tin tóm tắt.")
+                    return found_items
 
-            self.logger.info(f"-> Trang {page} tìm thấy {len(found_items)} jobs TopCV với đầy đủ thông tin tóm tắt.")
-            return found_items
+                elif resp.status_code in (403, 429):
+                    self.logger.warning(f"-> Trang {page} trả về HTTP status {resp.status_code} (Lần thử {attempt}/{max_retries})")
+                    if attempt < max_retries:
+                        backoff = 5 * attempt
+                        self.logger.info(f"   Đang khởi tạo lại session sạch và chờ {backoff}s trước khi thử lại trang {page}...")
+                        self.session = requests.Session(impersonate="chrome124")
+                        time.sleep(backoff)
+                    else:
+                        self.logger.error(f"-> Thất bại khi quét trang {page} sau {max_retries} lần thử do HTTP {resp.status_code}.")
+                        return []
+                else:
+                    self.logger.warning(f"-> Trang {page} trả về HTTP status {resp.status_code}")
+                    return []
 
-        except Exception as e:
-            self.logger.error(f"Lỗi khi quét danh sách TopCV trang {page}: {e}")
-            return []
+            except Exception as e:
+                self.logger.warning(f"-> Lỗi khi quét danh sách TopCV trang {page} (Lần thử {attempt}/{max_retries}): {e}")
+                if attempt < max_retries:
+                    backoff = 5 * attempt
+                    self.logger.info(f"   Đang chờ {backoff}s trước khi thử lại trang {page}...")
+                    self.session = requests.Session(impersonate="chrome124")
+                    time.sleep(backoff)
+                else:
+                    self.logger.error(f"-> Thất bại khi quét trang {page} sau {max_retries} lần thử: {e}")
+                    return []
+
+        return []
 
     def _fetch_company_overview(self, company_url: str) -> str:
         """
@@ -443,6 +464,8 @@ class TopCVCrawler(BaseCrawler):
                     # Ngày đăng & Hạn nộp
                     posted_at = str(ld_data.get("datePosted") or job_item.get("posted_at_raw", ""))
                     deadline = str(ld_data.get("validThrough") or "")
+                    if not deadline:
+                        deadline = parse_relative_deadline(soup.get_text(separator=" ", strip=True))
 
                     # 5. Bóc tách 3 phần: Mô tả công việc, Yêu cầu ứng viên, Quyền lợi
                     responsibilities_raw = ""
@@ -607,8 +630,9 @@ class TopCVCrawler(BaseCrawler):
 
             page_items = self.fetch_job_list_page(current_page)
             if not page_items:
-                self.logger.warning(f"Không nhận được job nào ở trang {current_page}. Chuyển trang tiếp theo.")
+                self.logger.warning(f"Không nhận được job nào ở trang {current_page}. Chuyển trang tiếp theo sau khi nghỉ...")
                 current_page += 1
+                time.sleep(random.uniform(self.delay_min, self.delay_max))
                 continue
 
             new_jobs = []
@@ -624,6 +648,12 @@ class TopCVCrawler(BaseCrawler):
                 json.dump(session_listings, f, ensure_ascii=False, indent=2)
 
             self.logger.info(f"Trang {current_page}: Thu thập được {len(new_jobs)} jobs mới chưa cào.")
+
+            if not new_jobs:
+                self.logger.info(f"Trang {current_page}: Không có job mới chưa cào. Chuyển sang trang tiếp theo sau khi nghỉ...")
+                current_page += 1
+                time.sleep(random.uniform(self.delay_min, self.delay_max))
+                continue
 
             for itm in new_jobs:
                 if session_success_count >= target_success_count:
@@ -657,6 +687,7 @@ class TopCVCrawler(BaseCrawler):
                 time.sleep(random.uniform(self.delay_min, self.delay_max))
 
             current_page += 1
+            time.sleep(random.uniform(self.delay_min, self.delay_max))
 
         # ==============================================================
         # BÁO CÁO TỔNG KẾT

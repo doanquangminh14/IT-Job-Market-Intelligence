@@ -24,7 +24,7 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-from src.crawlers.base import BaseCrawler
+from src.crawlers.base import BaseCrawler, parse_relative_deadline
 from src.schemas.job import JobListingRaw, JobDetailRaw
 
 
@@ -279,6 +279,9 @@ class VietnamWorksCrawler(BaseCrawler):
         posted_at = str(item.get("approvedOn") or item.get("createdOn") or "")
         updated_at = str(item.get("lastUpdatedOn") or "")
         deadline = str(item.get("expiredOn") or "")
+        if not deadline:
+            search_deadline_text = f"{item.get('expiredIn', '')} {item.get('jobDescription', '')}"
+            deadline = parse_relative_deadline(search_deadline_text)
         now_iso = datetime.now().isoformat()
 
         # 4. Kỹ năng (Skills)
