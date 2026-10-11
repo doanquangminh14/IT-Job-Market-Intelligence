@@ -159,8 +159,8 @@ def parse_job_detail_html(
         title = h1.get_text(strip=True) if h1 else ""
 
     comp_data = ld_data.get("hiringOrganization") or {}
-    comp_name = comp_data.get("name", "")
-    comp_logo = comp_data.get("logo", "")
+    comp_name = comp_data.get("name", "") or job_item.get("company_name_raw", "")
+    comp_logo = comp_data.get("logo", "") or job_item.get("company_logo_url", "")
     comp_url = comp_data.get("sameAs", "")
 
     # 2. Header Grid: Location, Cấp bậc (Level), Kinh nghiệm (Experience)
@@ -295,12 +295,28 @@ def parse_job_detail_html(
     # Fallback an toàn nếu tin không chia theo 3 section chuẩn
     if not responsibilities_raw:
         responsibilities_raw = clean_html(ld_data.get("description", ""))
+    if not responsibilities_raw:
+        for heading in soup.find_all(["h2", "h3", "h4"]):
+            txt = heading.get_text(strip=True).lower()
+            if "job description" in txt or "mô tả công việc" in txt:
+                container = heading.find_next_sibling() or heading.parent
+                if container:
+                    responsibilities_raw = clean_html(str(container))
+                    break
     if not benefits_raw:
         b = ld_data.get("jobBenefits")
         benefits_raw = clean_html(b) if isinstance(b, str) else ("\n".join(b) if isinstance(b, list) else "")
     if not requirements_raw:
         exp_req = ld_data.get("experienceRequirements", "")
         requirements_raw = clean_html(exp_req) if isinstance(exp_req, str) else ""
+    if not requirements_raw:
+        for heading in soup.find_all(["h2", "h3", "h4"]):
+            txt = heading.get_text(strip=True).lower()
+            if "job requirements" in txt or "yêu cầu công việc" in txt:
+                container = heading.find_next_sibling() or heading.parent
+                if container:
+                    requirements_raw = clean_html(str(container))
+                    break
 
     # 8. Working Time & Location
     working_time_raw = ""

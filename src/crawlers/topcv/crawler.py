@@ -29,7 +29,7 @@ class TopCVCrawler(BaseCrawler):
     - Quản lý và lưu trữ file listing và detail phân đoạn sạch sẽ
     """
 
-    def __init__(self, config_path: str = "configs/sources.yaml"):
+    def __init__(self, config_path: str = "configs/sources.yaml", output_dir: Optional[str] = None):
         full_config_path = os.path.join(PROJECT_ROOT, config_path)
         if not os.path.exists(full_config_path):
             raise FileNotFoundError(f"Không tìm thấy file cấu hình tại: {full_config_path}")
@@ -57,7 +57,7 @@ class TopCVCrawler(BaseCrawler):
         self.max_retries = len(self.retry_delays)
 
         self.today_str = datetime.now().strftime("%Y-%m-%d")
-        self.base_raw_dir = os.path.join(PROJECT_ROOT, "data", "raw", "topcv")
+        self.base_raw_dir = output_dir if output_dir else os.path.join(PROJECT_ROOT, "data", "raw", "topcv")
         self.listings_dir = os.path.join(self.base_raw_dir, "listings", self.today_str)
         self.details_dir = os.path.join(self.base_raw_dir, "details", self.today_str)
 
