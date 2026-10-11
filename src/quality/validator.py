@@ -1,7 +1,9 @@
 """
-Module điều phối động cơ kiểm định chất lượng dữ liệu (QualityValidator).
-Thực hiện đánh giá từng bản ghi, lọc ra các bản ghi hợp lệ (VALID),
-gắn nhãn kiểm định Data Quality và hỗ trợ lưu trữ vào tầng Bronze.
+Module điều phối động cơ kiểm định và phân luồng chất lượng dữ liệu (QualityValidator).
+Thực hiện đánh giá từng bản ghi, phân loại vào 3 luồng:
+1. VALID -> Tầng Bronze (data/bronze/)
+2. QUARANTINE -> Khu cách ly (data/quarantine/)
+3. INVALID -> Dữ liệu rác/lỗi (data/invalid/)
 """
 
 import json
@@ -12,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from src.quality.rules import (
     MIN_JOB_CONTENT_LENGTH,
-    evaluate_valid_rules,
+    route_single_record,
 )
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -20,68 +22,112 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 
 class QualityValidator:
     """
-    Động cơ kiểm tra chất lượng dữ liệu và phân luồng bản ghi hợp lệ.
+    Động cơ kiểm tra chất lượng dữ liệu và phân luồng 3 hướng:
+    Valid | Quarantine | Invalid.
     """
 
-    def __init__(self, min_content_length: int = MIN_JOB_CONTENT_LENGTH, bronze_dir: Optional[str] = None):
+    def __init__(
+        self,
+        min_content_length: int = MIN_JOB_CONTENT_LENGTH,
+        bronze_dir: Optional[str] = None,
+        quarantine_dir: Optional[str] = None,
+        invalid_dir: Optional[str] = None,
+    ):
         self.min_content_length = min_content_length
         self.bronze_base_dir = bronze_dir or os.path.join(PROJECT_ROOT, "data", "bronze")
+        self.quarantine_base_dir = quarantine_dir or os.path.join(PROJECT_ROOT, "data", "quarantine")
+        self.invalid_base_dir = invalid_dir or os.path.join(PROJECT_ROOT, "data", "invalid")
 
     def validate_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
         """
         Kiểm tra 1 bản ghi và gắn kèm metadata chất lượng dữ liệu (_dq_*).
         
-        Trả về bản sao của record kèm các trường:
-        - _dq_status: 'valid' hoặc 'invalid'
-        - _dq_errors: Danh sách mã lỗi nếu không hợp lệ
-        - _dq_checked_at: Thời điểm thực hiện kiểm tra (ISO format)
+        Các trường bổ sung:
+        - _dq_status: 'valid' | 'quarantine' | 'invalid'
+        - _dq_errors: Danh sách mã lỗi chuẩn hóa nếu có
+        - _dq_checked_at: Thời điểm kiểm tra (ISO format)
         """
         enriched = dict(record)
-        is_valid, errors = evaluate_valid_rules(record, min_content_length=self.min_content_length)
+        status, errors = route_single_record(record, min_content_length=self.min_content_length)
 
-        enriched["_dq_status"] = "valid" if is_valid else "invalid"
+        enriched["_dq_status"] = status
         enriched["_dq_errors"] = errors
         enriched["_dq_checked_at"] = datetime.now().isoformat()
 
         return enriched
 
-    def filter_valid_records(
+    def route_records(
         self, records: List[Dict[str, Any]]
-    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
         """
-        Quét qua danh sách các bản ghi thô:
-        1. Lọc ra các bản ghi đạt chuẩn HỢP LỆ (VALID).
-        2. Tổng hợp báo cáo thống kê tỷ lệ hợp lệ và các lỗi phát hiện.
+        Quét và phân loại toàn bộ bản ghi thành 3 nhóm độc lập:
         
         Returns:
-            (valid_records, quality_summary)
+            (valid_records, quarantine_records, invalid_records, summary)
         """
         valid_records: List[Dict[str, Any]] = []
+        quarantine_records: List[Dict[str, Any]] = []
+        invalid_records: List[Dict[str, Any]] = []
         error_counter = Counter()
-        invalid_count = 0
 
         for rec in records:
             checked = self.validate_record(rec)
-            if checked["_dq_status"] == "valid":
+            status = checked["_dq_status"]
+
+            if status == "valid":
                 valid_records.append(checked)
-            else:
-                invalid_count += 1
+            elif status == "quarantine":
+                quarantine_records.append(checked)
+                for err in checked["_dq_errors"]:
+                    error_counter[err] += 1
+            else:  # invalid
+                invalid_records.append(checked)
                 for err in checked["_dq_errors"]:
                     error_counter[err] += 1
 
         total_scanned = len(records)
-        valid_count = len(valid_records)
-        valid_rate = round((valid_count / total_scanned * 100), 2) if total_scanned > 0 else 0.0
+        v_count = len(valid_records)
+        q_count = len(quarantine_records)
+        i_count = len(invalid_records)
 
         summary = {
             "total_scanned": total_scanned,
-            "valid_count": valid_count,
-            "invalid_count": invalid_count,
-            "valid_rate_pct": valid_rate,
+            "valid_count": v_count,
+            "valid_rate_pct": round(v_count / total_scanned * 100, 2) if total_scanned else 0.0,
+            "quarantine_count": q_count,
+            "quarantine_rate_pct": round(q_count / total_scanned * 100, 2) if total_scanned else 0.0,
+            "invalid_count": i_count,
+            "invalid_rate_pct": round(i_count / total_scanned * 100, 2) if total_scanned else 0.0,
             "errors_breakdown": dict(error_counter),
         }
 
-        return valid_records, summary
+        return valid_records, quarantine_records, invalid_records, summary
+
+    def filter_valid_records(
+        self, records: List[Dict[str, Any]]
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """
+        Hàm tương thích: Lọc lấy các bản ghi Valid.
+        (Bản ghi không đạt tính cả quarantine + invalid).
+        """
+        valid_records, quarantine_records, invalid_records, summary = self.route_records(records)
+        compat_summary = {
+            "total_scanned": summary["total_scanned"],
+            "valid_count": summary["valid_count"],
+            "invalid_count": summary["quarantine_count"] + summary["invalid_count"],
+            "valid_rate_pct": summary["valid_rate_pct"],
+            "errors_breakdown": summary["errors_breakdown"],
+        }
+        return valid_records, compat_summary
+
+    def _save_json_file(self, records: List[Dict[str, Any]], base_dir: str, source: str, target_date: str, file_prefix: str) -> str:
+        """Helper lưu file JSON phân cấp theo source/date."""
+        dest_dir = os.path.join(base_dir, source.lower(), target_date)
+        os.makedirs(dest_dir, exist_ok=True)
+        file_path = os.path.join(dest_dir, f"{file_prefix}.json")
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(records, f, ensure_ascii=False, indent=2)
+        return file_path
 
     def save_valid_to_bronze(
         self,
@@ -90,21 +136,28 @@ class QualityValidator:
         target_date: Optional[str] = None,
         file_prefix: str = "bronze_batch",
     ) -> str:
-        """
-        Lưu danh sách các bản ghi hợp lệ vào tầng Bronze:
-        Cấu trúc: data/bronze/{source}/{target_date}/{file_prefix}.json
-        
-        Returns:
-            Đường dẫn tuyệt đối của file đã lưu.
-        """
+        """Lưu bản ghi Valid vào tầng Bronze (data/bronze/)."""
         date_str = target_date or datetime.now().strftime("%Y-%m-%d")
-        dest_dir = os.path.join(self.bronze_base_dir, source.lower(), date_str)
-        os.makedirs(dest_dir, exist_ok=True)
+        return self._save_json_file(valid_records, self.bronze_base_dir, source, date_str, file_prefix)
 
-        file_name = f"{file_prefix}.json"
-        dest_filepath = os.path.join(dest_dir, file_name)
+    def save_to_quarantine(
+        self,
+        quarantine_records: List[Dict[str, Any]],
+        source: str,
+        target_date: Optional[str] = None,
+        file_prefix: str = "quarantine_batch",
+    ) -> str:
+        """Lưu bản ghi bị cách ly vào data/quarantine/."""
+        date_str = target_date or datetime.now().strftime("%Y-%m-%d")
+        return self._save_json_file(quarantine_records, self.quarantine_base_dir, source, date_str, file_prefix)
 
-        with open(dest_filepath, "w", encoding="utf-8") as f:
-            json.dump(valid_records, f, ensure_ascii=False, indent=2)
-
-        return dest_filepath
+    def save_to_invalid(
+        self,
+        invalid_records: List[Dict[str, Any]],
+        source: str,
+        target_date: Optional[str] = None,
+        file_prefix: str = "invalid_batch",
+    ) -> str:
+        """Lưu bản ghi rác/hỏng vào data/invalid/."""
+        date_str = target_date or datetime.now().strftime("%Y-%m-%d")
+        return self._save_json_file(invalid_records, self.invalid_base_dir, source, date_str, file_prefix)
