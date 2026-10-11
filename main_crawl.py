@@ -41,6 +41,12 @@ def main():
         default=None,
         help="Ngày cần cào bù định dạng YYYY-MM-DD (mặc định: ngày hôm nay)"
     )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Thư mục lưu trữ dữ liệu raw tùy chọn (mặc định: data/raw/<source>)"
+    )
     args = parser.parse_args()
 
     crawler_map = {
@@ -64,7 +70,7 @@ def main():
             src_name, crawler_cls = crawler_map[src_key]
             print(f"\n>>> [CÀO BÙ NGUỒN: {src_name.upper()}] <<<")
             try:
-                crawler = crawler_cls()
+                crawler = crawler_cls(output_dir=args.output_dir)
                 result = crawler.retry_failed_jobs(target_date=args.date)
                 overall_results[src_name] = result
             except Exception as e:
@@ -90,6 +96,8 @@ def main():
     print(f" Thời gian bắt đầu : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f" Nguồn chỉ định    : {', '.join([crawler_map[s][0] for s in selected_sources])}")
     print(f" Mục tiêu mỗi nguồn: {args.target} jobs thành công")
+    if args.output_dir:
+        print(f" Thư mục output tùy chọn : {args.output_dir}")
     print("=" * 70 + "\n")
 
     overall_results = {}
@@ -98,7 +106,7 @@ def main():
         src_name, crawler_cls = crawler_map[src_key]
         print(f"\n>>> [BẮT ĐẦU NGUỒN: {src_name.upper()}] (Target: {args.target} jobs) <<<")
         try:
-            crawler = crawler_cls()
+            crawler = crawler_cls(output_dir=args.output_dir)
             result = crawler.run(target_success_count=args.target)
             overall_results[src_name] = result
         except Exception as e:

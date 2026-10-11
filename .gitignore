@@ -63,6 +63,7 @@ Thumbs.db
 *.log
 logs/
 .pytest_cache/
+tests/test_output/
 
 # Probe output
 data/_probe/

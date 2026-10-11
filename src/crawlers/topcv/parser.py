@@ -269,6 +269,16 @@ def parse_job_detail_html(
             benefits_raw = "\n".join([c for c in ben_chunks if c])
 
     if not responsibilities_raw:
+        for item in soup.select(".job-description__item, .job-data, .job-description"):
+            t = item.get_text(separator=" ", strip=True).lower()
+            if "mô tả" in t:
+                responsibilities_raw = clean_html(str(item))
+            elif "yêu cầu" in t and not requirements_raw:
+                requirements_raw = clean_html(str(item))
+            elif "quyền lợi" in t and not benefits_raw:
+                benefits_raw = clean_html(str(item))
+
+    if not responsibilities_raw:
         responsibilities_raw = clean_html(desc_html)
 
     skills_raw = job_item.get("skills_raw", "")
