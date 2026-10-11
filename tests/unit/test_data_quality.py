@@ -180,3 +180,37 @@ def test_validator_save_all_layers(sample_valid_job, tmp_path):
     # 3. Lưu Invalid
     i_path = validator.save_to_invalid([sample_valid_job], "topcv", "2026-10-11")
     assert os.path.exists(i_path)
+
+
+def test_validator_master_accumulation(sample_valid_job, tmp_path):
+    b_dir = str(tmp_path / "bronze")
+    validator = QualityValidator(bronze_dir=b_dir)
+
+    # 1. Master listings upsert
+    listing1 = dict(sample_valid_job, raw_file_name="page_001.json", raw_date="2026-10-11")
+    listing2 = dict(sample_valid_job, source_job_id="654321", raw_file_name="page_002.json", raw_date="2026-10-12")
+
+    l_file, l_new, l_tot = validator.save_master_listings([listing1])
+    assert l_new == 1
+    assert l_tot == 1
+
+    # Thêm lần 2: 1 job cũ (cập nhật) và 1 job mới
+    listing1_updated = dict(listing1, title_raw="Updated Title")
+    l_file, l_new2, l_tot2 = validator.save_master_listings([listing1_updated, listing2])
+    assert l_new2 == 1  # Chỉ có 1 job mới là 654321
+    assert l_tot2 == 2
+
+    with open(l_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    assert len(data) == 2
+    # Check that job 123456 got updated
+    job1 = next(item for item in data if item["source_job_id"] == "123456")
+    assert job1["title_raw"] == "Updated Title"
+    assert job1["raw_file_name"] == "page_001.json"
+
+    # 2. Master details upsert
+    d_file, d_new, d_tot = validator.save_master_details_valid([sample_valid_job])
+    assert d_new == 1
+    assert d_tot == 1
+    assert os.path.exists(d_file)
+

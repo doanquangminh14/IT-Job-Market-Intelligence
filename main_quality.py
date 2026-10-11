@@ -16,9 +16,42 @@ from src.quality.validator import QualityValidator
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
+def load_raw_listings(source: str, target_date: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Đọc tất cả các file listing JSON trong data/raw/{source}/listings/[target_date]/
+    Gắn thêm metadata: raw_file_name và raw_date.
+    """
+    records: List[Dict[str, Any]] = []
+    listings_root = os.path.join(PROJECT_ROOT, "data", "raw", source, "listings")
+    if not os.path.exists(listings_root):
+        return records
+
+    date_folders = [target_date] if target_date else sorted(os.listdir(listings_root))
+
+    for date_folder in date_folders:
+        folder_path = os.path.join(listings_root, date_folder)
+        if not os.path.isdir(folder_path):
+            continue
+        for fname in sorted(os.listdir(folder_path)):
+            if fname.endswith(".json"):
+                fpath = os.path.join(folder_path, fname)
+                try:
+                    with open(fpath, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            for item in data:
+                                item["raw_file_name"] = fname
+                                item["raw_date"] = date_folder
+                                records.append(item)
+                except Exception as e:
+                    print(f"⚠️ Không thể đọc listing file {fpath}: {e}")
+    return records
+
+
 def load_raw_details(source: str, target_date: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Đọc tất cả các file detail JSON trong data/raw/{source}/details/[target_date]/
+    Gắn thêm metadata: raw_file_name và raw_date.
     """
     records: List[Dict[str, Any]] = []
     details_root = os.path.join(PROJECT_ROOT, "data", "raw", source, "details")
@@ -39,10 +72,11 @@ def load_raw_details(source: str, target_date: Optional[str] = None) -> List[Dic
                         data = json.load(f)
                         if isinstance(data, list):
                             for item in data:
-                                item["_raw_date"] = date_folder
+                                item["raw_file_name"] = fname
+                                item["raw_date"] = date_folder
                                 records.append(item)
                 except Exception as e:
-                    print(f"⚠️ Không thể đọc file {fpath}: {e}")
+                    print(f"⚠️ Không thể đọc detail file {fpath}: {e}")
     return records
 
 
@@ -50,17 +84,18 @@ def get_latest_date() -> Optional[str]:
     """Tìm ngày mới nhất có dữ liệu trong data/raw/"""
     found_dates = set()
     for s in ["topcv", "topdev", "vietnamworks"]:
-        d_path = os.path.join(PROJECT_ROOT, "data", "raw", s, "details")
-        if os.path.exists(d_path):
-            for d in os.listdir(d_path):
-                if os.path.isdir(os.path.join(d_path, d)):
-                    found_dates.add(d)
+        for sub in ["details", "listings"]:
+            d_path = os.path.join(PROJECT_ROOT, "data", "raw", s, sub)
+            if os.path.exists(d_path):
+                for d in os.listdir(d_path):
+                    if os.path.isdir(os.path.join(d_path, d)):
+                        found_dates.add(d)
     return max(found_dates) if found_dates else None
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="IT Job Market Intelligence - Động cơ Phân Luồng Chất Lượng Dữ Liệu (Valid / Quarantine / Invalid)"
+        description="IT Job Market Intelligence - Kiểm Định & Hợp Nhất Master Tích Lũy Vào Tầng Bronze"
     )
     parser.add_argument(
         "--date",
@@ -74,14 +109,9 @@ def main():
         help="Tự động kiểm định ngày cào mới nhất.",
     )
     parser.add_argument(
-        "--save-all",
-        action="store_true",
-        help="Lưu cả 3 luồng vào đúng các thư mục (data/bronze/, data/quarantine/, data/invalid/).",
-    )
-    parser.add_argument(
         "--save-bronze",
         action="store_true",
-        help="Chỉ lưu các bản ghi HỢP LỆ (VALID) vào data/bronze/.",
+        help="Lưu nạp tích lũy vào 2 file Master Bronze: bronze_listings_master.json & bronze_details_valid.json",
     )
     parser.add_argument(
         "--source",
@@ -101,83 +131,88 @@ def main():
     sources = ["topcv", "topdev", "vietnamworks"] if args.source == "all" else [args.source]
     validator = QualityValidator()
 
-    mode_desc = "Chế độ Dry-Run (chỉ kiểm tra & in thống kê)"
-    if args.save_all:
-        mode_desc = "Lưu cả 3 luồng (Bronze / Quarantine / Invalid)"
-    elif args.save_bronze:
-        mode_desc = "Chỉ lưu luồng Hợp Lệ vào Bronze"
+    mode_desc = "LƯU TÍCH LŨY VÀO 2 FILE MASTER BRONZE" if args.save_bronze else "Dry-Run (chỉ kiểm tra & in thống kê, dùng --save-bronze để lưu)"
 
-    print("\n" + "=" * 78)
-    print("🚀 BẮT ĐẦU PHÂN LUỒNG CHẤT LƯỢNG DỮ LIỆU: VALID | QUARANTINE | INVALID")
+    print("\n" + "=" * 80)
+    print("🚀 BẮT ĐẦU KIỂM ĐỊNH & HỢP NHẤT DỮ LIỆU TẦNG BRONZE (MASTER ACCUMULATION)")
     print(f"📌 Phạm vi ngày: {target_date or 'Toàn bộ lịch sử'}")
-    print(f"📌 Chế độ lưu  : {mode_desc}")
-    print("=" * 78)
+    print(f"📌 Chế độ      : {mode_desc}")
+    print("=" * 80)
 
-    grand_scanned = 0
-    grand_valid = 0
-    grand_quarantine = 0
-    grand_invalid = 0
+    all_listings: List[Dict[str, Any]] = []
+    all_valid_details: List[Dict[str, Any]] = []
+    all_quarantine_details: List[Dict[str, Any]] = []
+    all_invalid_details: List[Dict[str, Any]] = []
+
+    grand_listings_scanned = 0
+    grand_details_scanned = 0
 
     for s in sources:
-        raw_records = load_raw_details(s, target_date=target_date)
-        if not raw_records:
-            print(f"\n📂 [{s.upper()}] Không có bản ghi thô nào để kiểm định.")
+        # 1. Đọc Listings
+        raw_listings = load_raw_listings(s, target_date=target_date)
+        all_listings.extend(raw_listings)
+        grand_listings_scanned += len(raw_listings)
+
+        # 2. Đọc Details & Kiểm định chất lượng
+        raw_details = load_raw_details(s, target_date=target_date)
+        if not raw_details:
+            print(f"\n📂 [{s.upper()}] Không có bản ghi detail nào trong phạm vi quét.")
             continue
 
-        valid_list, quarantine_list, invalid_list, summary = validator.route_records(raw_records)
+        v_list, q_list, i_list, summary = validator.route_records(raw_details)
+        all_valid_details.extend(v_list)
+        all_quarantine_details.extend(q_list)
+        all_invalid_details.extend(i_list)
+        grand_details_scanned += summary["total_scanned"]
 
-        grand_scanned += summary["total_scanned"]
-        grand_valid += summary["valid_count"]
-        grand_quarantine += summary["quarantine_count"]
-        grand_invalid += summary["invalid_count"]
-
-        print(f"\n--- 📊 KẾT QUẢ PHÂN LUỒNG: {s.upper()} ---")
-        print(f"  • Tổng số bản ghi quét : {summary['total_scanned']:,}")
+        print(f"\n--- 📊 KẾT QUẢ QUÉT: {s.upper()} ---")
+        print(f"  • Listings cào được    : {len(raw_listings):,} tin")
+        print(f"  • Details quét qua     : {summary['total_scanned']:,} tin")
         print(f"  • 🟢 HỢP LỆ (Valid)     : {summary['valid_count']:,} ({summary['valid_rate_pct']}%)")
         print(f"  • 🟡 CÁCH LY (Quarantine): {summary['quarantine_count']:,} ({summary['quarantine_rate_pct']}%)")
         print(f"  • 🔴 RÁC/LỖI (Invalid)  : {summary['invalid_count']:,} ({summary['invalid_rate_pct']}%)")
 
         if summary["errors_breakdown"]:
-            print("  • Chi tiết các mã lỗi phát hiện:")
+            print("  • Chi tiết mã lỗi:")
             for err_code, cnt in summary["errors_breakdown"].items():
                 print(f"      - {err_code}: {cnt:,} trường hợp")
 
-        # Lưu dữ liệu nếu được yêu cầu
-        should_save_bronze = args.save_all or args.save_bronze
-        should_save_others = args.save_all
+    # 3. Lưu tích lũy vào tầng Bronze nếu có cờ --save-bronze
+    if args.save_bronze:
+        print("\n" + "-" * 80)
+        print("💾 ĐANG GHI DỮ LIỆU TÍCH LŨY VÀO TẦNG BRONZE...")
 
-        def _group_by_date(recs):
-            buckets: Dict[str, List[Dict[str, Any]]] = {}
-            for r in recs:
-                d = r.get("_raw_date", target_date or datetime.now().strftime("%Y-%m-%d"))
-                buckets.setdefault(d, []).append(r)
-            return buckets
+        # File 1: Listings Master
+        l_file, l_new, l_total = validator.save_master_listings(all_listings)
+        print(f"  ✅ [Listings Master]: {l_file}")
+        print(f"     -> Thêm mới: +{l_new:,} tin | Tổng tích lũy hiện tại: {l_total:,} tin")
 
-        if should_save_bronze and valid_list:
-            for d_str, b_recs in _group_by_date(valid_list).items():
-                p = validator.save_valid_to_bronze(b_recs, s, d_str, f"{s}_bronze_valid")
-                print(f"  💾 [Bronze] Đã lưu {len(b_recs):,} bản ghi Valid: {p}")
+        # File 2: Details Valid Master
+        d_file, d_new, d_total = validator.save_master_details_valid(all_valid_details)
+        print(f"  ✅ [Details Valid Master]: {d_file}")
+        print(f"     -> Thêm mới: +{d_new:,} tin | Tổng tích lũy hiện tại: {d_total:,} tin")
 
-        if should_save_others and quarantine_list:
-            for d_str, q_recs in _group_by_date(quarantine_list).items():
-                p = validator.save_to_quarantine(q_recs, s, d_str, f"{s}_quarantine")
-                print(f"  ⚠️ [Quarantine] Đã lưu {len(q_recs):,} bản ghi Cách ly: {p}")
+        # File 3 & 4 (nếu có Quarantine hoặc Invalid)
+        if all_quarantine_details:
+            q_file, q_new, q_total = validator.save_master_details_quarantine(all_quarantine_details)
+            print(f"  ⚠️ [Details Quarantine Master]: {q_file} (+{q_new:,} mới | tổng: {q_total:,})")
 
-        if should_save_others and invalid_list:
-            for d_str, i_recs in _group_by_date(invalid_list).items():
-                p = validator.save_to_invalid(i_recs, s, d_str, f"{s}_invalid")
-                print(f"  ❌ [Invalid] Đã lưu {len(i_recs):,} bản ghi Rác/Lỗi: {p}")
+        if all_invalid_details:
+            i_file, i_new, i_total = validator.save_master_details_invalid(all_invalid_details)
+            print(f"  ❌ [Details Invalid Master]: {i_file} (+{i_new:,} mới | tổng: {i_total:,})")
 
-    print("\n" + "=" * 78)
-    print("🏁 TỔNG KẾT TOÀN BỘ PHIÊN PHÂN LUỒNG")
-    print(f"  • Tổng quét qua       : {grand_scanned:,} tin")
-    v_pct = round(grand_valid / grand_scanned * 100, 2) if grand_scanned else 0
-    q_pct = round(grand_quarantine / grand_scanned * 100, 2) if grand_scanned else 0
-    i_pct = round(grand_invalid / grand_scanned * 100, 2) if grand_scanned else 0
-    print(f"  • 🟢 HỢP LỆ (Valid)     : {grand_valid:,} tin ({v_pct}%) -> Chuẩn bị vào Bronze")
-    print(f"  • 🟡 CÁCH LY (Quarantine): {grand_quarantine:,} tin ({q_pct}%) -> Giữ lại làm sạch ở Silver")
-    print(f"  • 🔴 RÁC/LỖI (Invalid)  : {grand_invalid:,} tin ({i_pct}%) -> Loại bỏ khỏi luồng chính")
-    print("=" * 78 + "\n")
+    print("\n" + "=" * 80)
+    print("🏁 TỔNG KẾT PHIÊN XỬ LÝ BRONZE")
+    print(f"  • Tổng Listings quét qua  : {grand_listings_scanned:,} tin")
+    print(f"  • Tổng Details quét qua   : {grand_details_scanned:,} tin")
+    v_pct = round(len(all_valid_details) / grand_details_scanned * 100, 2) if grand_details_scanned else 0
+    print(f"  • 🟢 HỢP LỆ (Valid)        : {len(all_valid_details):,} tin ({v_pct}%)")
+    print(f"  • 🟡 CÁCH LY (Quarantine)  : {len(all_quarantine_details):,} tin")
+    print(f"  • 🔴 RÁC/LỖI (Invalid)     : {len(all_invalid_details):,} tin")
+    if not args.save_bronze:
+        print("\n💡 GỢI Ý: Chạy lệnh dưới đây để thực hiện lưu thật vào Bronze:")
+        print("   python main_quality.py --save-bronze")
+    print("=" * 80 + "\n")
 
 
 if __name__ == "__main__":

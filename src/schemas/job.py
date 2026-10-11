@@ -1,7 +1,8 @@
 # src/schemas/job.py
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
+
 
 class JobListingRaw(BaseModel):
     source: str
@@ -22,6 +23,10 @@ class JobListingRaw(BaseModel):
     detail_http_status: Optional[int] = None
     detail_error: Optional[str] = ""        
     detail_crawled_at: Optional[str] = None 
+    # --- TRƯỜNG TRUY VẾT NGUỒN FILE (DATA LINEAGE) ---
+    raw_file_name: Optional[str] = ""
+    raw_date: Optional[str] = ""
+
 
 class JobDetailRaw(BaseModel):
     detail_id: str
@@ -51,3 +56,9 @@ class JobDetailRaw(BaseModel):
     updated_at_raw: Optional[str] = ""
     deadline_raw: Optional[str] = ""
     crawled_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    # --- TRƯỜNG TRUY VẾT NGUỒN FILE & DATA QUALITY METADATA ---
+    raw_file_name: Optional[str] = ""
+    raw_date: Optional[str] = ""
+    dq_status: Optional[str] = "valid"
+    dq_errors: Optional[List[str]] = Field(default_factory=list)
+    dq_checked_at: Optional[str] = ""

@@ -48,32 +48,46 @@ Bản ghi có đầy đủ thông tin định danh và mô tả tốt, nhưng ch
   * `ERR_DATE_FAR_PAST`: Năm đăng hoặc hạn nộp quá xa trong quá khứ ($< 2020$).
   * `ERR_DATE_MALFORMED`: Chuỗi ngày tháng bị lỗi cú pháp không thể parse.
 
-### C. 🟢 Luồng VALID (Đạt chuẩn chất lượng)
+### C. 🟢 Luồng VALID & Tầng Master Bronze
 - Vượt qua toàn bộ kiểm tra Invalid và không dính bất kỳ mã lỗi Quarantine nào.
-- Được gắn nhãn `_dq_status: "valid"`, `_dq_errors: []` và sẵn sàng lưu vào `data/bronze/`.
+- Được gắn nhãn `dq_status: "valid"`, `dq_errors: []` và lưu vào tầng Master Bronze.
 
 ---
 
-## 3. Cách Sử Dụng CLI (`main_quality.py`)
+## 3. Kiến Trúc Lưu Trữ Master Bronze (`data/bronze/`)
+
+Tại tầng Bronze, dữ liệu không bị phân mảnh theo folder ngày con mà được tích lũy vào **2 file Master duy nhất**:
+
+```
+data/bronze/
+├── bronze_listings_master.json   # Tổng hợp toàn bộ Listings của cả 3 sàn
+└── bronze_details_valid.json     # Tổng hợp toàn bộ Details đạt chuẩn Valid của cả 3 sàn
+```
+
+Mỗi bản ghi được giữ nguyên 100% schema `JobListingRaw` / `JobDetailRaw` và bổ sung thêm các trường truy vết (Data Lineage):
+- `raw_file_name`: Tên file gốc (ví dụ `page_001.json`, `TCV001.json`).
+- `raw_date`: Ngày cào của file đó (ví dụ `2026-10-11`).
+- `dq_status`, `dq_errors`, `dq_checked_at`: Kết quả kiểm định chất lượng dữ liệu.
+
+Khi cào thêm dữ liệu ngày mới, hệ thống tự động **Upsert** (cập nhật nếu đã có, chèn thêm nếu mới) dựa trên cặp khóa `(source, source_job_id)`.
+
+---
+
+## 4. Cách Sử Dụng CLI (`main_quality.py`)
 
 Chạy kiểm định và xem thống kê phân luồng (Dry-Run, không ghi đè dữ liệu):
 ```bash
 python main_quality.py
 ```
 
+Kiểm định và lưu nạp tích lũy vào 2 file Master Bronze:
+```bash
+python main_quality.py --save-bronze
+```
+
 Chỉ kiểm định ngày cào mới nhất:
 ```bash
 python main_quality.py --latest
-```
-
-Lưu cả 3 luồng vào đúng các thư mục đích (`data/bronze/`, `data/quarantine/`, `data/invalid/`):
-```bash
-python main_quality.py --save-all
-```
-
-Chỉ lưu luồng Hợp Lệ vào tầng Bronze:
-```bash
-python main_quality.py --save-bronze
 ```
 
 Chỉ kiểm định một sàn cụ thể:
@@ -83,13 +97,14 @@ python main_quality.py --source topcv
 
 ---
 
-## 4. Kiểm Thử (Unit Tests)
+## 5. Kiểm Thử (Unit Tests)
 
-Bộ unit test kiểm tra toàn diện cả 3 luồng và chức năng lưu trữ:
+Bộ unit test kiểm tra toàn diện cả 3 luồng và chức năng nạp Master Bronze:
 ```bash
 pytest tests/unit/test_data_quality.py -v
 ```
-Chạy toàn bộ 24 test cases của dự án:
+Chạy toàn bộ 25 test cases của dự án:
 ```bash
 pytest tests -v
 ```
+
