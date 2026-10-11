@@ -747,15 +747,23 @@ class TopDevCrawler(BaseCrawler):
         current_page = self.start_page
         max_page_limit = self.start_page + self.max_pages
 
+        empty_page_count = 0
         while session_success_count < target_success_count and current_page <= max_page_limit:
             needed = target_success_count - session_success_count
             self.logger.info(f"Cần thêm {needed} job thành công. Đang quét trang web {current_page}...")
 
             page_items = self.fetch_job_list_page(current_page)
             if not page_items:
-                self.logger.warning(f"Không có dữ liệu từ page {current_page}. Chuyển sang page tiếp theo.")
+                empty_page_count += 1
+                self.logger.warning(f"Không có dữ liệu từ page {current_page}.")
+                if empty_page_count >= 2:
+                    self.logger.info(f"Đã chạm trang cuối cùng của website TopDev (trang {current_page}). Tự động dừng quét trang mới.")
+                    break
                 current_page += 1
+                time.sleep(random.uniform(self.delay_min, self.delay_max))
                 continue
+
+            empty_page_count = 0
 
             # Lọc job mới chưa từng gặp
             new_jobs = []

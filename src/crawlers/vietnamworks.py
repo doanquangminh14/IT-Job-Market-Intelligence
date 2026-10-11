@@ -67,6 +67,7 @@ class VietnamWorksCrawler(BaseCrawler):
         pagination = self.config.get("pagination", {})
         self.start_page = int(pagination.get("start_page", 0))
         self.hits_per_page = int(pagination.get("hits_per_page", 50))
+        self.max_pages = int(pagination.get("max_pages", 50))
 
         rate_limit = self.config.get("rate_limit", {})
         self.delay_min = float(rate_limit.get("delay_min", 0.5))
@@ -468,14 +469,15 @@ class VietnamWorksCrawler(BaseCrawler):
 
         session_success_count = 0
         current_page = self.start_page
+        max_page_limit = self.start_page + self.max_pages
 
-        while session_success_count < target_success_count:
+        while session_success_count < target_success_count and current_page <= max_page_limit:
             needed = target_success_count - session_success_count
             fetch_size = min(self.hits_per_page, needed)
 
             raw_jobs = self.fetch_api_page(page=current_page, hits_per_page=fetch_size)
             if not raw_jobs:
-                self.logger.warning(f"Không nhận được thêm job nào ở page {current_page}. Kết thúc crawl sớm.")
+                self.logger.info(f"Đã chạm trang cuối cùng hoặc hết dữ liệu từ VietnamWorks API (page {current_page}). Dừng phiên sớm.")
                 break
 
             new_in_page = 0
