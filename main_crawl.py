@@ -122,8 +122,12 @@ def main():
         else:
             success = res.get("session_success_count", 0)
             failed = res.get("failed_count", 0)
+            p_succ = res.get("pending_success_count", 0)
+            n_succ = res.get("new_success_count", 0)
+            r_pend = res.get("remaining_pending_count", 0)
             saved_file = res.get("saved_detail_file", "")
-            print(f"- {src_name:<15}: {success}/{args.target} thành công (Lỗi/Bỏ qua: {failed}) | File: {saved_file}")
+            breakdown_str = f" [Hàng đợi cũ: {p_succ} | Web mới: {n_succ} | Còn chờ: {r_pend}]"
+            print(f"- {src_name:<15}: {success}/{args.target} thành công (Lỗi: {failed}){breakdown_str} | File: {saved_file}")
     print("=" * 70)
 
 

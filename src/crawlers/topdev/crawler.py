@@ -241,6 +241,8 @@ class TopDevCrawler(BaseCrawler):
         seen_listing_ids: Set[str] = set()
 
         session_success_count = 0
+        pending_success_count = 0
+        new_success_count = 0
         failed_count_session = 0
 
         # GIAI ĐOẠN 1: Cào các job pending / retry cũ
@@ -260,6 +262,7 @@ class TopDevCrawler(BaseCrawler):
                 updated_item["detail_file"] = current_tc_filename
                 crawled_job_ids.add(jid)
                 session_success_count += 1
+                pending_success_count += 1
 
                 with open(current_tc_filepath, "w", encoding="utf-8") as f:
                     json.dump(session_details_list, f, ensure_ascii=False, indent=2)
@@ -286,6 +289,7 @@ class TopDevCrawler(BaseCrawler):
         current_page = self.start_page
         max_page_limit = self.start_page + self.max_pages
         empty_page_count = 0
+        consecutive_no_new_pages = 0
 
         while session_success_count < target_success_count and current_page <= max_page_limit:
             needed = target_success_count - session_success_count
@@ -317,6 +321,14 @@ class TopDevCrawler(BaseCrawler):
 
             self.logger.info(f"Trang {current_page}: Thu thập thêm {len(new_jobs)} jobs mới chưa cào.")
 
+            if len(new_jobs) == 0:
+                consecutive_no_new_pages += 1
+                if consecutive_no_new_pages >= 3:
+                    self.logger.info("Đã quét 3 trang liên tiếp không có job mới nào chưa cào (toàn bộ tin đã nằm trong database). Dừng quét trang mới sớm.")
+                    break
+            else:
+                consecutive_no_new_pages = 0
+
             for itm in new_jobs:
                 if session_success_count >= target_success_count:
                     break
@@ -330,6 +342,7 @@ class TopDevCrawler(BaseCrawler):
                     itm["detail_file"] = current_tc_filename
                     crawled_job_ids.add(jid)
                     session_success_count += 1
+                    new_success_count += 1
 
                     with open(current_tc_filepath, "w", encoding="utf-8") as f:
                         json.dump(session_details_list, f, ensure_ascii=False, indent=2)
@@ -348,12 +361,18 @@ class TopDevCrawler(BaseCrawler):
 
             current_page += 1
 
+        # Đếm số job trong file listing phiên này chưa kịp cào (chờ phiên sau)
+        remaining_pending_count = sum(1 for itm in session_listings_list if itm.get("detail_status") == "pending")
+
         # Báo cáo tổng kết
         self.logger.info("\n" + "=" * 70)
         self.logger.info("BÁO CÁO TỔNG KẾT PHIÊN CÀO TOPDEV")
         self.logger.info("=" * 70)
-        self.logger.info(f"- Số job cào thành công phiên này : {session_success_count}/{target_success_count}")
-        self.logger.info(f"- Số job lỗi trong phiên này      : {failed_count_session}")
+        self.logger.info(f"- Tổng job thành công phiên này   : {session_success_count}/{target_success_count}")
+        self.logger.info(f"  + Từ hàng đợi chờ cũ (Pending)  : {pending_success_count} jobs")
+        self.logger.info(f"  + Từ các trang web mới cào      : {new_success_count} jobs")
+        self.logger.info(f"- Số job lỗi trong phiên này      : {failed_count_session} jobs")
+        self.logger.info(f"- Số job mới còn chờ (Pending)    : {remaining_pending_count} jobs (lưu trong {current_listing_filename})")
         self.logger.info(f"- File listing đã lưu             : {current_listing_filename} ({len(session_listings_list)} listings)")
         self.logger.info(f"- File detail đã lưu              : {current_tc_filename} ({len(session_details_list)} jobs)")
         self.logger.info(f"- Thư mục listings                : {self.listings_dir}")
@@ -362,7 +381,10 @@ class TopDevCrawler(BaseCrawler):
 
         return {
             "session_success_count": session_success_count,
+            "pending_success_count": pending_success_count,
+            "new_success_count": new_success_count,
             "failed_count": failed_count_session,
+            "remaining_pending_count": remaining_pending_count,
             "saved_listing_file": current_listing_filename,
             "saved_detail_file": current_tc_filename,
             "total_listings_in_file": len(session_listings_list),

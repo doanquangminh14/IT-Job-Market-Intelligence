@@ -323,6 +323,8 @@ class TopCVCrawler(BaseCrawler):
         seen_in_session: Set[str] = set()
 
         session_success_count = 0
+        pending_success_count = 0
+        new_success_count = 0
         failed_count_session = 0
 
         # GIAI ĐOẠN 1: Cào các job pending từ trước
@@ -343,6 +345,7 @@ class TopCVCrawler(BaseCrawler):
                 updated_item["detail_file"] = current_tcv_filename
                 crawled_job_ids.add(jid)
                 session_success_count += 1
+                pending_success_count += 1
 
                 with open(current_tcv_filepath, "w", encoding="utf-8") as f:
                     json.dump(session_details, f, ensure_ascii=False, indent=2)
@@ -419,6 +422,7 @@ class TopCVCrawler(BaseCrawler):
                     itm["detail_file"] = current_tcv_filename
                     crawled_job_ids.add(jid)
                     session_success_count += 1
+                    new_success_count += 1
 
                     with open(current_tcv_filepath, "w", encoding="utf-8") as f:
                         json.dump(session_details, f, ensure_ascii=False, indent=2)
@@ -438,12 +442,18 @@ class TopCVCrawler(BaseCrawler):
             current_page += 1
             time.sleep(random.uniform(self.delay_min, self.delay_max))
 
+        # Đếm số job trong file listing phiên này chưa kịp cào (chờ phiên sau)
+        remaining_pending_count = sum(1 for itm in session_listings if itm.get("detail_status") == "pending")
+
         # Báo cáo tổng kết
         self.logger.info("\n" + "=" * 70)
         self.logger.info("BÁO CÁO TỔNG KẾT PHIÊN CÀO TOPCV")
         self.logger.info("=" * 70)
-        self.logger.info(f"- Số job cào thành công phiên này : {session_success_count}/{target_success_count}")
-        self.logger.info(f"- Số job lỗi trong phiên này      : {failed_count_session}")
+        self.logger.info(f"- Tổng job thành công phiên này   : {session_success_count}/{target_success_count}")
+        self.logger.info(f"  + Từ hàng đợi chờ cũ (Pending)  : {pending_success_count} jobs")
+        self.logger.info(f"  + Từ các trang web mới cào      : {new_success_count} jobs")
+        self.logger.info(f"- Số job lỗi trong phiên này      : {failed_count_session} jobs")
+        self.logger.info(f"- Số job mới còn chờ (Pending)    : {remaining_pending_count} jobs (lưu trong {current_listing_filename})")
         self.logger.info(f"- File listing đã lưu             : {current_listing_filename} ({len(session_listings)} listings)")
         self.logger.info(f"- File detail đã lưu              : {current_tcv_filename} ({len(session_details)} jobs)")
         self.logger.info(f"- Thư mục listings                : {self.listings_dir}")
@@ -452,7 +462,10 @@ class TopCVCrawler(BaseCrawler):
 
         return {
             "session_success_count": session_success_count,
+            "pending_success_count": pending_success_count,
+            "new_success_count": new_success_count,
             "failed_count": failed_count_session,
+            "remaining_pending_count": remaining_pending_count,
             "saved_listing_file": current_listing_filename,
             "saved_detail_file": current_tcv_filename,
             "total_listings_in_file": len(session_listings),
