@@ -23,6 +23,7 @@ streamlit>=1.30.0
 plotly>=5.18.0
 matplotlib>=3.8.0
 seaborn>=0.13.0
+nbformat>=5.0.0
 
 # Ingestion & Scraping / HTTP
 requests>=2.31.0
