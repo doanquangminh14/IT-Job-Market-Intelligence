@@ -1,7 +1,7 @@
 # 📋 Báo Cáo Kiểm Kê & Profiling Dữ Liệu Tuyển Dụng IT
 
-> **Phạm vi khảo sát**: `ALL_TIME`  
-> **Thời điểm tạo báo cáo**: `2026-10-12 10:13:44`  
+> **Phạm vi khảo sát**: `2026-10-12`  
+> **Thời điểm tạo báo cáo**: `2026-10-12 21:49:51`  
 > **Số nguồn dữ liệu**: `3` (TopCV, TopDev, VietnamWorks)
 
 ---
@@ -10,12 +10,12 @@
 
 | Chỉ số kiểm kê | Giá trị | Ý nghĩa thực tế |
 | :--- | :--- | :--- |
-| **Tổng số listing thu thập** | **1,793** | Số lượng tin đã quét qua từ trang tìm kiếm |
-| **Crawl detail thành công** | **1,698** | Số lượng tin đã có đầy đủ nội dung chi tiết |
-| **Crawl detail thất bại** | **4** | Tin gặp lỗi HTTP hoặc WAF (Cần cào bù) |
-| **Tin trong hàng đợi (Pending)** | **82** | Tin đã lưu listing nhưng chờ phiên cào tiếp |
-| **URL bị trùng nội bộ sàn** | **47** | Các tin cùng 1 sàn bị trùng lặp link |
-| **Tin trùng chéo giữa các sàn** | **14** | Cùng 1 công ty đăng tuyển chéo trên nhiều sàn |
+| **Tổng số listing thu thập** | **826** | Số lượng tin đã quét qua từ trang tìm kiếm |
+| **Crawl detail thành công** | **817** | Số lượng tin đã có đầy đủ nội dung chi tiết |
+| **Crawl detail thất bại** | **0** | Tin gặp lỗi HTTP hoặc WAF (Cần cào bù) |
+| **Tin trong hàng đợi (Pending)** | **0** | Tin đã lưu listing nhưng chờ phiên cào tiếp |
+| **URL bị trùng nội bộ sàn** | **9** | Các tin cùng 1 sàn bị trùng lặp link |
+| **Tin trùng chéo giữa các sàn** | **0** | Cùng 1 công ty đăng tuyển chéo trên nhiều sàn |
 
 ---
 
@@ -23,9 +23,9 @@
 
 | Nguồn | Listings | Details OK | URL Trùng | Lương cụ thể | Thương lượng | Có Hạn nộp | Ngôn ngữ chủ đạo |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **topcv** | 909 | 814 | 47 | 470 (57.7%) | 344 (42.3%) | 100.0% | `vi` |
-| **topdev** | 120 | 120 | 0 | 5 (4.2%) | 115 (95.8%) | 100.0% | `vi` |
-| **vietnamworks** | 764 | 764 | 0 | 221 (28.9%) | 543 (71.1%) | 100.0% | `vi` |
+| **topcv** | 456 | 447 | 9 | 261 (58.4%) | 186 (41.6%) | 100.0% | `vi` |
+| **topdev** | 0 | 0 | 0 | 0 (0%) | 0 (0%) | 0% | `unknown` |
+| **vietnamworks** | 370 | 370 | 0 | 110 (29.7%) | 260 (70.3%) | 100.0% | `vi` |
 
 ---
 
@@ -41,9 +41,9 @@ Bảng đánh giá tỷ lệ **bị thiếu (missing)** của các trường d�
 | Mức lương (`salary_raw`) | `0.0%` | `0.0%` | `0.0%` |
 | Kinh nghiệm (`experience_raw`) | `0.0%` | `0.0%` | `0.0%` |
 | Kỹ năng (`skills_raw`) | `0.0%` | `0.0%` | `0.0%` |
-| Mô tả công việc (`responsibilities_raw`) | `0.0%` | `0.0%` | `0.1%` |
-| Yêu cầu công việc (`requirements_raw`) | `0.7%` | `0.0%` | `0.0%` |
-| Quyền lợi (`benefits_raw`) | `0.0%` | `1.7%` | `0.0%` |
+| Mô tả công việc (`responsibilities_raw`) | `0.0%` | `0.0%` | `0.0%` |
+| Yêu cầu công việc (`requirements_raw`) | `0.2%` | `0.0%` | `0.0%` |
+| Quyền lợi (`benefits_raw`) | `0.0%` | `0.0%` | `0.0%` |
 | Hạn nộp hồ sơ (`deadline_raw`) | `0.0%` | `0.0%` | `0.0%` |
 
 > [!TIP]
@@ -55,26 +55,14 @@ Bảng đánh giá tỷ lệ **bị thiếu (missing)** của các trường d�
 
 | Nguồn | Tiếng Việt (`vi`) | Tiếng Anh (`en`) | Song ngữ (`mixed`) | Khác / Ngắn |
 | :--- | :--- | :--- | :--- | :--- |
-| **topcv** | 640 (78.6%) | 98 (12.0%) | 74 (9.1%) | 2 (0.2%) |
-| **topdev** | 68 (56.7%) | 33 (27.5%) | 18 (15.0%) | 1 (0.8%) |
-| **vietnamworks** | 432 (56.5%) | 285 (37.3%) | 19 (2.5%) | 28 (3.7%) |
+| **topcv** | 361 (80.8%) | 58 (13.0%) | 27 (6.0%) | 1 (0.2%) |
+| **topdev** | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
+| **vietnamworks** | 186 (50.3%) | 160 (43.2%) | 10 (2.7%) | 14 (3.8%) |
 
 ---
 
 ## 5. So Sánh Tính Đồng Nhất Của Cấu Trúc JSON (Schema Consistency)
 
-- **Trạng thái đồng nhất**: ✅ **Đồng nhất 100% giữa các nguồn**
-- **Số lượng trường chung (`common_keys`)**: `27` trường
-- **Danh sách trường dùng chung**: `benefits_raw, company_location_raw, company_name_raw, company_size_raw, company_url, crawled_at, deadline_raw, detail_id, education_raw, employment_type_raw, experience_raw, industry_raw, job_url, location_raw, overview_raw, preferred_skills_raw, published_at_raw, required_skills_raw, requirements_raw, responsibilities_raw, salary_raw, source, source_job_id, title_raw, updated_at_raw, work_mode_raw, working_time_raw`
-
----
-
-## 6. Mẫu Tin Đăng Tuyển Trùng Chéo Sàn (Cross-Portal Duplicates)
-
-Hệ thống phát hiện **14** vị trí xuất hiện đồng thời trên từ 2 sàn trở lên:
-
-1. **Database Engineer Dba** tại **Công Ty Tnhh Lg Cns Việt Nam** (Xuất hiện trên: `vietnamworks, topcv`)
-2. **Ai Expert Khối Công Nghệ Thông Tin 2026Td450200** tại **Ngân Hàng Tmcp Quân Đội Mbbank** (Xuất hiện trên: `vietnamworks, topcv`)
-3. **Fullstack Developer Junior Senior Khối Công Nghệ Thông Tin 2025Td922** tại **Ngân Hàng Tmcp Quân Đội Mbbank** (Xuất hiện trên: `vietnamworks, topcv`)
-4. **Ai Software Engineer Pythongocc Backend Ai Agents Khối Công Nghệ Thông Tin 2026Td450888** tại **Ngân Hàng Tmcp Quân Đội Mbbank** (Xuất hiện trên: `vietnamworks, topcv`)
-5. **Senior Ai Expert Khối Công Nghệ Thông Tin 2026Td450201** tại **Ngân Hàng Tmcp Quân Đội Mbbank** (Xuất hiện trên: `vietnamworks, topcv`)
+- **Trạng thái đồng nhất**: ⚠️ **Có trường chênh lệch giữa các sàn**
+- **Số lượng trường chung (`common_keys`)**: `0` trường
+- **Danh sách trường dùng chung**: ``
