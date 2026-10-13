@@ -239,3 +239,62 @@ def load_jobs(jobs_list, conn):
 
     print(f"   [Loader: jobs] Nạp thành công! Tổng số bản ghi trong bảng 'jobs': {total_in_db:,}")
     return total_in_db
+
+def load_job_descriptions(desc_list, conn):
+    """
+    Nạp nội dung văn bản chi tiết vào bảng job_descriptions trong PostgreSQL.
+    Quan hệ 1-1 với jobs thông qua khóa chính job_id.
+    """
+    records = [
+        (
+            d['job_id'],
+            d['overview_raw'],
+            d['responsibilities_raw'],
+            d['requirements_raw'],
+            d['benefits_raw'],
+            d['description_clean'],
+            d['requirements_clean'],
+            d['benefits_clean'],
+            d['language'],
+            d['text_hash']
+        )
+        for d in desc_list
+    ]
+
+    insert_sql = """
+        INSERT INTO job_descriptions (
+            job_id,
+            overview_raw,
+            responsibilities_raw,
+            requirements_raw,
+            benefits_raw,
+            description_clean,
+            requirements_clean,
+            benefits_clean,
+            language,
+            text_hash
+        )
+        VALUES %s
+        ON CONFLICT (job_id) DO UPDATE SET
+            overview_raw = EXCLUDED.overview_raw,
+            responsibilities_raw = EXCLUDED.responsibilities_raw,
+            requirements_raw = EXCLUDED.requirements_raw,
+            benefits_raw = EXCLUDED.benefits_raw,
+            description_clean = EXCLUDED.description_clean,
+            requirements_clean = EXCLUDED.requirements_clean,
+            benefits_clean = EXCLUDED.benefits_clean,
+            language = EXCLUDED.language,
+            text_hash = EXCLUDED.text_hash,
+            cleaned_at = CURRENT_TIMESTAMP;
+    """
+
+    print(f"-> [Loader: job_descriptions] Đang nạp {len(records):,} bản ghi mô tả vào PostgreSQL...")
+    with conn.cursor() as cur:
+        execute_values(cur, insert_sql, records, page_size=500)
+        conn.commit()
+
+        cur.execute("SELECT count(*) FROM job_descriptions;")
+        total_in_db = cur.fetchone()[0]
+
+    print(f"   [Loader: job_descriptions] Nạp thành công! Tổng số bản ghi trong bảng 'job_descriptions': {total_in_db:,}")
+    return total_in_db
