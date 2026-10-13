@@ -394,4 +394,74 @@ def load_job_source_records(source_records_list, conn):
     print(f"   [Loader: job_source_records] Nạp thành công! Tổng số bản ghi trong bảng 'job_source_records': {total_in_db:,}")
     return total_in_db
 
+def load_job_snapshots(snapshots_list, conn):
+    """
+    Nạp dữ liệu chuỗi thời gian vào bảng job_snapshots trong PostgreSQL.
+    Khóa chính snapshot_id (IDENTITY) với OVERRIDING SYSTEM VALUE.
+    Áp dụng ON CONFLICT (snapshot_id) DO UPDATE để đảm bảo tính Idempotent.
+    """
+    records = [
+        (
+            s["snapshot_id"],
+            s["job_id"],
+            s["observed_at"],
+            s["batch_id"],
+            s["title_normalized"],
+            s["city"],
+            s["salary_min"],
+            s["salary_max"],
+            s["salary_min_vnd"],
+            s["salary_max_vnd"],
+            s["salary_type"],
+            s["is_active"],
+            s["content_hash"]
+        )
+        for s in snapshots_list
+    ]
+
+    insert_sql = """
+        INSERT INTO job_snapshots (
+            snapshot_id,
+            job_id,
+            observed_at,
+            batch_id,
+            title_normalized,
+            city,
+            salary_min,
+            salary_max,
+            salary_min_vnd,
+            salary_max_vnd,
+            salary_type,
+            is_active,
+            content_hash
+        )
+        OVERRIDING SYSTEM VALUE
+        VALUES %s
+        ON CONFLICT (snapshot_id) DO UPDATE SET
+            job_id = EXCLUDED.job_id,
+            observed_at = EXCLUDED.observed_at,
+            batch_id = EXCLUDED.batch_id,
+            title_normalized = EXCLUDED.title_normalized,
+            city = EXCLUDED.city,
+            salary_min = EXCLUDED.salary_min,
+            salary_max = EXCLUDED.salary_max,
+            salary_min_vnd = EXCLUDED.salary_min_vnd,
+            salary_max_vnd = EXCLUDED.salary_max_vnd,
+            salary_type = EXCLUDED.salary_type,
+            is_active = EXCLUDED.is_active,
+            content_hash = EXCLUDED.content_hash;
+    """
+
+    print(f"-> [Loader: job_snapshots] Đang nạp {len(records):,} bản ghi snapshot vào PostgreSQL...")
+    with conn.cursor() as cur:
+        execute_values(cur, insert_sql, records, page_size=500)
+        conn.commit()
+
+        cur.execute("SELECT count(*) FROM job_snapshots;")
+        total_in_db = cur.fetchone()[0]
+
+    print(f"   [Loader: job_snapshots] Nạp thành công! Tổng số bản ghi trong bảng 'job_snapshots': {total_in_db:,}")
+    return total_in_db
+
+
 

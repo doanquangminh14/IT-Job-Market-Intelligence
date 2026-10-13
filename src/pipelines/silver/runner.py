@@ -8,9 +8,10 @@ from .transformers.jobs import transform_jobs
 from .transformers.job_descriptions import transform_job_descriptions
 from .transformers.job_skills import transform_job_skills
 from .transformers.job_source_records import transform_job_source_records
+from .transformers.job_snapshots import transform_job_snapshots
 from .loaders import (
     load_companies, load_skills, load_jobs, load_job_descriptions,
-    load_job_skills, load_job_source_records
+    load_job_skills, load_job_source_records, load_job_snapshots
 )
 
 # Danh sách thứ tự phụ thuộc khóa ngoại của các bảng
@@ -73,6 +74,14 @@ def run_job_source_records_pipeline(bronze_data, conn):
     print(f"=== [BẢNG: job_source_records] Hoàn thành: {total_db:,} bản ghi trong database ===\n")
     return source_records_list
 
+def run_job_snapshots_pipeline(bronze_data, conn):
+    """Thực thi pipeline chuỗi thời gian snapshot và nạp cho bảng job_snapshots."""
+    print("\n=== [BẢNG: job_snapshots] Bắt đầu xử lý ===")
+    snapshots_list = transform_job_snapshots(bronze_data)
+    total_db = load_job_snapshots(snapshots_list, conn)
+    print(f"=== [BẢNG: job_snapshots] Hoàn thành: {total_db:,} bản ghi trong database ===\n")
+    return snapshots_list
+
 def main():
     if sys.stdout.encoding != "utf-8":
         try:
@@ -126,6 +135,9 @@ def main():
 
         if args.table == "job_source_records" or (args.all and "job_source_records" in PIPELINE_TABLES):
             run_job_source_records_pipeline(bronze_data, conn)
+
+        if args.table == "job_snapshots" or (args.all and "job_snapshots" in PIPELINE_TABLES):
+            run_job_snapshots_pipeline(bronze_data, conn)
 
     print("Hoàn tất thực thi pipeline thành công.")
 
