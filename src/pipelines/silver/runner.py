@@ -5,7 +5,8 @@ from .extractor import load_bronze_data
 from .transformers.companies import transform_companies
 from .transformers.skills import transform_skills
 from .transformers.jobs import transform_jobs
-from .loaders import load_companies, load_skills, load_jobs
+from .transformers.job_descriptions import transform_job_descriptions
+from .loaders import load_companies, load_skills, load_jobs, load_job_descriptions
 
 # Danh sách thứ tự phụ thuộc khóa ngoại của các bảng
 PIPELINE_TABLES = [
@@ -42,6 +43,14 @@ def run_jobs_pipeline(bronze_data, conn):
     total_db = load_jobs(jobs_list, conn)
     print(f"=== [BẢNG: jobs] Hoàn thành: {total_db:,} bản ghi trong database ===\n")
     return jobs_list
+
+def run_job_descriptions_pipeline(bronze_data, conn):
+    """Thực thi pipeline trích xuất, làm sạch và nạp cho bảng job_descriptions."""
+    print("\n=== [BẢNG: job_descriptions] Bắt đầu xử lý ===")
+    desc_list = transform_job_descriptions(bronze_data)
+    total_db = load_job_descriptions(desc_list, conn)
+    print(f"=== [BẢNG: job_descriptions] Hoàn thành: {total_db:,} bản ghi trong database ===\n")
+    return desc_list
 
 def main():
     if sys.stdout.encoding != "utf-8":
@@ -87,6 +96,9 @@ def main():
 
         if args.table == "jobs" or (args.all and "jobs" in PIPELINE_TABLES):
             run_jobs_pipeline(bronze_data, conn)
+
+        if args.table == "job_descriptions" or (args.all and "job_descriptions" in PIPELINE_TABLES):
+            run_job_descriptions_pipeline(bronze_data, conn)
 
     print("Hoàn tất thực thi pipeline thành công.")
 
