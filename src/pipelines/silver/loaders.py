@@ -119,3 +119,123 @@ def load_skills(skills_list, conn):
 
     print(f"   [Loader: skills] Nạp thành công! Tổng số bản ghi trong bảng 'skills': {total_in_db:,}")
     return total_in_db
+
+def load_jobs(jobs_list, conn):
+    """
+    Nạp danh sách tin tuyển dụng chuẩn hóa vào bảng jobs trong PostgreSQL.
+    Áp dụng OVERRIDING SYSTEM VALUE và ON CONFLICT DO UPDATE để đảm bảo tính Idempotent.
+    """
+    records = [
+        (
+            j['job_id'],
+            j['primary_source_id'],
+            j['company_id'],
+            j['canonical_job_id'],
+            j['title_raw'],
+            j['title_normalized'],
+            j['seniority_level'],
+            j['location_raw'],
+            j['city'],
+            j['work_mode_raw'],
+            j['work_mode'],
+            j['employment_type'],
+            j['working_time_raw'],
+            j['salary_raw'],
+            j['salary_min'],
+            j['salary_max'],
+            j['salary_currency'],
+            j['salary_period'],
+            j['salary_type'],
+            j['salary_min_vnd'],
+            j['salary_max_vnd'],
+            j['experience_raw'],
+            j['experience_min_years'],
+            j['experience_max_years'],
+            j['education_raw'],
+            j['education_level'],
+            j['published_at'],
+            j['updated_at_source'],
+            j['deadline'],
+            j['is_active']
+        )
+        for j in jobs_list
+    ]
+
+    insert_sql = """
+        INSERT INTO jobs (
+            job_id,
+            primary_source_id,
+            company_id,
+            canonical_job_id,
+            title_raw,
+            title_normalized,
+            seniority_level,
+            location_raw,
+            city,
+            work_mode_raw,
+            work_mode,
+            employment_type,
+            working_time_raw,
+            salary_raw,
+            salary_min,
+            salary_max,
+            salary_currency,
+            salary_period,
+            salary_type,
+            salary_min_vnd,
+            salary_max_vnd,
+            experience_raw,
+            experience_min_years,
+            experience_max_years,
+            education_raw,
+            education_level,
+            published_at,
+            updated_at_source,
+            deadline,
+            is_active
+        )
+        OVERRIDING SYSTEM VALUE
+        VALUES %s
+        ON CONFLICT (job_id) DO UPDATE SET
+            primary_source_id = EXCLUDED.primary_source_id,
+            company_id = EXCLUDED.company_id,
+            canonical_job_id = EXCLUDED.canonical_job_id,
+            title_raw = EXCLUDED.title_raw,
+            title_normalized = EXCLUDED.title_normalized,
+            seniority_level = EXCLUDED.seniority_level,
+            location_raw = EXCLUDED.location_raw,
+            city = EXCLUDED.city,
+            work_mode_raw = EXCLUDED.work_mode_raw,
+            work_mode = EXCLUDED.work_mode,
+            employment_type = EXCLUDED.employment_type,
+            working_time_raw = EXCLUDED.working_time_raw,
+            salary_raw = EXCLUDED.salary_raw,
+            salary_min = EXCLUDED.salary_min,
+            salary_max = EXCLUDED.salary_max,
+            salary_currency = EXCLUDED.salary_currency,
+            salary_period = EXCLUDED.salary_period,
+            salary_type = EXCLUDED.salary_type,
+            salary_min_vnd = EXCLUDED.salary_min_vnd,
+            salary_max_vnd = EXCLUDED.salary_max_vnd,
+            experience_raw = EXCLUDED.experience_raw,
+            experience_min_years = EXCLUDED.experience_min_years,
+            experience_max_years = EXCLUDED.experience_max_years,
+            education_raw = EXCLUDED.education_raw,
+            education_level = EXCLUDED.education_level,
+            published_at = EXCLUDED.published_at,
+            updated_at_source = EXCLUDED.updated_at_source,
+            deadline = EXCLUDED.deadline,
+            is_active = EXCLUDED.is_active,
+            updated_at = CURRENT_TIMESTAMP;
+    """
+
+    print(f"-> [Loader: jobs] Đang nạp {len(records):,} việc làm vào PostgreSQL...")
+    with conn.cursor() as cur:
+        execute_values(cur, insert_sql, records, page_size=500)
+        conn.commit()
+
+        cur.execute("SELECT count(*) FROM jobs;")
+        total_in_db = cur.fetchone()[0]
+
+    print(f"   [Loader: jobs] Nạp thành công! Tổng số bản ghi trong bảng 'jobs': {total_in_db:,}")
+    return total_in_db

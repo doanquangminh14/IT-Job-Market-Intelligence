@@ -51,6 +51,21 @@ def load_bronze_data(force_reload=False):
     source_map = {"topcv": 1, "topdev": 2, "vietnamworks": 3, "itviec": 4}
     df_merged["source_id"] = df_merged["source"].map(source_map).fillna(1).astype(int)
 
+    # Đồng bộ các cột cơ sở bị trùng hậu tố giữa listing và detail
+    common_base_cols = [
+        "company_name_raw", "title_raw", "salary_raw", "experience_raw",
+        "location_raw", "job_url", "crawled_at"
+    ]
+    for col in common_base_cols:
+        col_det = f"{col}_detail"
+        col_list = f"{col}_list"
+        if col_det in df_merged.columns and col_list in df_merged.columns:
+            df_merged[col] = df_merged[col_det].fillna(df_merged[col_list])
+        elif col_det in df_merged.columns:
+            df_merged[col] = df_merged[col_det]
+        elif col_list in df_merged.columns:
+            df_merged[col] = df_merged[col_list]
+
     _CACHED_BRONZE = {
         "df_details": df_details,
         "df_listings": df_listings,
