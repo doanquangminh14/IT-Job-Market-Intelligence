@@ -3,7 +3,8 @@ import sys
 from .db import get_db_connection
 from .extractor import load_bronze_data
 from .transformers.companies import transform_companies
-from .loaders import load_companies
+from .transformers.skills import transform_skills
+from .loaders import load_companies, load_skills
 
 # Danh sách thứ tự phụ thuộc khóa ngoại của các bảng
 PIPELINE_TABLES = [
@@ -24,6 +25,14 @@ def run_companies_pipeline(bronze_data, conn):
     total_db = load_companies(companies_list, conn)
     print(f"=== [BẢNG: companies] Hoàn thành: {total_db:,} bản ghi trong database ===\n")
     return companies_list
+
+def run_skills_pipeline(conn):
+    """Thực thi pipeline chuẩn hóa taxonomy và nạp cho bảng skills."""
+    print("\n=== [BẢNG: skills] Bắt đầu xử lý ===")
+    skills_list = transform_skills()
+    total_db = load_skills(skills_list, conn)
+    print(f"=== [BẢNG: skills] Hoàn thành: {total_db:,} bản ghi trong database ===\n")
+    return skills_list
 
 def main():
     if sys.stdout.encoding != "utf-8":
@@ -64,9 +73,8 @@ def main():
         if args.table == "companies" or (args.all and "companies" in PIPELINE_TABLES):
             run_companies_pipeline(bronze_data, conn)
 
-        # Các bảng tiếp theo sẽ được tích hợp tuần tự tại đây:
-        # if args.table == "skills" ...
-        # if args.table == "jobs" ...
+        if args.table == "skills" or (args.all and "skills" in PIPELINE_TABLES):
+            run_skills_pipeline(conn)
 
     print("Hoàn tất thực thi pipeline thành công.")
 
