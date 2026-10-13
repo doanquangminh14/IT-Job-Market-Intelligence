@@ -345,3 +345,53 @@ def load_job_skills(job_skills_list, conn):
     print(f"   [Loader: job_skills] Nạp thành công! Tổng số bản ghi trong bảng 'job_skills': {total_in_db:,}")
     return total_in_db
 
+def load_job_source_records(source_records_list, conn):
+    """
+    Nạp dữ liệu bản ghi nguồn vào bảng job_source_records trong PostgreSQL.
+    Khóa chính source_record_id (IDENTITY) với OVERRIDING SYSTEM VALUE.
+    Ràng buộc UNIQUE (source_id, source_job_id) với ON CONFLICT DO UPDATE để đảm bảo tính Idempotent.
+    """
+    records = [
+        (
+            sr["source_record_id"],
+            sr["job_id"],
+            sr["source_id"],
+            sr["source_job_id"],
+            sr["source_job_url"],
+            sr["batch_id"],
+            sr["crawled_at"]
+        )
+        for sr in source_records_list
+    ]
+
+    insert_sql = """
+        INSERT INTO job_source_records (
+            source_record_id,
+            job_id,
+            source_id,
+            source_job_id,
+            source_job_url,
+            batch_id,
+            crawled_at
+        )
+        OVERRIDING SYSTEM VALUE
+        VALUES %s
+        ON CONFLICT (source_id, source_job_id) DO UPDATE SET
+            job_id = EXCLUDED.job_id,
+            source_job_url = EXCLUDED.source_job_url,
+            batch_id = EXCLUDED.batch_id,
+            crawled_at = EXCLUDED.crawled_at;
+    """
+
+    print(f"-> [Loader: job_source_records] Đang nạp {len(records):,} bản ghi nguồn vào PostgreSQL...")
+    with conn.cursor() as cur:
+        execute_values(cur, insert_sql, records, page_size=500)
+        conn.commit()
+
+        cur.execute("SELECT count(*) FROM job_source_records;")
+        total_in_db = cur.fetchone()[0]
+
+    print(f"   [Loader: job_source_records] Nạp thành công! Tổng số bản ghi trong bảng 'job_source_records': {total_in_db:,}")
+    return total_in_db
+
+
