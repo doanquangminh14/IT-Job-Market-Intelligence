@@ -133,8 +133,6 @@ CREATE TABLE jobs (
     published_at            TIMESTAMPTZ,
     updated_at_source       TIMESTAMPTZ,
     deadline                TIMESTAMPTZ,
-    first_seen_at           TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_seen_at            TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_active               BOOLEAN NOT NULL DEFAULT TRUE,
     
     created_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -255,8 +253,7 @@ CREATE TABLE job_source_records (
     source_job_id           VARCHAR(100) NOT NULL,
     source_job_url          TEXT NOT NULL,
     batch_id                VARCHAR(100),
-    first_seen_at           TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_seen_at            TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    crawled_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     
     CONSTRAINT uq_source_record UNIQUE (source_id, source_job_id)
 );
@@ -266,6 +263,7 @@ COMMENT ON COLUMN job_source_records.job_id IS 'Khóa ngoại trỏ về Golden 
 COMMENT ON COLUMN job_source_records.source_id IS 'Khóa ngoại trỏ về website nguồn (TopCV, TopDev, VietnamWorks)';
 COMMENT ON COLUMN job_source_records.source_job_id IS 'Mã tin gốc trên sàn đó';
 COMMENT ON COLUMN job_source_records.source_job_url IS 'URL trực tiếp trên website đó';
+COMMENT ON COLUMN job_source_records.crawled_at IS 'Thời điểm crawler thu thập bản ghi này';
 
 CREATE INDEX idx_source_records_job_id ON job_source_records(job_id);
 CREATE INDEX idx_source_records_source_job ON job_source_records(source_id, source_job_id);
