@@ -463,5 +463,64 @@ def load_job_snapshots(snapshots_list, conn):
     print(f"   [Loader: job_snapshots] Nạp thành công! Tổng số bản ghi trong bảng 'job_snapshots': {total_in_db:,}")
     return total_in_db
 
+def load_dq_results(dq_results_list, conn):
+    """
+    Nạp dữ liệu kiểm định chất lượng (Data Observability) vào bảng dq_results trong PostgreSQL.
+    Khóa chính dq_result_id (IDENTITY) với OVERRIDING SYSTEM VALUE.
+    Áp dụng ON CONFLICT (dq_result_id) DO UPDATE để đảm bảo tính Idempotent.
+    """
+    records = [
+        (
+            dq["dq_result_id"],
+            dq["batch_id"],
+            dq["source_id"],
+            dq["entity_type"],
+            dq["entity_id"],
+            dq["rule_name"],
+            dq["severity"],
+            dq["status"],
+            dq["error_message"]
+        )
+        for dq in dq_results_list
+    ]
+
+    insert_sql = """
+        INSERT INTO dq_results (
+            dq_result_id,
+            batch_id,
+            source_id,
+            entity_type,
+            entity_id,
+            rule_name,
+            severity,
+            status,
+            error_message
+        )
+        OVERRIDING SYSTEM VALUE
+        VALUES %s
+        ON CONFLICT (dq_result_id) DO UPDATE SET
+            batch_id = EXCLUDED.batch_id,
+            source_id = EXCLUDED.source_id,
+            entity_type = EXCLUDED.entity_type,
+            entity_id = EXCLUDED.entity_id,
+            rule_name = EXCLUDED.rule_name,
+            severity = EXCLUDED.severity,
+            status = EXCLUDED.status,
+            error_message = EXCLUDED.error_message,
+            checked_at = CURRENT_TIMESTAMP;
+    """
+
+    print(f"-> [Loader: dq_results] Đang nạp {len(records):,} bản ghi kiểm định vào PostgreSQL...")
+    with conn.cursor() as cur:
+        execute_values(cur, insert_sql, records, page_size=100)
+        conn.commit()
+
+        cur.execute("SELECT count(*) FROM dq_results;")
+        total_in_db = cur.fetchone()[0]
+
+    print(f"   [Loader: dq_results] Nạp thành công! Tổng số bản ghi trong bảng 'dq_results': {total_in_db:,}")
+    return total_in_db
+
+
 
 
