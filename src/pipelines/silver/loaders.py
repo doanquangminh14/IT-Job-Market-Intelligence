@@ -298,3 +298,50 @@ def load_job_descriptions(desc_list, conn):
 
     print(f"   [Loader: job_descriptions] Nạp thành công! Tổng số bản ghi trong bảng 'job_descriptions': {total_in_db:,}")
     return total_in_db
+
+def load_job_skills(job_skills_list, conn):
+    """
+    Nạp dữ liệu bảng bridge job_skills vào PostgreSQL.
+    Khóa chính phức hợp (job_id, skill_id, skill_type).
+    Áp dụng ON CONFLICT DO UPDATE để đảm bảo tính Idempotent.
+    """
+    records = [
+        (
+            js["job_id"],
+            js["skill_id"],
+            js["skill_type"],
+            js["extraction_method"],
+            js["confidence"],
+            js["evidence_text"]
+        )
+        for js in job_skills_list
+    ]
+
+    insert_sql = """
+        INSERT INTO job_skills (
+            job_id,
+            skill_id,
+            skill_type,
+            extraction_method,
+            confidence,
+            evidence_text
+        )
+        VALUES %s
+        ON CONFLICT (job_id, skill_id, skill_type) DO UPDATE SET
+            extraction_method = EXCLUDED.extraction_method,
+            confidence = EXCLUDED.confidence,
+            evidence_text = EXCLUDED.evidence_text,
+            extracted_at = CURRENT_TIMESTAMP;
+    """
+
+    print(f"-> [Loader: job_skills] Đang nạp {len(records):,} cặp liên kết vào PostgreSQL...")
+    with conn.cursor() as cur:
+        execute_values(cur, insert_sql, records, page_size=1000)
+        conn.commit()
+
+        cur.execute("SELECT count(*) FROM job_skills;")
+        total_in_db = cur.fetchone()[0]
+
+    print(f"   [Loader: job_skills] Nạp thành công! Tổng số bản ghi trong bảng 'job_skills': {total_in_db:,}")
+    return total_in_db
+
