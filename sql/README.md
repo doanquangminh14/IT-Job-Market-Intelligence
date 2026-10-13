@@ -59,8 +59,6 @@ erDiagram
         timestamptz published_at
         timestamptz deadline
         boolean is_active
-        timestamptz first_seen_at
-        timestamptz last_seen_at
     }
 
     JOB_DESCRIPTIONS {
@@ -108,8 +106,7 @@ erDiagram
         varchar source_job_id
         text source_job_url
         varchar batch_id
-        timestamptz first_seen_at
-        timestamptz last_seen_at
+        timestamptz crawled_at
     }
 
     JOB_SNAPSHOTS {
