@@ -44,11 +44,12 @@ COMMENT ON TABLE job_sources IS 'Bảng danh mục các nguồn/sàn tuyển d�
 COMMENT ON COLUMN job_sources.source_code IS 'Mã định danh viết thường duy nhất của sàn: topcv | topdev | vietnamworks';
 COMMENT ON COLUMN job_sources.source_name IS 'Tên hiển thị đầy đủ của sàn';
 
--- Khởi tạo sẵn 3 nguồn tuyển dụng cốt lõi của hệ thống
-INSERT INTO job_sources (source_code, source_name, base_url) VALUES
-('topcv', 'TopCV Việt Nam', 'https://www.topcv.vn'),
-('topdev', 'TopDev IT Jobs', 'https://topdev.vn'),
-('vietnamworks', 'VietnamWorks IT', 'https://www.vietnamworks.com');
+-- Khởi tạo sẵn 4 nguồn tuyển dụng của hệ thống
+INSERT INTO job_sources (source_code, source_name, base_url, is_active) VALUES
+('topcv', 'TopCV', 'https://www.topcv.vn', TRUE),
+('topdev', 'TopDev', 'https://topdev.vn', TRUE),
+('vietnamworks', 'VietnamWorks', 'https://www.vietnamworks.com', TRUE),
+('itviec', 'ITViec', 'https://itviec.com', FALSE);
 
 
 -- ------------------------------------------------------------------------------
