@@ -68,3 +68,54 @@ def load_companies(companies_list, conn):
 
     print(f"   [Loader: companies] Nạp thành công! Tổng số bản ghi trong bảng 'companies': {total_in_db:,}")
     return total_in_db
+
+def load_skills(skills_list, conn):
+    """
+    Nạp danh mục kỹ năng vào bảng skills trong PostgreSQL.
+    Áp dụng OVERRIDING SYSTEM VALUE và ON CONFLICT DO UPDATE để đảm bảo tính Idempotent.
+    """
+    records = [
+        (
+            s["skill_id"],
+            s["parent_id"],
+            s["skill_name"],
+            s["skill_normalized"],
+            s["skill_category"],
+            s["description"],
+            s["is_active"]
+        )
+        for s in skills_list
+    ]
+
+    insert_sql = """
+        INSERT INTO skills (
+            skill_id,
+            parent_id,
+            skill_name,
+            skill_normalized,
+            skill_category,
+            description,
+            is_active
+        )
+        OVERRIDING SYSTEM VALUE
+        VALUES %s
+        ON CONFLICT (skill_id) DO UPDATE SET
+            parent_id = EXCLUDED.parent_id,
+            skill_name = EXCLUDED.skill_name,
+            skill_normalized = EXCLUDED.skill_normalized,
+            skill_category = EXCLUDED.skill_category,
+            description = EXCLUDED.description,
+            is_active = EXCLUDED.is_active,
+            updated_at = CURRENT_TIMESTAMP;
+    """
+
+    print(f"-> [Loader: skills] Đang nạp {len(records):,} kỹ năng vào PostgreSQL...")
+    with conn.cursor() as cur:
+        execute_values(cur, insert_sql, records, page_size=100)
+        conn.commit()
+
+        cur.execute("SELECT count(*) FROM skills;")
+        total_in_db = cur.fetchone()[0]
+
+    print(f"   [Loader: skills] Nạp thành công! Tổng số bản ghi trong bảng 'skills': {total_in_db:,}")
+    return total_in_db
