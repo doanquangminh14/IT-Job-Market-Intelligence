@@ -348,12 +348,11 @@ def load_job_skills(job_skills_list, conn):
 def load_job_source_records(source_records_list, conn):
     """
     Nạp dữ liệu bản ghi nguồn vào bảng job_source_records trong PostgreSQL.
-    Khóa chính source_record_id (IDENTITY) với OVERRIDING SYSTEM VALUE.
+    Khóa chính source_record_id (IDENTITY) tự động tăng từ sequence.
     Ràng buộc UNIQUE (source_id, source_job_id) với ON CONFLICT DO UPDATE để đảm bảo tính Idempotent.
     """
     records = [
         (
-            sr["source_record_id"],
             sr["job_id"],
             sr["source_id"],
             sr["source_job_id"],
@@ -366,7 +365,6 @@ def load_job_source_records(source_records_list, conn):
 
     insert_sql = """
         INSERT INTO job_source_records (
-            source_record_id,
             job_id,
             source_id,
             source_job_id,
@@ -374,7 +372,6 @@ def load_job_source_records(source_records_list, conn):
             batch_id,
             crawled_at
         )
-        OVERRIDING SYSTEM VALUE
         VALUES %s
         ON CONFLICT (source_id, source_job_id) DO UPDATE SET
             job_id = EXCLUDED.job_id,
@@ -385,6 +382,8 @@ def load_job_source_records(source_records_list, conn):
 
     print(f"-> [Loader: job_source_records] Đang nạp {len(records):,} bản ghi nguồn vào PostgreSQL...")
     with conn.cursor() as cur:
+        # Đồng bộ sequence nếu trước đó có nạp đè ID
+        cur.execute("SELECT setval('public.job_source_records_source_record_id_seq', (SELECT COALESCE(MAX(source_record_id), 1) FROM job_source_records));")
         execute_values(cur, insert_sql, records, page_size=500)
         conn.commit()
 
