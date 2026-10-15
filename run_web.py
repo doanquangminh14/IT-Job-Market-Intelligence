@@ -16,4 +16,4 @@ if __name__ == "__main__":
     print("   Truy cập tại: http://localhost:8000")
     print("   API Documentation: http://localhost:8000/docs")
     print("=" * 70)
-    uvicorn.run("src.api.main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("src.api.main:app", host="127.0.0.1", port=8000, reload=True, reload_dirs=["src", "web"])
