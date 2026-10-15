@@ -204,11 +204,13 @@ def generate_and_save_embeddings(force_recompute=False):
 
     return embeddings_matrix, metadata_list
 
-def load_embeddings_and_metadata():
+def load_embeddings_and_metadata(force_reload=False):
     """Nạp nhanh ma trận embeddings và metadata từ đĩa (có cache bộ nhớ RAM)."""
     global _CACHED_EMBEDDINGS, _CACHED_METADATA
-    if _CACHED_EMBEDDINGS is not None and _CACHED_METADATA is not None:
-        return _CACHED_EMBEDDINGS, _CACHED_METADATA
+    if not force_reload and _CACHED_EMBEDDINGS is not None and _CACHED_METADATA is not None:
+        # Nếu RAM cache tồn tại nhưng thiếu các trường mở rộng mới, tự động nạp lại từ đĩa
+        if len(_CACHED_METADATA) > 0 and "experience_str" in _CACHED_METADATA[0]:
+            return _CACHED_EMBEDDINGS, _CACHED_METADATA
 
     if not os.path.exists(EMBEDDINGS_FILE) or not os.path.exists(METADATA_FILE):
         return generate_and_save_embeddings(force_recompute=False)
