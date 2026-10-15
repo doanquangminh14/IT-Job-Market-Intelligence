@@ -163,46 +163,71 @@ if btn_search or (profile_text and selected_preset != "Chọn hồ sơ mẫu..."
                 subtitle="Được tính toán từ mô hình Semantic Vector kết hợp tỷ lệ kỹ năng đáp ứng thực tế"
             )
 
-            # Hiển thị từng Card công việc
+            # Hiển thị từng Card công việc phong cách SaaS chuyên nghiệp
             for idx, job in enumerate(recommendations, 1):
                 score = job["match_score"]
-                badge_color = "#10b981" if score >= 70 else ("#2563eb" if score >= 55 else "#64748b")
+                badge_bg = "linear-gradient(135deg, #10b981, #059669)" if score >= 70 else ("linear-gradient(135deg, #3b82f6, #2563eb)" if score >= 55 else "linear-gradient(135deg, #64748b, #475569)")
                 
-                matched_html = " ".join([f'<span style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:600; margin-right:4px;">{s}</span>' for s in job["matched_skills"]]) if job["matched_skills"] else '<span style="color:#94a3b8; font-size:0.8rem;">Chưa có kỹ năng trùng khớp</span>'
-                missing_html = " ".join([f'<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:600; margin-right:4px;">{s}</span>' for s in job["missing_skills"][:6]]) if job["missing_skills"] else '<span style="color:#94a3b8; font-size:0.8rem;">Bạn đã đáp ứng đủ kỹ năng yêu cầu</span>'
+                logo_url = job.get("company_logo_url", "").strip()
+                company_name = job.get("company", "Doanh nghiệp IT")
+                initial = company_name[0].upper() if company_name else "IT"
+                
+                if logo_url:
+                    img_html = f'<img src="{logo_url}" alt="{company_name}" style="width:72px; height:72px; object-fit:contain; border-radius:12px; border:1px solid #e2e8f0; background:#ffffff; padding:4px; box-shadow:0 1px 3px rgba(0,0,0,0.05); flex-shrink:0;" onerror="this.style.display=\'none\';" />'
+                else:
+                    img_html = f'<div style="width:72px; height:72px; border-radius:12px; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:#ffffff; font-weight:800; font-size:1.5rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,0.08);">{initial}</div>'
 
-                card_html = f"""
-                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px 24px; margin-bottom:16px; box-shadow:0 1px 3px rgba(15,23,42,0.04); transition:all 0.2s ease;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                        <div>
-                            <span style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">HẠNG #{idx:02d}</span>
-                            <h4 style="margin:2px 0 4px 0; color:#0f172a; font-size:1.2rem; font-weight:700;">{job['title']}</h4>
-                            <p style="margin:0; font-size:0.9rem; font-weight:600; color:#2563eb;">{job['company']}</p>
-                        </div>
-                        <div style="text-align:right;">
-                            <span style="display:inline-block; background:{badge_color}; color:#ffffff; font-weight:800; font-size:0.88rem; padding:4px 12px; border-radius:9999px; box-shadow:0 2px 4px rgba(0,0,0,0.08);">
-                                Phù hợp: {score}%
-                            </span>
-                            <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">Ngữ nghĩa: {job['semantic_score']}% | Kỹ năng: {job['skill_score']}%</div>
-                        </div>
-                    </div>
-                    
-                    <div style="display:flex; flex-wrap:wrap; gap:16px; font-size:0.85rem; color:#475569; margin:10px 0; padding:10px 0; border-top:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9;">
-                        <div><strong>Địa điểm:</strong> {job['city']}</div>
-                        <div><strong>Hình thức:</strong> {job['work_mode']}</div>
-                        <div><strong>Cấp bậc:</strong> {job['seniority_level']}</div>
-                        <div><strong>Mức lương:</strong> <span style="color:#059669; font-weight:700;">{job['salary_str']}</span></div>
-                    </div>
+                matched_html = " ".join([f'<span style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; padding:3px 9px; border-radius:9999px; font-size:0.75rem; font-weight:600; display:inline-block; margin-right:4px; margin-bottom:4px;">{s}</span>' for s in job["matched_skills"]]) if job["matched_skills"] else '<span style="color:#94a3b8; font-size:0.8rem;">Chưa có kỹ năng trùng khớp</span>'
+                missing_html = " ".join([f'<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:3px 9px; border-radius:9999px; font-size:0.75rem; font-weight:600; display:inline-block; margin-right:4px; margin-bottom:4px;">{s}</span>' for s in job["missing_skills"][:6]]) if job["missing_skills"] else '<span style="color:#059669; font-size:0.8rem; font-weight:600;">Bạn đã đáp ứng đủ kỹ năng yêu cầu</span>'
 
-                    <div style="margin-top:10px;">
-                        <div style="margin-bottom:6px;"><strong style="font-size:0.82rem; color:#0f172a;">Kỹ năng bạn đã có:</strong> {matched_html}</div>
-                        <div><strong style="font-size:0.82rem; color:#0f172a;">Kỹ năng khuyên trang bị thêm:</strong> {missing_html}</div>
-                    </div>
-                </div>
-                """
+                deadline_tag = f'<span style="background:#f8fafc; color:#475569; border:1px solid #e2e8f0; font-weight:500; padding:4px 10px; border-radius:8px; font-size:0.82rem;">Hạn nộp: {job["deadline_str"]}</span>' if job.get("deadline_str") else ''
+                
+                desc_snippet = job.get("description_snippet", "").strip()
+                desc_html = f'<div style="margin-top:12px; font-size:0.85rem; color:#475569; line-height:1.5; background:#f8fafc; padding:10px 14px; border-radius:8px; border-left:3px solid #3b82f6;"><strong>Tóm tắt công việc:</strong> {desc_snippet}</div>' if desc_snippet else ''
+
+                # Sử dụng chuỗi HTML không thụt lề đầu dòng để tránh bị Markdown nhận diện thành code block
+                card_html = (
+f'<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:22px 24px; margin-bottom:18px; box-shadow:0 2px 4px rgba(15,23,42,0.04);">'
+f'<div style="display:flex; gap:18px; align-items:flex-start;">'
+f'{img_html}'
+f'<div style="flex-grow:1; min-width:0;">'
+f'<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">'
+f'<div>'
+f'<span style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">HẠNG #{idx:02d}</span>'
+f'<h4 style="margin:3px 0 4px 0; color:#0f172a; font-size:1.22rem; font-weight:700; line-height:1.35;">{job["title"]}</h4>'
+f'<p style="margin:0; font-size:0.95rem; font-weight:600; color:#2563eb;">{company_name}</p>'
+f'</div>'
+f'<div style="text-align:right;">'
+f'<span style="display:inline-block; background:{badge_bg}; color:#ffffff; font-weight:800; font-size:0.9rem; padding:5px 14px; border-radius:9999px; box-shadow:0 2px 4px rgba(0,0,0,0.08);">'
+f'Phù hợp: {score}%'
+f'</span>'
+f'<div style="font-size:0.75rem; color:#64748b; margin-top:4px;">Ngữ nghĩa: {job["semantic_score"]}% | Kỹ năng: {job["skill_score"]}%</div>'
+f'</div>'
+f'</div>'
+
+f'<div style="display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 10px 0;">'
+f'<span style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; font-weight:700; padding:4px 10px; border-radius:8px; font-size:0.83rem;">Lương: {job["salary_str"]}</span>'
+f'<span style="background:#f8fafc; color:#334155; border:1px solid #e2e8f0; font-weight:500; padding:4px 10px; border-radius:8px; font-size:0.83rem;">Địa điểm: {job["city"]}</span>'
+f'<span style="background:#f8fafc; color:#334155; border:1px solid #e2e8f0; font-weight:500; padding:4px 10px; border-radius:8px; font-size:0.83rem;">Cấp bậc: {job["seniority_level"]}</span>'
+f'<span style="background:#f8fafc; color:#334155; border:1px solid #e2e8f0; font-weight:500; padding:4px 10px; border-radius:8px; font-size:0.83rem;">Kinh nghiệm: {job["experience_str"]}</span>'
+f'<span style="background:#f8fafc; color:#334155; border:1px solid #e2e8f0; font-weight:500; padding:4px 10px; border-radius:8px; font-size:0.83rem;">Hình thức: {job["work_mode"]}</span>'
+f'{deadline_tag}'
+f'</div>'
+
+f'{desc_html}'
+
+f'<div style="margin-top:12px; padding-top:10px; border-top:1px dashed #e2e8f0;">'
+f'<div style="margin-bottom:6px;"><strong style="font-size:0.82rem; color:#0f172a;">Kỹ năng bạn đã có:</strong> {matched_html}</div>'
+f'<div><strong style="font-size:0.82rem; color:#0f172a;">Kỹ năng khuyên trang bị thêm:</strong> {missing_html}</div>'
+f'</div>'
+
+f'</div>'
+f'</div>'
+f'</div>'
+                )
                 st.markdown(card_html, unsafe_allow_html=True)
                 
                 # Nút ứng tuyển
                 if job.get("url"):
-                    st.link_button(f"Ứng Tuyển Vị Trí #{idx:02d} Tại Sàn Nguồn", url=job["url"], use_container_width=False)
+                    st.link_button(f"Ứng Tuyển Vị Trí #{idx:02d} Tại Sàn Nguồn", url=job["url"], use_container_width=True)
                 st.write("")

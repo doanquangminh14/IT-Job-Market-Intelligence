@@ -51,7 +51,10 @@ def fetch_jobs_for_embedding(conn):
             j.salary_type,
             j.salary_min_vnd,
             j.salary_max_vnd,
+            j.experience_raw,
+            j.deadline,
             c.company_name_normalized AS company_name,
+            c.company_logo_url,
             d.requirements_clean,
             d.description_clean,
             sr.source_job_url,
@@ -67,7 +70,9 @@ def fetch_jobs_for_embedding(conn):
         GROUP BY 
             j.job_id, j.title_normalized, j.seniority_level, j.city, j.work_mode,
             j.salary_type, j.salary_min_vnd, j.salary_max_vnd,
-            c.company_name_normalized, d.requirements_clean, d.description_clean,
+            j.experience_raw, j.deadline,
+            c.company_name_normalized, c.company_logo_url,
+            d.requirements_clean, d.description_clean,
             sr.source_job_url
         ORDER BY j.job_id;
     """
@@ -147,16 +152,34 @@ def generate_and_save_embeddings(force_recompute=False):
         skills_raw = str(row.get("skills_str", "") or "")
         skills_arr = [s.strip() for s in skills_raw.split(",") if s.strip()]
 
+        # Định dạng ngày hết hạn
+        deadline_raw = row.get("deadline")
+        deadline_str = ""
+        if pd.notna(deadline_raw) and hasattr(deadline_raw, "strftime"):
+            deadline_str = deadline_raw.strftime("%d/%m/%Y")
+
+        # Đoạn trích mô tả công việc
+        desc_raw = str(row.get("description_clean", "") or "")
+        if not desc_raw:
+            desc_raw = str(row.get("requirements_clean", "") or "")
+        desc_snippet = desc_raw[:220].strip()
+        if len(desc_raw) > 220:
+            desc_snippet += "..."
+
         metadata_list.append({
             "job_id": int(row["job_id"]),
             "title": str(row.get("title_normalized", "") or ""),
-            "seniority_level": str(row.get("seniority_level", "") or ""),
+            "seniority_level": str(row.get("seniority_level", "") or "Chưa xác định"),
             "company": str(row.get("company_name", "") or "Doanh nghiệp IT"),
+            "company_logo_url": str(row.get("company_logo_url", "") or "").strip(),
+            "experience_str": str(row.get("experience_raw", "") or "Không yêu cầu").strip(),
+            "deadline_str": deadline_str,
             "city": str(row.get("city", "") or "Khác"),
             "work_mode": str(row.get("work_mode", "") or "Onsite"),
             "salary_str": sal_str,
             "url": str(row.get("source_job_url", "") or ""),
             "skills": skills_arr,
+            "description_snippet": desc_snippet,
             "text_summary": text_repr[:250] + "..."
         })
 
@@ -196,5 +219,72 @@ def load_embeddings_and_metadata():
 
     return _CACHED_EMBEDDINGS, _CACHED_METADATA
 
+def refresh_metadata_file():
+    """Làm mới lại tệp jobs_metadata.json từ cơ sở dữ liệu mà không cần tính lại vector embeddings."""
+    with get_db_connection() as conn:
+        df_jobs = fetch_jobs_for_embedding(conn)
+
+    metadata_list = []
+    for _, row in df_jobs.iterrows():
+        text_repr = build_job_text_representation(row)
+
+        min_v = row.get("salary_min_vnd")
+        max_v = row.get("salary_max_vnd")
+        sal_type = row.get("salary_type")
+        has_min = pd.notna(min_v) and min_v > 0
+        has_max = pd.notna(max_v) and max_v > 0
+
+        if has_min and has_max:
+            if min_v == max_v:
+                sal_str = f"{min_v/1e6:.1f} triệu VNĐ"
+            else:
+                sal_str = f"{min_v/1e6:.1f} - {max_v/1e6:.1f} triệu VNĐ"
+        elif has_max:
+            sal_str = f"Lên tới {max_v/1e6:.1f} triệu VNĐ"
+        elif has_min:
+            sal_str = f"Từ {min_v/1e6:.1f} triệu VNĐ"
+        elif sal_type == "negotiable":
+            sal_str = "Thỏa thuận"
+        else:
+            sal_str = "Cạnh tranh"
+
+        skills_raw = str(row.get("skills_str", "") or "")
+        skills_arr = [s.strip() for s in skills_raw.split(",") if s.strip()]
+
+        deadline_raw = row.get("deadline")
+        deadline_str = ""
+        if pd.notna(deadline_raw) and hasattr(deadline_raw, "strftime"):
+            deadline_str = deadline_raw.strftime("%d/%m/%Y")
+
+        desc_raw = str(row.get("description_clean", "") or "")
+        if not desc_raw:
+            desc_raw = str(row.get("requirements_clean", "") or "")
+        desc_snippet = desc_raw[:220].strip()
+        if len(desc_raw) > 220:
+            desc_snippet += "..."
+
+        metadata_list.append({
+            "job_id": int(row["job_id"]),
+            "title": str(row.get("title_normalized", "") or ""),
+            "seniority_level": str(row.get("seniority_level", "") or "Chưa xác định"),
+            "company": str(row.get("company_name", "") or "Doanh nghiệp IT"),
+            "company_logo_url": str(row.get("company_logo_url", "") or "").strip(),
+            "experience_str": str(row.get("experience_raw", "") or "Không yêu cầu").strip(),
+            "deadline_str": deadline_str,
+            "city": str(row.get("city", "") or "Khác"),
+            "work_mode": str(row.get("work_mode", "") or "Onsite"),
+            "salary_str": sal_str,
+            "url": str(row.get("source_job_url", "") or ""),
+            "skills": skills_arr,
+            "description_snippet": desc_snippet,
+            "text_summary": text_repr[:250] + "..."
+        })
+
+    with open(METADATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(metadata_list, f, ensure_ascii=False, indent=2)
+
+    print(f"-> Đã làm mới {len(metadata_list):,} bản ghi metadata tại {METADATA_FILE}")
+    return metadata_list
+
 if __name__ == "__main__":
-    generate_and_save_embeddings(force_recompute=True)
+    refresh_metadata_file()
