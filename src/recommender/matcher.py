@@ -115,6 +115,9 @@ def recommend_jobs(
             "job_id": meta["job_id"],
             "title": meta["title"],
             "company": meta["company"],
+            "company_logo_url": meta.get("company_logo_url", ""),
+            "experience_str": meta.get("experience_str", "Không yêu cầu"),
+            "deadline_str": meta.get("deadline_str", ""),
             "city": meta["city"],
             "work_mode": meta["work_mode"],
             "seniority_level": meta["seniority_level"],
@@ -125,7 +128,8 @@ def recommend_jobs(
             "skill_score": round(skill_score * 100, 1),
             "matched_skills": matched_skills,
             "missing_skills": missing_skills,
-            "summary": meta["text_summary"]
+            "description_snippet": meta.get("description_snippet", ""),
+            "summary": meta.get("text_summary", "")
         })
 
     # 5. Sắp xếp giảm dần theo điểm phù hợp
