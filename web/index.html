@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IT Job Market Intelligence | Nền Tảng Phân Tích & Gợi Ý Việc Làm CNTT</title>
+  <meta name="description" content="Hệ thống thông minh phân tích thị trường việc làm CNTT Việt Nam, cung cấp báo cáo kỹ năng, mức lương và mô hình AI gợi ý việc làm hybrid.">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <header class="navbar">
+    <div class="nav-brand" onclick="location.reload()">
+      <div class="brand-badge">IT</div>
+      <div class="brand-text">
+        <h1>IT Job Market Intelligence</h1>
+        <p>Hệ Thống Phân Tích & Gợi Ý Việc Làm Thông Minh</p>
+      </div>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="nav-tab-btn active" data-target="view-jobs">Khám Phá Việc Làm</button>
+      <button class="nav-tab-btn" data-target="view-recommender">Gợi Ý Việc Làm AI</button>
+      <button class="nav-tab-btn" data-target="view-analytics">Thị Trường & Kỹ Năng</button>
+    </nav>
+
+    <div class="nav-status">
+      <span class="status-dot"></span>
+      <span>2,821 Việc Làm Sẵn Sàng</span>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="container">
+
+    <!-- VIEW 1: KHÁM PHÁ VIỆC LÀM -->
+    <section id="view-jobs" class="view-section active">
+      <div class="hero-card">
+        <span class="hero-tag">THỊ TRƯỜNG VIỆC LÀM IT VIỆT NAM</span>
+        <h2 class="hero-title">Tìm Kiếm Cơ Hội Nghề Nghiệp CNTT Chất Lượng Cao</h2>
+        <p class="hero-desc">Dữ liệu việc làm sạch đã được chuẩn hóa qua quy trình Silver Layer từ các sàn tuyển dụng hàng đầu (TopCV, VietnamWorks, TopDev), cập nhật đầy đủ mức lương, logo doanh nghiệp và yêu cầu công nghệ.</p>
+      </div>
+
+      <!-- SEARCH BOX -->
+      <div class="search-container">
+        <div class="search-grid">
+          <div class="input-group">
+            <label class="input-label" for="search-keyword">Từ khóa tìm kiếm</label>
+            <input type="text" id="search-keyword" class="search-input" placeholder="Chức danh, kỹ năng (Python, React...), tên công ty...">
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="filter-city">Địa điểm</label>
+            <select id="filter-city" class="search-select">
+              <option value="Tất cả">Tất cả địa điểm</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="filter-seniority">Cấp bậc</label>
+            <select id="filter-seniority" class="search-select">
+              <option value="Tất cả">Tất cả cấp bậc</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="filter-work-mode">Hình thức</label>
+            <select id="filter-work-mode" class="search-select">
+              <option value="Tất cả">Tất cả hình thức</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+            <button id="btn-search" class="btn-primary">Tìm Kiếm</button>
+            <button id="btn-reset" class="btn-outline">Đặt Lại</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULTS HEADER -->
+      <div class="results-header">
+        <div id="total-jobs-count" class="results-count">Đang tải danh sách việc làm...</div>
+      </div>
+
+      <!-- JOBS LIST CONTAINER -->
+      <div id="jobs-container">
+        <!-- Render động qua JavaScript -->
+      </div>
+
+      <!-- PAGINATION -->
+      <div id="pagination-container"></div>
+    </section>
+
+    <!-- VIEW 2: GỢI Ý VIỆC LÀM AI (AI RECOMMENDER) -->
+    <section id="view-recommender" class="view-section">
+      <div class="hero-card">
+        <span class="hero-tag">HYBRID CONTENT-BASED NLP MATCHING</span>
+        <h2 class="hero-title">Trợ Lý Hướng Nghiệp & Gợi Ý Việc Làm Thông Minh</h2>
+        <p class="hero-desc">Hệ thống áp dụng mô hình nhúng ngữ nghĩa đa ngữ SentenceTransformer vector 384 chiều kết hợp thuật toán đo độ trùng khớp kỹ năng công nghệ (Skill Overlap) để tính toán điểm phù hợp chính xác cho từng ứng viên.</p>
+      </div>
+
+      <!-- RECOMMENDER INPUT BOX -->
+      <div class="search-container" style="margin-bottom:2rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+          <label class="input-label" style="font-size:0.82rem;" for="rec-profile-input">Nội dung hồ sơ ứng viên (CV, kỹ năng hoặc nguyện vọng nghề nghiệp):</label>
+          <span style="font-size:0.78rem; color:var(--slate-500);">Thử nhanh bằng hồ sơ mẫu bên dưới</span>
+        </div>
+
+        <!-- PRESETS BUTTONS -->
+        <div id="presets-container" class="presets-group">
+          <!-- Render động từ API -->
+        </div>
+
+        <textarea id="rec-profile-input" class="rec-textarea" placeholder="Nhập đoạn giới thiệu về bạn, các công nghệ bạn thành thạo (ví dụ: SQL, Python, React, Spring Boot, Docker...), kinh nghiệm làm việc hoặc định hướng vị trí mong muốn..."></textarea>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)) auto; gap:0.75rem; align-items:flex-end;">
+          <div class="input-group">
+            <label class="input-label" for="rec-city">Địa điểm ưu tiên</label>
+            <select id="rec-city" class="search-select">
+              <option value="Tất cả">Tất cả địa điểm</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="rec-seniority">Cấp bậc mong muốn</label>
+            <select id="rec-seniority" class="search-select">
+              <option value="Tất cả">Tất cả cấp bậc</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="rec-work-mode">Hình thức làm việc</label>
+            <select id="rec-work-mode" class="search-select">
+              <option value="Tất cả">Tất cả hình thức</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="rec-top-n">Số lượng gợi ý</label>
+            <select id="rec-top-n" class="search-select">
+              <option value="6">Top 6 việc làm</option>
+              <option value="12" selected>Top 12 việc làm</option>
+              <option value="18">Top 18 việc làm</option>
+            </select>
+          </div>
+          <button id="btn-run-match" class="btn-primary" style="padding:0.75rem 1.6rem;">Phân Tích AI & Gợi Ý Việc Làm</button>
+        </div>
+      </div>
+
+      <!-- RECOMMENDER RESULTS -->
+      <div id="rec-results-container">
+        <!-- Render động qua JavaScript sau khi bấm nút -->
+      </div>
+    </section>
+
+    <!-- VIEW 3: THỊ TRƯỜNG & KỸ NĂNG (MARKET ANALYTICS) -->
+    <section id="view-analytics" class="view-section">
+      <div class="hero-card">
+        <span class="hero-tag">BÁO CÁO THỊ TRƯỜNG CNTT VIỆT NAM</span>
+        <h2 class="hero-title">Bức Tranh Tổng Thể Về Nhu Cầu Tuyển Dụng & Mức Lương</h2>
+        <p class="hero-desc">Số liệu tổng hợp thời gian thực từ 2,821 tin tuyển dụng của 1,436 doanh nghiệp công nghệ, phân tích chuyên sâu về kỹ năng có nhu cầu cao và phổ lương theo cấp bậc.</p>
+      </div>
+
+      <!-- KPI METRIC CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Tổng việc làm khảo sát</div>
+          <div id="stat-total-jobs" class="kpi-value">2,821</div>
+          <div class="kpi-sub">Tin tuyển dụng CNTT hợp lệ</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Doanh nghiệp tuyển dụng</div>
+          <div id="stat-active-companies" class="kpi-value">1,436</div>
+          <div class="kpi-sub">Công ty & Tập đoàn công nghệ</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Mức lương trung bình</div>
+          <div id="stat-avg-salary" class="kpi-value">18.5 - 32.2 Tr</div>
+          <div class="kpi-sub">Triệu VNĐ mỗi tháng</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Tỷ lệ Remote / Hybrid</div>
+          <div id="stat-remote-ratio" class="kpi-value">14.2%</div>
+          <div class="kpi-sub">Linh hoạt địa điểm làm việc</div>
+        </div>
+      </div>
+
+      <!-- CHARTS -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3 class="chart-title">Top 10 Kỹ Năng Công Nghệ Nhu Cầu Tuyển Dụng Cao Nhất</h3>
+          <div style="height:320px; position:relative;">
+            <canvas id="chart-skills"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">Mức Lương Tuyển Dụng Theo Cấp Bậc Kinh Nghiệm (Triệu VNĐ)</h3>
+          <div style="height:320px; position:relative;">
+            <canvas id="chart-roles"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3 class="chart-title">Phân Bố Việc Làm Theo Địa Bàn Tuyển Dụng</h3>
+          <div style="height:300px; position:relative;">
+            <canvas id="chart-geo"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">Top Doanh Nghiệp Có Nhu Cầu Tuyển Dụng Lớn Nhất</h3>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.86rem;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--slate-200); color:var(--slate-600);">
+                  <th style="padding:0.6rem 0.5rem;">Hạng</th>
+                  <th style="padding:0.6rem 0.5rem;">Doanh nghiệp</th>
+                  <th style="padding:0.6rem 0.5rem;">Trụ sở</th>
+                  <th style="padding:0.6rem 0.5rem;">Số tin</th>
+                  <th style="padding:0.6rem 0.5rem;">Lương dự kiến</th>
+                </tr>
+              </thead>
+              <tbody id="top-companies-body">
+                <!-- Render động -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL DRAWER CHI TIẾT TIN TUYỂN DỤNG -->
+  <div id="job-modal" class="modal-overlay">
+    <div class="modal-content">
+      <button id="modal-close-btn" class="modal-close-btn" aria-label="Đóng">&times;</button>
+      <div id="modal-body-content">
+        <!-- Nội dung nạp động -->
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container" style="padding-top:0; padding-bottom:0;">
+      <p style="font-weight:700; color:var(--slate-800); margin-bottom:0.25rem;">Nền Tảng Phân Tích Dữ Liệu & Hướng Nghiệp CNTT Việt Nam</p>
+      <p>Dữ liệu được khai thác, làm sạch và chuẩn hóa tự động qua Medallion Architecture (Bronze - Silver - Gold) và mô hình học sâu NLP.</p>
+    </div>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
