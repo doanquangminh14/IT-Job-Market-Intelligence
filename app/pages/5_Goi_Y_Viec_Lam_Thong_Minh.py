@@ -1,5 +1,14 @@
 import streamlit as st
 import pandas as pd
+import importlib
+
+# Tự động nạp lại module nlp để luôn nhận phiên bản metadata mới nhất mà không cần khởi động lại Streamlit
+import src.embeddings.generator as _gen
+import src.recommender.matcher as _mat
+importlib.reload(_gen)
+importlib.reload(_mat)
+from src.recommender.matcher import recommend_jobs, extract_candidate_skills
+
 from components.ui import (
     apply_custom_theme,
     render_hero,
@@ -7,7 +16,6 @@ from components.ui import (
     render_section_title,
     render_sidebar_header
 )
-from src.recommender.matcher import recommend_jobs, extract_candidate_skills
 from database import load_role_geo_matrix
 
 st.set_page_config(page_title="Gợi Ý Việc Làm Thông Minh", layout="wide")
@@ -173,7 +181,7 @@ if btn_search or (profile_text and selected_preset != "Chọn hồ sơ mẫu..."
                 initial = company_name[0].upper() if company_name else "IT"
                 
                 if logo_url:
-                    img_html = f'<img src="{logo_url}" alt="{company_name}" style="width:72px; height:72px; object-fit:contain; border-radius:12px; border:1px solid #e2e8f0; background:#ffffff; padding:4px; box-shadow:0 1px 3px rgba(0,0,0,0.05); flex-shrink:0;" onerror="this.style.display=\'none\';" />'
+                    img_html = f'<img src="{logo_url}" alt="{company_name}" style="width:72px; height:72px; object-fit:contain; border-radius:12px; border:1px solid #e2e8f0; background:#ffffff; padding:4px; box-shadow:0 1px 3px rgba(0,0,0,0.05); flex-shrink:0;" />'
                 else:
                     img_html = f'<div style="width:72px; height:72px; border-radius:12px; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:#ffffff; font-weight:800; font-size:1.5rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,0.08);">{initial}</div>'
 
