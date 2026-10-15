@@ -112,7 +112,7 @@ try:
         subtitle="Chọn phân hệ trong Menu thanh bên trái để xem báo cáo chi tiết"
     )
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
         render_nav_card(
             title="1. Thị Trường IT",
@@ -130,8 +130,13 @@ try:
         )
     with c4:
         render_nav_card(
-            title="4. Gợi Ý Cho Sinh Viên",
+            title="4. Cho Sinh Viên",
             desc="Định hướng nghề nghiệp dành riêng cho Intern / Fresher: Kỹ năng trọng tâm, mức lương kỳ vọng và việc làm đang mở."
+        )
+    with c5:
+        render_nav_card(
+            title="5. Gợi Ý Việc Làm AI",
+            desc="Trợ lý cá nhân hóa: Dán CV hoặc kỹ năng để nhận ngay việc làm phù hợp nhất bằng mô hình Semantic Vector AI."
         )
 
 except Exception as e:
