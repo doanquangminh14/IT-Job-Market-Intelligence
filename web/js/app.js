@@ -312,6 +312,16 @@ async function runRecommenderMatch() {
     btn.disabled = false;
     btn.textContent = "Phân Tích AI & Gợi Ý Việc Làm";
 
+    if (!res.ok) {
+      resultsContainer.innerHTML = `
+        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:16px; padding:2rem; text-align:center; color:#991b1b;">
+          <h4 style="font-size:1.1rem; font-weight:700; margin-bottom:0.4rem;">Đã xảy ra lỗi</h4>
+          <p style="font-size:0.9rem;">${data.detail || "Không thể xử lý yêu cầu gợi ý lúc này. Vui lòng thử lại."}</p>
+        </div>
+      `;
+      return;
+    }
+
     if (!data.recommendations || data.recommendations.length === 0) {
       resultsContainer.innerHTML = `
         <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:3rem 2rem; text-align:center;">

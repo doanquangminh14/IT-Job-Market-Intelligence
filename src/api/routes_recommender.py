@@ -47,6 +47,8 @@ def match_jobs_for_candidate(payload: RecommendRequest):
             "recommendations": recommendations
         }
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Lỗi trong quá trình tính toán gợi ý: {str(e)}")
 
 @router.get("/presets")
