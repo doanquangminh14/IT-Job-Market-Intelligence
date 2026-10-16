@@ -262,6 +262,38 @@
         </div>
       </div>
 
+      <!-- 2.1. PHÂN TÍCH ĐÃI NGỘ THEO NHÓM CÔNG NGHỆ (TECH STACKS BENCHMARK) -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3 class="chart-title">Mức Đãi Ngộ Theo Nhóm Lĩnh Vực Công Nghệ (Triệu VNĐ/tháng)</h3>
+          <p style="font-size:0.82rem; color:var(--slate-500); margin-bottom:0.75rem;">So sánh mức lương sàn và mức lương trần trung bình theo từng nhóm chuyên môn IT.</p>
+          <div style="height:330px; position:relative;">
+            <canvas id="chart-tech-stacks"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">Bảng Chi Tiết Đãi Ngộ &amp; Kỹ Năng Trọng Tâm</h3>
+          <p style="font-size:0.82rem; color:var(--slate-500); margin-bottom:0.75rem;">Dữ liệu thu nhập và kỹ năng tiêu biểu của các nhóm công nghệ hàng đầu.</p>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--slate-200); color:var(--slate-600);">
+                  <th style="padding:0.6rem 0.5rem;">Lĩnh vực</th>
+                  <th style="padding:0.6rem 0.5rem;">Kỹ năng tiêu biểu</th>
+                  <th style="padding:0.6rem 0.5rem; text-align:center;">Số tin</th>
+                  <th style="padding:0.6rem 0.5rem; text-align:right;">Dải lương TB</th>
+                </tr>
+              </thead>
+              <tbody id="tech-stacks-table-body">
+                <!-- Render động -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
       <!-- 3. MA TRẬN KỸ NĂNG ĐI KÈM & PHÂN BỐ ĐỊA BÀN -->
       <div class="charts-grid">
         <div class="chart-card">

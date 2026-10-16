@@ -293,3 +293,42 @@ def get_student_jobs(limit: int = 8):
             "url": r[10] or ""
         })
     return result
+
+@router.get("/tech-stacks-salary")
+def get_tech_stacks_salary():
+    """
+    Phân tích mức đãi ngộ theo nhóm lĩnh vực công nghệ (Tech Stack Domains):
+    AI & Data Science, Cloud & DevOps, Mobile, Backend, QA & Testing, Security...
+    """
+    query = """
+        SELECT 
+            s.skill_category,
+            COUNT(DISTINCT j.job_id) as job_count,
+            ROUND(AVG(j.salary_min_vnd) / 1000000, 1) as avg_min_mil,
+            ROUND(AVG(j.salary_max_vnd) / 1000000, 1) as avg_max_mil,
+            ARRAY_AGG(DISTINCT s.skill_name) FILTER (WHERE s.skill_name IS NOT NULL) as sample_skills
+        FROM jobs j
+        JOIN job_skills js ON j.job_id = js.job_id
+        JOIN skills s ON js.skill_id = s.skill_id
+        WHERE j.salary_max_vnd > 0 AND s.skill_category IS NOT NULL
+        GROUP BY s.skill_category
+        HAVING COUNT(DISTINCT j.job_id) >= 10
+        ORDER BY avg_max_mil DESC;
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+
+    result = []
+    for r in rows:
+        skills = r[4][:5] if r[4] else []
+        result.append({
+            "category": r[0],
+            "job_count": int(r[1]),
+            "avg_min_mil": float(r[2] or 0),
+            "avg_max_mil": float(r[3] or 0),
+            "key_skills": skills
+        })
+    return result
+
