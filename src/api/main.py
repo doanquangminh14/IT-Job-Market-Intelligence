@@ -16,7 +16,7 @@ from src.api.routes_analytics import router as analytics_router
 app = FastAPI(
     title="IT Job Market Intelligence Platform",
     description="Hệ thống thông minh phân tích thị trường và gợi ý việc làm CNTT Việt Nam",
-    version="2.0.0"
+    version="2.1.0"
 )
 
 # Cấu hình CORS
