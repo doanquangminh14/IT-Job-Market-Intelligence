@@ -10,8 +10,11 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from typing import Optional, List, Dict, Any, Tuple
 from src.embeddings.generator import get_embedding_model, load_embeddings_and_metadata
 from src.pipelines.silver.transformers.job_skills import get_skill_patterns
+from src.recommender.synthetic_data import PERSONAS_DEF
+from src.recommender.collaborative import get_cf_recommender
 
 _CACHED_PATTERNS = None
 
@@ -35,24 +38,41 @@ def extract_candidate_skills(candidate_text: str):
 
     return sorted(list(set(found_skills)))
 
+def infer_persona_from_skills(candidate_skills: List[str]) -> Dict[str, Any]:
+    """Tự động suy luận Persona / Career Track phù hợp nhất dựa trên kỹ năng phát hiện từ CV."""
+    if not candidate_skills:
+        return PERSONAS_DEF[0]
+
+    cand_set = set(candidate_skills)
+    best_persona = PERSONAS_DEF[0]
+    best_match = -1
+    for p in PERSONAS_DEF:
+        overlap = len(cand_set.intersection(set(p.get("skills", []))))
+        if overlap > best_match:
+            best_match = overlap
+            best_persona = p
+    return best_persona
+
 def recommend_jobs(
     candidate_profile_text: str,
     top_n: int = 10,
     filter_city: str = "Tất cả",
     filter_seniority: str = "Tất cả",
     filter_work_mode: str = "Tất cả",
-    weight_semantic: float = 0.65,
-    weight_skills: float = 0.35
-):
+    weight_semantic: float = 0.45,
+    weight_skills: float = 0.30,
+    weight_cf: float = 0.25,
+    persona_id: Optional[str] = None
+) -> Tuple[List[str], Dict[str, Any], List[Dict[str, Any]]]:
     """
-    Gợi ý Top việc làm phù hợp nhất cho ứng viên bằng thuật toán Hybrid Content-Based:
-      1. Semantic Similarity: Độ tương đồng ngữ nghĩa vector (Cosine Similarity).
-      2. Skill Overlap Score: Tỷ lệ trùng khớp kỹ năng công nghệ thực tế.
-      3. Áp dụng bộ lọc cứng (Thành phố, Cấp bậc, Hình thức làm việc).
-
-    Trả về:
-      - candidate_skills: Danh sách kỹ năng nhận diện được từ CV
-      - recommendations: Danh sách các công việc phù hợp kèm điểm Match Score chi tiết
+    [TRUE HYBRID RECOMMENDATION SYSTEM]
+    Kết hợp cả 3 nguồn tri thức định lượng:
+      1. Semantic Similarity (NLP 384d Vector): Hiểu ngữ cảnh mục tiêu nghề nghiệp, kinh nghiệm trong CV.
+      2. Skill Overlap (Jaccard Match): Đảm bảo đáp ứng danh mục Tech Stack cốt lõi của công việc.
+      3. Collaborative Filtering (TruncatedSVD Persona Factorization): Khai thác hành vi ứng tuyển của cộng đồng lập trình viên cùng chuyên ngành.
+    
+    Công thức True Hybrid:
+      Final_Score = (0.45 * Semantic) + (0.30 * Skills) + (0.25 * Collaborative_Filtering)
     """
     embeddings_matrix, metadata_list = load_embeddings_and_metadata()
     model = get_embedding_model()
@@ -61,17 +81,33 @@ def recommend_jobs(
     candidate_skills = extract_candidate_skills(candidate_profile_text)
     candidate_skills_set = set(candidate_skills)
 
-    # 2. Mã hóa văn bản ứng viên thành vector 384 chiều
+    # 2. Xác định nhóm chân dung nghề nghiệp (Persona) để lấy vector CF
+    if persona_id and persona_id != "auto":
+        target_persona = next((p for p in PERSONAS_DEF if p["id"] == persona_id), None)
+        if not target_persona:
+            target_persona = infer_persona_from_skills(candidate_skills)
+    else:
+        target_persona = infer_persona_from_skills(candidate_skills)
+
+    # 3. Lấy ma trận điểm tương thích Collaborative Filtering từ SVD Matrix Factorization
+    cf_scores_map = {}
+    try:
+        cf_rec = get_cf_recommender()
+        cf_scores_map = cf_rec.get_persona_scores_dict(target_persona["id"])
+    except Exception as e:
+        print(f"Lưu ý: Không thể tải điểm CF, sử dụng fallback mặc định: {e}")
+
+    # 4. Mã hóa văn bản ứng viên thành vector 384 chiều
     clean_query = candidate_profile_text.strip()
     if not clean_query:
-        return candidate_skills, []
+        return candidate_skills, target_persona, []
 
     candidate_vector = model.encode([clean_query], normalize_embeddings=True)
 
-    # 3. Tính độ tương đồng Cosine ngữ nghĩa với toàn bộ 2,752 việc làm
+    # 5. Tính độ tương đồng Cosine ngữ nghĩa với toàn bộ việc làm
     semantic_scores = cosine_similarity(candidate_vector, embeddings_matrix)[0]
 
-    # 4. Tính toán điểm tổng hợp và lọc kết quả
+    # 6. Tính toán điểm tổng hợp True Hybrid và lọc kết quả
     candidates_ranked = []
 
     for idx, meta in enumerate(metadata_list):
@@ -93,7 +129,6 @@ def recommend_jobs(
             missing_skills = sorted(list(job_skills_set - candidate_skills_set))
             skill_score = len(matched_skills) / max(1, len(job_skills_set))
         elif not candidate_skills_set:
-            # Nếu người dùng không nhập tên kỹ năng cụ thể, dùng 100% điểm ngữ nghĩa
             matched_skills = []
             missing_skills = job_skills
             skill_score = sem_score
@@ -102,17 +137,18 @@ def recommend_jobs(
             missing_skills = job_skills
             skill_score = 0.0
 
-        # Điểm kết hợp Hybrid
-        if candidate_skills_set:
-            final_score = (weight_semantic * sem_score) + (weight_skills * skill_score)
-        else:
-            final_score = sem_score
+        # Lấy điểm Collaborative Filtering cho công việc này
+        job_id = meta["job_id"]
+        cf_score = float(cf_scores_map.get(job_id, 0.68))
+
+        # Điểm True Hybrid: 45% NLP + 30% Kỹ Năng + 25% Lọc Cộng Tác CF
+        final_score = (weight_semantic * sem_score) + (weight_skills * skill_score) + (weight_cf * cf_score)
 
         # Chuẩn hóa về thang phần trăm [0, 100]
         match_pct = round(max(0.0, min(1.0, final_score)) * 100, 1)
 
         candidates_ranked.append({
-            "job_id": meta["job_id"],
+            "job_id": job_id,
             "title": meta["title"],
             "company": meta["company"],
             "company_logo_url": meta.get("company_logo_url", ""),
@@ -126,14 +162,16 @@ def recommend_jobs(
             "match_score": match_pct,
             "semantic_score": round(sem_score * 100, 1),
             "skill_score": round(skill_score * 100, 1),
+            "cf_score": round(cf_score * 100, 1),
             "matched_skills": matched_skills,
             "missing_skills": missing_skills,
             "description_snippet": meta.get("description_snippet", ""),
             "summary": meta.get("text_summary", "")
         })
 
-    # 5. Sắp xếp giảm dần theo điểm phù hợp
+    # 7. Sắp xếp giảm dần theo điểm phù hợp True Hybrid
     candidates_ranked.sort(key=lambda x: x["match_score"], reverse=True)
     top_recommendations = candidates_ranked[:top_n]
 
-    return candidate_skills, top_recommendations
+    return candidate_skills, target_persona, top_recommendations
+

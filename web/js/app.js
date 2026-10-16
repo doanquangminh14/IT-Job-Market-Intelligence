@@ -164,7 +164,7 @@ window.quickSearch = function(keyword) {
   }
 };
 
-function renderJobCard(job, rank = null, matchScore = null, semanticScore = null, skillScore = null, matchedSkills = [], missingSkills = []) {
+function renderJobCard(job, rank = null, matchScore = null, semanticScore = null, skillScore = null, matchedSkills = [], missingSkills = [], cfScore = null) {
   const companyName = job.company_name || job.company || "Doanh nghiệp IT";
   const initial = companyName ? companyName.charAt(0).toUpperCase() : "IT";
   const logoUrl = job.company_logo_url ? job.company_logo_url.trim() : "";
@@ -178,7 +178,7 @@ function renderJobCard(job, rank = null, matchScore = null, semanticScore = null
 
   const rankHtml = rank !== null ? `<span class="badge-rank-pill">Top #${rank} Đề Xuất</span>` : "";
   const matchHtml = matchScore !== null
-    ? `<span class="badge-match-pill">${matchScore}% Phù Hợp</span>`
+    ? `<span class="badge-match-pill">${matchScore}% Hybrid</span>`
     : "";
 
   const salaryDisplay = job.salary_display || job.salary_str || "Thỏa thuận";
@@ -190,6 +190,15 @@ function renderJobCard(job, rank = null, matchScore = null, semanticScore = null
   const missingChips = missingSkills.length > 0
     ? missingSkills.slice(0, 5).map(s => `<span class="skill-chip skill-chip-missing">${s}</span>`).join("")
     : `<span style="color:#059669; font-size:0.76rem; font-weight:600;">Bạn đáp ứng đủ yêu cầu kỹ năng</span>`;
+
+  // Hiển thị breakdown điểm 3 thành phần khi là kết quả True Hybrid
+  const scoreBreakdownHtml = (rank !== null && semanticScore !== null && cfScore !== null)
+    ? `<div style="font-size:0.75rem; color:#64748b; margin-top:0.3rem; letter-spacing:0.01em;">
+        NLP: <strong style="color:#4f46e5;">${semanticScore}%</strong>
+        &nbsp;·&nbsp; Kỹ năng: <strong style="color:#059669;">${skillScore}%</strong>
+        &nbsp;·&nbsp; Cộng đồng CF: <strong style="color:#d97706;">${cfScore}%</strong>
+      </div>`
+    : "";
 
   const skillsMatchBlock = rank !== null
     ? `
@@ -213,6 +222,7 @@ function renderJobCard(job, rank = null, matchScore = null, semanticScore = null
           <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.35rem;">
             <div class="job-salary-highlight">${salaryDisplay}</div>
             ${matchHtml}
+            ${scoreBreakdownHtml}
           </div>
         </div>
 
@@ -427,7 +437,11 @@ async function runRecommenderMatch() {
         top_n: topN,
         city: city,
         seniority: seniority,
-        work_mode: workMode
+        work_mode: workMode,
+        weight_semantic: 0.45,
+        weight_skills: 0.30,
+        weight_cf: 0.25,
+        persona_id: "auto"
       })
     });
 
@@ -458,10 +472,20 @@ async function runRecommenderMatch() {
     const skillsHtml = (data.candidate_skills || []).map(s => `<span class="skill-chip skill-chip-matched" style="font-size:0.82rem; padding:0.3rem 0.75rem;">${s}</span>`).join("");
 
     const topScore = data.recommendations[0].match_score;
-    const topRole = data.recommendations[0].title;
+    const personaName = data.inferred_persona ? data.inferred_persona.name : "";
+
+    // Dải thông tin persona nhận diện
+    const personaBannerHtml = personaName ? `
+      <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.75rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:0.6rem 1rem;">
+        <span style="font-size:0.82rem; color:#1d4ed8; font-weight:600;">Chuyên môn nhận diện:</span>
+        <span style="font-size:0.84rem; color:#1e40af; font-weight:800; background:#dbeafe; border-radius:6px; padding:0.15rem 0.6rem;">${personaName}</span>
+        <span style="font-size:0.78rem; color:#64748b; margin-left:auto;">True Hybrid: 45% NLP · 30% Kỹ năng · 25% CF</span>
+      </div>
+    ` : "";
 
     resultsContainer.innerHTML = `
       <div style="margin-bottom:1.5rem; background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        ${personaBannerHtml}
         <h4 style="font-size:1.05rem; font-weight:800; color:#0f172a; margin-bottom:0.75rem;">Kỹ năng công nghệ nhận diện từ hồ sơ của bạn:</h4>
         <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1.25rem;">
           ${skillsHtml || `<span style="color:#64748b; font-size:0.86rem;">Chưa phát hiện tên kỹ năng cụ thể. Áp dụng 100% độ tương đồng ngữ nghĩa.</span>`}
@@ -471,7 +495,7 @@ async function runRecommenderMatch() {
           <div class="kpi-card" style="padding:1.2rem;">
             <div class="kpi-label">Độ phù hợp cao nhất</div>
             <div class="kpi-value" style="font-size:1.6rem; color:#059669;">${topScore}%</div>
-            <div class="kpi-sub">Xếp hạng 1 danh sách</div>
+            <div class="kpi-sub">Điểm Hybrid tổng hợp</div>
           </div>
           <div class="kpi-card" style="padding:1.2rem;">
             <div class="kpi-label">Số việc làm đề xuất</div>
@@ -486,9 +510,9 @@ async function runRecommenderMatch() {
         </div>
       </div>
 
-      <div style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+      <div style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
         <h3 style="font-size:1.2rem; font-weight:800; color:#0f172a;">Bảng Xếp Hạng Việc Làm Phù Hợp Nhất</h3>
-        <span style="font-size:0.84rem; color:#64748b;">Mô hình Hybrid: 65% Ngữ Nghĩa Vector + 35% Kỹ Năng</span>
+        <span style="font-size:0.82rem; color:#64748b; background:#f1f5f9; border-radius:6px; padding:0.3rem 0.75rem; border:1px solid #e2e8f0;">True Hybrid: <strong style="color:#4f46e5;">45% NLP</strong> + <strong style="color:#059669;">30% Kỹ năng</strong> + <strong style="color:#d97706;">25% Cộng đồng CF</strong></span>
       </div>
 
       <div>
@@ -499,7 +523,8 @@ async function runRecommenderMatch() {
           job.semantic_score,
           job.skill_score,
           job.matched_skills,
-          job.missing_skills
+          job.missing_skills,
+          job.cf_score
         )).join("")}
       </div>
     `;
@@ -610,8 +635,63 @@ async function renderAllCharts() {
       });
     }
 
+    // 2.1. Phân tích đãi ngộ theo nhóm công nghệ (Tech Stacks Benchmark)
+    const techStacksRes = await fetch("/api/analytics/tech-stacks-salary");
+    const techStacksData = await techStacksRes.json();
+
+    const ctxTechStacks = document.getElementById("chart-tech-stacks")?.getContext("2d");
+    if (ctxTechStacks && Array.isArray(techStacksData)) {
+      if (window._chartTechStacksInstance) window._chartTechStacksInstance.destroy();
+      window._chartTechStacksInstance = new Chart(ctxTechStacks, {
+        type: "bar",
+        data: {
+          labels: techStacksData.map(t => t.category),
+          datasets: [
+            {
+              label: "Lương sàn TB (Triệu VNĐ)",
+              data: techStacksData.map(t => t.avg_min_mil),
+              backgroundColor: "#93c5fd",
+              borderRadius: 4
+            },
+            {
+              label: "Lương trần TB (Triệu VNĐ)",
+              data: techStacksData.map(t => t.avg_max_mil),
+              backgroundColor: "#2563eb",
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          scales: {
+            x: { beginAtZero: true, grid: { color: "#f1f5f9" } },
+            y: { grid: { display: false } }
+          }
+        }
+      });
+
+      const techTable = document.getElementById("tech-stacks-table-body");
+      if (techTable) {
+        techTable.innerHTML = techStacksData.map(t => `
+          <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:0.6rem 0.5rem; font-weight:700; color:#0f172a;">${t.category}</td>
+            <td style="padding:0.6rem 0.5rem;">
+              <div style="display:flex; flex-wrap:wrap; gap:3px;">
+                ${t.key_skills.map(s => `<span style="background:#f1f5f9; color:#475569; padding:1px 6px; border-radius:3px; font-size:0.75rem;">${s}</span>`).join('')}
+              </div>
+            </td>
+            <td style="padding:0.6rem 0.5rem; text-align:center; font-weight:600; color:#64748b;">${t.job_count}</td>
+            <td style="padding:0.6rem 0.5rem; text-align:right; font-weight:700; color:#059669;">${t.avg_min_mil} - ${t.avg_max_mil} Tr</td>
+          </tr>
+        `).join("");
+      }
+    }
+
     // 3. Ma trận kỹ năng đi kèm (Tech Stack Bundles)
     const coRes = await fetch("/api/analytics/skill-cooccurrence?limit=8");
+
     const coData = await coRes.json();
     const coTable = document.getElementById("cooccurrence-table-body");
     if (coTable) {

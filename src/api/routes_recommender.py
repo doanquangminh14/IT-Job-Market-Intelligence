@@ -18,8 +18,10 @@ class RecommendRequest(BaseModel):
     city: str = "Tất cả"
     seniority: str = "Tất cả"
     work_mode: str = "Tất cả"
-    weight_semantic: float = 0.65
-    weight_skills: float = 0.35
+    weight_semantic: float = 0.45
+    weight_skills: float = 0.30
+    weight_cf: float = 0.25
+    persona_id: Optional[str] = None
 
 @router.post("/match")
 def match_jobs_for_candidate(payload: RecommendRequest):
@@ -32,17 +34,28 @@ def match_jobs_for_candidate(payload: RecommendRequest):
         raise HTTPException(status_code=400, detail="Vui lòng cung cấp nội dung CV hoặc mô tả nguyện vọng nghề nghiệp.")
 
     try:
-        detected_skills, recommendations = recommend_jobs(
+        detected_skills, target_persona, recommendations = recommend_jobs(
             candidate_profile_text=text,
             top_n=payload.top_n,
             filter_city=payload.city,
             filter_seniority=payload.seniority,
             filter_work_mode=payload.work_mode,
             weight_semantic=payload.weight_semantic,
-            weight_skills=payload.weight_skills
+            weight_skills=payload.weight_skills,
+            weight_cf=payload.weight_cf,
+            persona_id=payload.persona_id
         )
         return {
             "candidate_skills": detected_skills,
+            "inferred_persona": {
+                "id": target_persona.get("id", ""),
+                "name": target_persona.get("name", "")
+            } if target_persona else None,
+            "weights": {
+                "semantic": payload.weight_semantic,
+                "skills": payload.weight_skills,
+                "cf": payload.weight_cf
+            },
             "total_matches": len(recommendations),
             "recommendations": recommendations
         }

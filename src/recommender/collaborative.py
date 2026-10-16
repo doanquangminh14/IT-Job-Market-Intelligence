@@ -366,6 +366,40 @@ class CollaborativeRecommender:
 
         return results
 
+    def get_persona_scores_dict(self, persona_id: str) -> Dict[int, float]:
+        """
+        Trả về dictionary {job_id: cf_affinity_score} chuẩn hóa theo thang [0.0, 1.0]
+        để phục vụ mô hình True Hybrid kết hợp cùng NLP.
+        """
+        if self.item_factors is None:
+            self.load_model()
+
+        users_meta_file = os.path.join(INTERACTIONS_DIR, "users_metadata.json")
+        if not os.path.exists(users_meta_file):
+            return {}
+
+        with open(users_meta_file, "r", encoding="utf-8") as f:
+            all_users = json.load(f)
+
+        persona_uids = [u["user_id"] for u in all_users if u.get("persona_id") == persona_id]
+        if not persona_uids:
+            return {}
+
+        valid_u_indices = [self.user_to_idx[uid] for uid in persona_uids if uid in self.user_to_idx]
+        if not valid_u_indices:
+            return {}
+
+        persona_vector = np.mean(self.user_factors[valid_u_indices], axis=0)
+        pred_scores = self.item_factors.dot(persona_vector)
+
+        scores_dict = {}
+        for idx, score in enumerate(pred_scores):
+            jid = self.idx_to_job[idx]
+            norm_score = min(0.99, max(0.50, 0.65 + float(score) * 0.05))
+            scores_dict[jid] = norm_score
+        return scores_dict
+
+
 
 def get_cf_recommender() -> CollaborativeRecommender:
     """Singleton getter nạp mô hình trong RAM."""
