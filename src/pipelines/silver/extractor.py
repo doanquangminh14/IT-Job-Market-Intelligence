@@ -1,6 +1,14 @@
 import os
+import sys
 import json
 import pandas as pd
+
+if sys.stdout.encoding != "utf-8":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 _CACHED_BRONZE = None
 
