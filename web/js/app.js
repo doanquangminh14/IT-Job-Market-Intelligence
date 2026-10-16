@@ -129,6 +129,11 @@ async function loadJobs(page = 1) {
       countEl.innerHTML = `Tìm thấy <span>${data.total.toLocaleString()}</span> cơ hội việc làm CNTT phù hợp`;
     }
 
+    const navCountEl = document.getElementById("nav-job-count");
+    if (navCountEl && (!keyword.trim() && city === "Tất cả" && seniority === "Tất cả" && workMode === "Tất cả")) {
+      navCountEl.textContent = `${data.total.toLocaleString()} Việc Làm Sẵn Sàng`;
+    }
+
     if (!data.jobs || data.jobs.length === 0) {
       container.innerHTML = `
         <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:3rem 2rem; text-align:center;">
@@ -400,8 +405,13 @@ async function loadAnalytics() {
     const kpiRes = await fetch("/api/analytics/kpis");
     const kpis = await kpiRes.json();
 
-    document.getElementById("stat-total-jobs").textContent = kpis.total_postings ? kpis.total_postings.toLocaleString() : "2,821";
-    document.getElementById("stat-active-companies").textContent = kpis.total_companies ? kpis.total_companies.toLocaleString() : "1,436";
+    const navCountEl = document.getElementById("nav-job-count");
+    if (navCountEl && kpis.active_postings) {
+      navCountEl.textContent = `${kpis.active_postings.toLocaleString()} Việc Làm Sẵn Sàng`;
+    }
+
+    document.getElementById("stat-total-jobs").textContent = kpis.total_postings ? kpis.total_postings.toLocaleString() : "2,998";
+    document.getElementById("stat-active-companies").textContent = kpis.total_companies ? kpis.total_companies.toLocaleString() : "1,509";
     document.getElementById("stat-avg-salary").textContent = `${kpis.avg_min_salary_million} - ${kpis.avg_max_salary_million} Tr`;
     document.getElementById("stat-remote-ratio").textContent = `${kpis.remote_ratio_pct}%`;
   } catch (err) {
