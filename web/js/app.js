@@ -131,14 +131,14 @@ async function loadJobs(page = 1) {
 
     const navCountEl = document.getElementById("nav-job-count");
     if (navCountEl && (!keyword.trim() && city === "Tất cả" && seniority === "Tất cả" && workMode === "Tất cả")) {
-      navCountEl.textContent = `${data.total.toLocaleString()} Việc Làm Sẵn Sàng`;
+      navCountEl.textContent = `${data.total.toLocaleString()} Việc Làm Đang Tuyển`;
     }
 
     if (!data.jobs || data.jobs.length === 0) {
       container.innerHTML = `
-        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:3rem 2rem; text-align:center;">
-          <h4 style="font-size:1.15rem; color:#0f172a; margin-bottom:0.5rem; font-weight:700;">Không tìm thấy việc làm phù hợp</h4>
-          <p style="color:#64748b; font-size:0.9rem;">Bạn hãy thử thay đổi từ khóa tìm kiếm hoặc chọn Địa điểm: Tất cả để mở rộng phạm vi.</p>
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:3rem 2rem; text-align:center;">
+          <h4 style="font-size:1.1rem; color:#0f172a; margin-bottom:0.4rem; font-weight:700;">Không tìm thấy việc làm phù hợp</h4>
+          <p style="color:#64748b; font-size:0.88rem;">Bạn hãy thử thay đổi từ khóa tìm kiếm hoặc chọn Địa điểm: Tất cả để mở rộng phạm vi.</p>
         </div>
       `;
       if (paginationEl) paginationEl.innerHTML = "";
@@ -154,41 +154,48 @@ async function loadJobs(page = 1) {
   }
 }
 
+window.quickSearch = function(keyword) {
+  const input = document.getElementById("search-keyword");
+  if (input) {
+    input.value = keyword;
+    currentPage = 1;
+    loadJobs(1);
+    window.scrollTo({ top: 350, behavior: "smooth" });
+  }
+};
+
 function renderJobCard(job, rank = null, matchScore = null, semanticScore = null, skillScore = null, matchedSkills = [], missingSkills = []) {
   const companyName = job.company_name || job.company || "Doanh nghiệp IT";
   const initial = companyName ? companyName.charAt(0).toUpperCase() : "IT";
   const logoUrl = job.company_logo_url ? job.company_logo_url.trim() : "";
 
   const logoHtml = logoUrl
-    ? `<img src="${logoUrl}" alt="${companyName}" class="company-logo" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(companyName)}&background=4f46e5&color=fff&size=128';" />`
+    ? `<img src="${logoUrl}" alt="${companyName}" class="company-logo" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(companyName)}&background=2563eb&color=fff&size=128';" />`
     : `<div class="company-avatar-fallback">${initial}</div>`;
 
   const skillsArr = job.skills || [];
-  const skillsHtml = skillsArr.slice(0, 8).map(s => `<span class="skill-chip">${s}</span>`).join("");
+  const skillsHtml = skillsArr.slice(0, 7).map(s => `<span class="skill-chip">${s}</span>`).join("");
 
-  const rankHtml = rank !== null ? `<div class="badge-rank">HẠNG #${String(rank).padStart(2, '0')}</div>` : "";
+  const rankHtml = rank !== null ? `<span class="badge-rank-pill">Top #${rank} Đề Xuất</span>` : "";
   const matchHtml = matchScore !== null
-    ? `
-      <div style="text-align:right;">
-        <span class="badge-match">Phù hợp: ${matchScore}%</span>
-        <div style="font-size:0.74rem; color:#64748b; margin-top:0.25rem;">Ngữ nghĩa: ${semanticScore}% | Kỹ năng: ${skillScore}%</div>
-      </div>
-    `
+    ? `<span class="badge-match-pill">${matchScore}% Phù Hợp</span>`
     : "";
+
+  const salaryDisplay = job.salary_display || job.salary_str || "Thỏa thuận";
 
   const matchedChips = matchedSkills.length > 0
     ? matchedSkills.map(s => `<span class="skill-chip skill-chip-matched">${s}</span>`).join("")
-    : `<span style="color:#94a3b8; font-size:0.78rem;">Chưa có kỹ năng trùng khớp</span>`;
+    : `<span style="color:#94a3b8; font-size:0.76rem;">Chưa phát hiện kỹ năng trùng</span>`;
 
   const missingChips = missingSkills.length > 0
     ? missingSkills.slice(0, 5).map(s => `<span class="skill-chip skill-chip-missing">${s}</span>`).join("")
-    : `<span style="color:#059669; font-size:0.78rem; font-weight:600;">Bạn đáp ứng đủ kỹ năng yêu cầu</span>`;
+    : `<span style="color:#059669; font-size:0.76rem; font-weight:600;">Bạn đáp ứng đủ yêu cầu kỹ năng</span>`;
 
   const skillsMatchBlock = rank !== null
     ? `
-      <div style="margin-top:0.65rem; padding-top:0.65rem; border-top:1px dashed #e2e8f0;">
-        <div style="margin-bottom:0.35rem;"><strong style="font-size:0.8rem; color:#0f172a;">Kỹ năng bạn đã có:</strong> <div style="display:inline-flex; flex-wrap:wrap; gap:4px; margin-left:4px;">${matchedChips}</div></div>
-        <div><strong style="font-size:0.8rem; color:#0f172a;">Kỹ năng khuyên trang bị thêm:</strong> <div style="display:inline-flex; flex-wrap:wrap; gap:4px; margin-left:4px;">${missingChips}</div></div>
+      <div style="margin-top:0.65rem; padding-top:0.65rem; border-top:1px dashed #e2e8f0; font-size:0.8rem;">
+        <div style="margin-bottom:0.35rem;"><span style="color:#475569; font-weight:700;">Kỹ năng bạn có:</span> <div style="display:inline-flex; flex-wrap:wrap; gap:4px; margin-left:4px;">${matchedChips}</div></div>
+        <div><span style="color:#475569; font-weight:700;">Gợi ý bổ sung:</span> <div style="display:inline-flex; flex-wrap:wrap; gap:4px; margin-left:4px;">${missingChips}</div></div>
       </div>
     `
     : "";
@@ -197,22 +204,27 @@ function renderJobCard(job, rank = null, matchScore = null, semanticScore = null
     <div class="job-card" data-id="${job.job_id}">
       ${logoHtml}
       <div class="job-card-content">
-        <div class="job-header">
+        <div class="job-header-row">
           <div>
             ${rankHtml}
             <h3 class="job-title" onclick="openJobDetail(${job.job_id})">${job.title}</h3>
-            <p class="company-name">${companyName}</p>
+            <div class="job-company-name">${companyName}</div>
           </div>
-          ${matchHtml}
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.35rem;">
+            <div class="job-salary-highlight">${salaryDisplay}</div>
+            ${matchHtml}
+          </div>
         </div>
 
-        <div class="specs-bar">
-          <span class="spec-chip spec-salary">Lương: ${job.salary_display || job.salary_str}</span>
-          <span class="spec-chip">Địa điểm: ${job.city}</span>
-          <span class="spec-chip">Cấp bậc: ${job.seniority_level}</span>
-          <span class="spec-chip">Kinh nghiệm: ${job.experience_str || "Không yêu cầu"}</span>
-          <span class="spec-chip">Hình thức: ${job.work_mode}</span>
-          ${job.deadline_str ? `<span class="spec-chip">Hạn nộp: ${job.deadline_str}</span>` : ""}
+        <div class="job-meta-row">
+          <span>${job.city}</span>
+          <span class="meta-dot">•</span>
+          <span>${job.seniority_level}</span>
+          <span class="meta-dot">•</span>
+          <span>${job.experience_str || "Không yêu cầu KN"}</span>
+          <span class="meta-dot">•</span>
+          <span>${job.work_mode}</span>
+          ${job.deadline_str ? `<span class="meta-dot">•</span><span>Hạn: ${job.deadline_str}</span>` : ""}
         </div>
 
         ${job.description_snippet ? `<div class="desc-snippet">${job.description_snippet}</div>` : ""}
@@ -220,7 +232,7 @@ function renderJobCard(job, rank = null, matchScore = null, semanticScore = null
         ${skillsArr.length > 0 && rank === null ? `<div class="skills-container">${skillsHtml}</div>` : ""}
         ${skillsMatchBlock}
 
-        <div class="card-actions">
+        <div class="card-actions-row">
           <button class="btn-sm btn-outline" onclick="openJobDetail(${job.job_id})">Xem Chi Tiết Tin</button>
           ${job.url ? `<a href="${job.url}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-primary">Ứng Tuyển Nguồn</a>` : ""}
         </div>
@@ -228,6 +240,7 @@ function renderJobCard(job, rank = null, matchScore = null, semanticScore = null
     </div>
   `;
 }
+
 
 function renderPagination(current, total) {
   const container = document.getElementById("pagination-container");
@@ -270,7 +283,112 @@ async function initRecommender() {
   }
 
   document.getElementById("btn-run-match")?.addEventListener("click", runRecommenderMatch);
+  loadPersonas();
 }
+
+window.switchRecMode = function(mode) {
+  const btnNlp = document.getElementById("btn-mode-nlp");
+  const btnCf = document.getElementById("btn-mode-cf");
+  const cNlp = document.getElementById("rec-mode-nlp-container");
+  const cCf = document.getElementById("rec-mode-cf-container");
+
+  if (mode === "nlp") {
+    btnNlp?.classList.add("active");
+    btnCf?.classList.remove("active");
+    if (cNlp) cNlp.style.display = "block";
+    if (cCf) cCf.style.display = "none";
+  } else {
+    btnCf?.classList.add("active");
+    btnNlp?.classList.remove("active");
+    if (cCf) cCf.style.display = "block";
+    if (cNlp) cNlp.style.display = "none";
+    if (!window._CURRENT_PERSONA) {
+      selectPersona("backend_java");
+    }
+  }
+};
+
+async function loadPersonas() {
+  const container = document.getElementById("cf-personas-container");
+  if (!container) return;
+
+  try {
+    const res = await fetch("/api/recommender/personas");
+    const personas = await res.json();
+    window._PERSONAS_DATA = personas;
+
+    container.innerHTML = personas.map((p) => `
+      <div class="persona-card ${p.id === 'backend_java' ? 'active' : ''}" id="persona-card-${p.id}" onclick="selectPersona('${p.id}')">
+        <div>
+          <div class="persona-name">${p.name}</div>
+          <div class="persona-seniority-line">Cấp bậc: ${p.seniorities.join(', ')}</div>
+        </div>
+        <div class="persona-skills-wrap">
+          ${p.skills.map(s => `<span class="persona-skill-chip">${s}</span>`).join('')}
+        </div>
+      </div>
+    `).join("");
+  } catch (err) {
+    console.error("Lỗi tải danh mục personas:", err);
+    container.innerHTML = `<div style="color:#dc2626; padding:1rem;">Không thể tải danh sách chuyên môn.</div>`;
+  }
+}
+
+window.selectPersona = async function(personaId) {
+  window._CURRENT_PERSONA = personaId;
+  const cards = document.querySelectorAll(".persona-card");
+  cards.forEach(c => c.classList.remove("active"));
+  const activeCard = document.getElementById(`persona-card-${personaId}`);
+  if (activeCard) activeCard.classList.add("active");
+
+  const header = document.getElementById("cf-feed-header");
+  const title = document.getElementById("cf-feed-title");
+  const count = document.getElementById("cf-feed-count");
+  const jobsContainer = document.getElementById("cf-feed-jobs-container");
+  if (!jobsContainer) return;
+
+  const personaObj = (window._PERSONAS_DATA || []).find(p => p.id === personaId);
+  const pName = personaObj ? personaObj.name : personaId;
+
+  if (header) header.style.display = "flex";
+  if (title) title.innerHTML = `Danh sách việc làm phù hợp cho <strong>${pName}</strong>`;
+  if (count) count.textContent = "Đang tổng hợp dữ liệu...";
+
+  jobsContainer.innerHTML = `<div style="text-align:center; padding:3rem 0; color:#2563eb; font-weight:600;">Đang tải danh sách cơ hội việc làm theo định hướng chuyên môn...</div>`;
+
+  try {
+    const res = await fetch(`/api/recommender/persona-feed?persona_id=${personaId}&limit=12`);
+    const data = await res.json();
+
+    if (!data.recommendations || data.recommendations.length === 0) {
+      if (count) count.textContent = "0 việc làm";
+      jobsContainer.innerHTML = `
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:3rem 2rem; text-align:center;">
+          <h4 style="font-size:1.1rem; color:#0f172a; margin-bottom:0.4rem; font-weight:700;">Chưa có việc làm phù hợp</h4>
+          <p style="color:#64748b; font-size:0.88rem;">Bạn hãy thử chọn một chuyên môn khác.</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (count) count.textContent = `${data.total} Việc Làm Phù Hợp Nhất`;
+
+    jobsContainer.innerHTML = data.recommendations.map((job, idx) => {
+      return renderJobCard(
+        job,
+        idx + 1,
+        job.match_score,
+        Math.round(job.match_score * 0.95),
+        Math.round(job.match_score * 0.98),
+        job.skills || [],
+        []
+      );
+    }).join("");
+  } catch (err) {
+    console.error("Lỗi tải persona feed:", err);
+    jobsContainer.innerHTML = `<div style="text-align:center; color:#dc2626; padding:2rem 0;">Lỗi khi tải dữ liệu việc làm.</div>`;
+  }
+};
 
 window.applyPreset = function(presetId) {
   const textarea = document.getElementById("rec-profile-input");
@@ -407,7 +525,7 @@ async function loadAnalytics() {
 
     const navCountEl = document.getElementById("nav-job-count");
     if (navCountEl && kpis.active_postings) {
-      navCountEl.textContent = `${kpis.active_postings.toLocaleString()} Việc Làm Sẵn Sàng`;
+      navCountEl.textContent = `${kpis.active_postings.toLocaleString()} Việc Làm Đang Tuyển`;
     }
 
     document.getElementById("stat-total-jobs").textContent = kpis.total_postings ? kpis.total_postings.toLocaleString() : "2,998";
@@ -439,7 +557,7 @@ async function renderAllCharts() {
           datasets: [{
             label: "Số tin tuyển dụng yêu cầu",
             data: skillsData.map(s => s.job_count),
-            backgroundColor: "#4f46e5",
+            backgroundColor: "#2563eb",
             borderRadius: 6
           }]
         },
@@ -470,7 +588,7 @@ async function renderAllCharts() {
             {
               label: "Lương tối thiểu (Triệu VNĐ)",
               data: payingData.map(p => p.avg_min_mil),
-              backgroundColor: "#c7d2fe",
+              backgroundColor: "#93c5fd",
               borderRadius: 6
             },
             {
@@ -500,7 +618,7 @@ async function renderAllCharts() {
       coTable.innerHTML = coData.map(c => `
         <tr style="border-bottom:1px solid #f1f5f9;">
           <td style="padding:0.65rem 0.5rem; font-weight:700; color:#0f172a;">
-            <span style="background:#eef2ff; color:#4f46e5; padding:2px 8px; border-radius:4px; font-size:0.8rem; margin-right:4px;">${c.skill_a}</span>
+            <span style="background:#eff6ff; color:#2563eb; padding:2px 8px; border-radius:4px; font-size:0.8rem; margin-right:4px;">${c.skill_a}</span>
             +
             <span style="background:#ecfdf5; color:#047857; padding:2px 8px; border-radius:4px; font-size:0.8rem; margin-left:4px;">${c.skill_b}</span>
           </td>
@@ -660,33 +778,38 @@ window.openJobDetail = async function(jobId) {
     const job = await res.json();
 
     const logoHtml = job.company_logo_url
-      ? `<img src="${job.company_logo_url}" alt="${job.company_name}" style="width:72px; height:72px; object-fit:contain; border-radius:12px; border:1px solid #e2e8f0; background:#ffffff; padding:4px;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(job.company_name)}&background=4f46e5&color=fff&size=128';" />`
+      ? `<img src="${job.company_logo_url}" alt="${job.company_name}" style="width:64px; height:64px; object-fit:contain; border-radius:8px; border:1px solid #e2e8f0; background:#ffffff; padding:4px;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(job.company_name)}&background=2563eb&color=fff&size=128';" />`
       : `<div class="company-avatar-fallback">${job.company_name.charAt(0)}</div>`;
 
     const skillsHtml = (job.skills || []).map(s => `<span class="skill-chip">${s}</span>`).join("");
 
     contentEl.innerHTML = `
-      <div style="display:flex; gap:1.25rem; align-items:flex-start; margin-bottom:1.25rem;">
-        ${logoHtml}
-        <div>
-          <h2 style="font-size:1.35rem; font-weight:800; color:#0f172a; line-height:1.3;">${job.title}</h2>
-          <p style="font-size:1rem; font-weight:700; color:#4f46e5; margin-top:0.25rem;">${job.company_name}</p>
-          ${job.company_url ? `<a href="${job.company_url}" target="_blank" rel="noopener" style="font-size:0.8rem; color:#64748b; text-decoration:none;">Xem trang doanh nghiệp</a>` : ""}
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1.25rem; margin-bottom:1.25rem;">
+        <div style="display:flex; gap:1rem; align-items:flex-start;">
+          ${logoHtml}
+          <div>
+            <h2 style="font-size:1.35rem; font-weight:800; color:#0f172a; line-height:1.3;">${job.title}</h2>
+            <p style="font-size:0.95rem; font-weight:700; color:#2563eb; margin-top:0.25rem;">${job.company_name}</p>
+            ${job.company_url ? `<a href="${job.company_url}" target="_blank" rel="noopener" style="font-size:0.8rem; color:#64748b; text-decoration:none;">Xem website doanh nghiệp</a>` : ""}
+          </div>
         </div>
+        <div class="job-salary-highlight" style="font-size:1.05rem; padding:0.35rem 0.85rem;">${job.salary_display}</div>
       </div>
 
-      <div class="specs-bar" style="margin-bottom:1.5rem;">
-        <span class="spec-chip spec-salary">Lương: ${job.salary_display}</span>
-        <span class="spec-chip">Địa điểm: ${job.city}</span>
-        <span class="spec-chip">Cấp bậc: ${job.seniority_level}</span>
-        <span class="spec-chip">Kinh nghiệm: ${job.experience_str}</span>
-        <span class="spec-chip">Hình thức: ${job.work_mode}</span>
-        <span class="spec-chip">Hạn nộp: ${job.deadline_str}</span>
+      <div class="job-meta-row" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:1.25rem;">
+        <span><strong>Địa điểm:</strong> ${job.city}</span>
+        <span class="meta-dot">•</span>
+        <span><strong>Cấp bậc:</strong> ${job.seniority_level}</span>
+        <span class="meta-dot">•</span>
+        <span><strong>Kinh nghiệm:</strong> ${job.experience_str}</span>
+        <span class="meta-dot">•</span>
+        <span><strong>Hình thức:</strong> ${job.work_mode}</span>
+        ${job.deadline_str ? `<span class="meta-dot">•</span><span><strong>Hạn nộp:</strong> ${job.deadline_str}</span>` : ""}
       </div>
 
       ${skillsHtml ? `
         <div style="margin-bottom:1.25rem;">
-          <h5 style="font-size:0.85rem; font-weight:700; color:#0f172a; margin-bottom:0.4rem;">Kỹ năng công nghệ yêu cầu:</h5>
+          <div style="font-size:0.78rem; font-weight:700; color:#475569; margin-bottom:0.4rem; text-transform:uppercase; letter-spacing:0.04em;">Kỹ năng công nghệ yêu cầu:</div>
           <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">${skillsHtml}</div>
         </div>
       ` : ""}
@@ -708,14 +831,52 @@ window.openJobDetail = async function(jobId) {
         </div>
       ` : ""}
 
+      <div id="modal-similar-jobs-box" class="modal-similar-jobs">
+        <h4>Việc Làm Tương Tự Cùng Ứng Tuyển</h4>
+        <p class="sub">Được tính toán dựa trên xu hướng các ứng viên cùng ứng tuyển trong cùng chuyên môn.</p>
+        <div id="modal-similar-grid" class="similar-jobs-grid">
+          <div style="font-size:0.82rem; color:#64748b; padding:0.5rem 0;">Đang tìm việc làm tương quan...</div>
+        </div>
+      </div>
+
       <div style="margin-top:2rem; padding-top:1.25rem; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:0.75rem;">
-        <button class="btn-outline" onclick="document.getElementById('job-modal').classList.remove('active')">Đóng</button>
-        ${job.source_job_url ? `<a href="${job.source_job_url}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="text-decoration:none; display:inline-flex; align-items:center;">Ứng Tuyển Tại Sàn Gốc</a>` : ""}
+        <button class="btn-sm btn-outline" onclick="document.getElementById('job-modal').classList.remove('active')">Đóng</button>
+        ${job.source_job_url ? `<a href="${job.source_job_url}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-primary" style="text-decoration:none; padding:0.6rem 1.25rem; font-size:0.88rem;">Ứng Tuyển Tại Sàn Gốc</a>` : ""}
       </div>
     `;
+
+    fetchSimilarJobsForModal(jobId);
   } catch (err) {
     console.error("Lỗi xem chi tiết việc làm:", err);
     contentEl.innerHTML = `<div style="text-align:center; color:#dc2626; padding:2rem 0;">Lỗi khi tải thông tin việc làm.</div>`;
   }
 };
+
+async function fetchSimilarJobsForModal(jobId) {
+  const grid = document.getElementById("modal-similar-grid");
+  if (!grid) return;
+  try {
+    const res = await fetch(`/api/recommender/similar-jobs/${jobId}?top_k=4`);
+    const data = await res.json();
+    if (!data.similar_jobs || data.similar_jobs.length === 0) {
+      grid.innerHTML = `<div style="font-size:0.82rem; color:#94a3b8; grid-column:1/-1;">Không có việc làm tương quan đủ điều kiện.</div>`;
+      return;
+    }
+    grid.innerHTML = data.similar_jobs.map(s => `
+      <div class="similar-job-card" onclick="openJobDetail(${s.job_id})">
+        <div>
+          <div class="similar-job-title" title="${s.title}">${s.title}</div>
+          <div class="similar-job-company">${s.company_name}</div>
+        </div>
+        <div class="similar-job-meta">
+          <span>${s.city}</span>
+          <span class="similar-match-badge">${s.similarity_pct}% phù hợp</span>
+        </div>
+      </div>
+    `).join("");
+  } catch (e) {
+    grid.innerHTML = "";
+  }
+}
+
 

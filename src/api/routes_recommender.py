@@ -80,3 +80,64 @@ def get_preset_profiles():
             "text": "Kỹ sư DevOps có kinh nghiệm quản trị hạ tầng đám mây AWS, đóng gói ứng dụng bằng Docker và điều phối cụm Kubernetes (K8s). Thành thạo thiết lập quy trình tự động hóa CI/CD pipeline, quản trị hệ điều hành Linux và giám sát hệ thống với Prometheus, Grafana."
         }
     ]
+
+@router.get("/similar-jobs/{job_id}")
+def get_similar_jobs_collaborative(job_id: int, top_k: int = 4):
+    """
+    [Collaborative Filtering: People Also Applied]
+    Tìm các công việc có cùng tập ứng viên quan tâm / ứng tuyển nhiều nhất
+    dựa trên ma trận tương đồng Item-to-Item Collaborative Filtering.
+    """
+    try:
+        from src.recommender.collaborative import get_cf_recommender
+        rec = get_cf_recommender()
+        similar_jobs = rec.get_similar_jobs(job_id=job_id, top_k=top_k)
+        return {
+            "target_job_id": job_id,
+            "total": len(similar_jobs),
+            "similar_jobs": similar_jobs
+        }
+    except Exception as e:
+        return {
+            "target_job_id": job_id,
+            "total": 0,
+            "similar_jobs": [],
+            "error": str(e)
+        }
+
+@router.get("/personas")
+def get_cf_personas():
+    """Lấy danh sách các nhóm chân dung nghề nghiệp IT (Personas) để người dùng chọn nhanh."""
+    from src.recommender.synthetic_data import PERSONAS_DEF
+    return [
+        {
+            "id": p["id"],
+            "name": p["name"],
+            "skills": p["skills"][:5],
+            "seniorities": p["seniorities"]
+        }
+        for p in PERSONAS_DEF
+    ]
+
+@router.get("/persona-feed")
+def get_recommendations_by_persona(persona_id: str = "backend_java", limit: int = 10):
+    """
+    [Collaborative Filtering: Persona Recommendations]
+    Gợi ý danh sách việc làm dựa trên xu hướng tương tác cộng đồng của nhóm ứng viên tương ứng.
+    """
+    try:
+        from src.recommender.collaborative import get_cf_recommender
+        rec = get_cf_recommender()
+        jobs = rec.get_recommendations_for_persona(persona_id=persona_id, top_n=limit)
+        return {
+            "persona_id": persona_id,
+            "total": len(jobs),
+            "recommendations": jobs
+        }
+    except Exception as e:
+        return {
+            "persona_id": persona_id,
+            "total": 0,
+            "recommendations": [],
+            "error": str(e)
+        }
