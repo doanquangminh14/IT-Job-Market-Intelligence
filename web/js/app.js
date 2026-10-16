@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initRecommender();
   loadAnalytics();
   initModal();
+  initSyncModal();
 });
 
 // 1. ĐIỀU HƯỚNG TABS
@@ -708,3 +709,241 @@ window.openJobDetail = async function(jobId) {
     contentEl.innerHTML = `<div style="text-align:center; color:#dc2626; padding:2rem 0;">Lỗi khi tải thông tin việc làm.</div>`;
   }
 };
+
+// 6. THU THẬP & ĐỒNG BỘ DỮ LIỆU VIỆC LÀM TỰ ĐỘNG (CRAWLER & SYNC PIPELINE)
+let syncPollInterval = null;
+
+function escapeHtml(text) {
+  if (!text) return "";
+  const map = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  };
+  return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+function initSyncModal() {
+  const openBtn = document.getElementById("btn-open-sync");
+  const modal = document.getElementById("sync-modal");
+  const closeBtn = document.getElementById("sync-modal-close-btn");
+  const startBtn = document.getElementById("btn-start-sync");
+  const finishBtn = document.getElementById("btn-finish-sync");
+
+  const configPanel = document.getElementById("sync-config-panel");
+  const progressPanel = document.getElementById("sync-progress-panel");
+  const progressBar = document.getElementById("sync-progress-bar");
+  const percentText = document.getElementById("sync-percent-text");
+  const stepText = document.getElementById("sync-step-text");
+  const badge = document.getElementById("sync-status-badge");
+  const consoleLogs = document.getElementById("sync-console-logs");
+  const summaryCard = document.getElementById("sync-summary-card");
+
+  // Mở modal
+  openBtn?.addEventListener("click", async () => {
+    modal.classList.add("active");
+    await checkCurrentSyncStatus();
+  });
+
+  // Đóng modal
+  closeBtn?.addEventListener("click", () => {
+    modal.classList.remove("active");
+    if (syncPollInterval) {
+      clearInterval(syncPollInterval);
+      syncPollInterval = null;
+    }
+  });
+
+  modal?.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      modal.classList.remove("active");
+      if (syncPollInterval) {
+        clearInterval(syncPollInterval);
+        syncPollInterval = null;
+      }
+    }
+  });
+
+  // Kích hoạt cào và đồng bộ
+  startBtn?.addEventListener("click", async () => {
+    const source = document.getElementById("sync-source")?.value || "topdev";
+    const target = parseInt(document.getElementById("sync-target")?.value || "5", 10);
+    const runEtl = document.getElementById("sync-run-etl")?.checked !== false;
+
+    configPanel.style.display = "none";
+    progressPanel.style.display = "block";
+    finishBtn.style.display = "none";
+    summaryCard.style.display = "none";
+    consoleLogs.innerHTML = "";
+    progressBar.style.width = "5%";
+    percentText.textContent = "5%";
+    stepText.textContent = "Đang gửi yêu cầu thu thập dữ liệu...";
+    badge.className = "badge badge-primary";
+    badge.textContent = "Đang thực thi...";
+
+    try {
+      const res = await fetch("/api/crawler/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source, target, run_etl: runEtl })
+      });
+      const data = await res.json();
+      startPollingSyncStatus();
+    } catch (err) {
+      console.error("Lỗi kích hoạt crawler:", err);
+      stepText.textContent = "Lỗi kết nối máy chủ: " + err.message;
+      badge.className = "badge badge-danger";
+      badge.textContent = "Thất bại";
+      finishBtn.style.display = "block";
+      finishBtn.textContent = "Đóng";
+    }
+  });
+
+  // Hoàn tất và cập nhật giao diện
+  finishBtn?.addEventListener("click", async () => {
+    modal.classList.remove("active");
+    if (syncPollInterval) {
+      clearInterval(syncPollInterval);
+      syncPollInterval = null;
+    }
+    await fetch("/api/crawler/reset", { method: "POST" });
+
+    // Trả panel về trạng thái sẵn sàng cho lần sau
+    configPanel.style.display = "block";
+    progressPanel.style.display = "none";
+
+    // Cập nhật lại toàn bộ dữ liệu trên giao diện web
+    loadJobs(1);
+    initFilterOptions();
+    loadAnalytics();
+  });
+}
+
+async function checkCurrentSyncStatus() {
+  try {
+    const res = await fetch("/api/crawler/status");
+    const data = await res.json();
+
+    const configPanel = document.getElementById("sync-config-panel");
+    const progressPanel = document.getElementById("sync-progress-panel");
+
+    if (data.status === "running") {
+      configPanel.style.display = "none";
+      progressPanel.style.display = "block";
+      updateSyncUi(data);
+      startPollingSyncStatus();
+    } else {
+      configPanel.style.display = "block";
+      progressPanel.style.display = "none";
+    }
+  } catch (err) {
+    console.error("Lỗi kiểm tra trạng thái sync:", err);
+  }
+}
+
+function startPollingSyncStatus() {
+  if (syncPollInterval) {
+    clearInterval(syncPollInterval);
+  }
+
+  syncPollInterval = setInterval(async () => {
+    try {
+      const res = await fetch("/api/crawler/status");
+      const data = await res.json();
+      updateSyncUi(data);
+
+      if (data.status === "completed" || data.status === "error") {
+        clearInterval(syncPollInterval);
+        syncPollInterval = null;
+      }
+    } catch (err) {
+      console.error("Lỗi polling sync:", err);
+    }
+  }, 1500);
+}
+
+function updateSyncUi(data) {
+  const progressBar = document.getElementById("sync-progress-bar");
+  const percentText = document.getElementById("sync-percent-text");
+  const stepText = document.getElementById("sync-step-text");
+  const badge = document.getElementById("sync-status-badge");
+  const consoleLogs = document.getElementById("sync-console-logs");
+  const summaryCard = document.getElementById("sync-summary-card");
+  const finishBtn = document.getElementById("btn-finish-sync");
+
+  if (progressBar) progressBar.style.width = data.progress + "%";
+  if (percentText) percentText.textContent = data.progress + "%";
+  if (stepText) stepText.textContent = data.step;
+
+  // Render log terminal
+  if (consoleLogs && data.logs) {
+    consoleLogs.innerHTML = data.logs.map(l => `
+      <div class="console-line">
+        <span class="console-time">[${l.time}]</span>
+        <span class="console-level-${l.level}">[${l.level}]</span>
+        <span>${escapeHtml(l.message)}</span>
+      </div>
+    `).join("");
+    consoleLogs.scrollTop = consoleLogs.scrollHeight;
+  }
+
+  // Cập nhật trạng thái hoàn thành
+  if (data.status === "completed") {
+    if (badge) {
+      badge.className = "badge badge-success";
+      badge.textContent = "Hoàn tất thành công!";
+    }
+    if (finishBtn) {
+      finishBtn.style.display = "block";
+      finishBtn.textContent = "Hoàn Tất & Cập Nhật Lên Giao Diện";
+    }
+
+    if (summaryCard && data.summary) {
+      summaryCard.style.display = "block";
+      summaryCard.innerHTML = `
+        <div style="font-weight:700; color:#166534; font-size:0.92rem; margin-bottom:0.4rem;">
+          Kết Quả Thu Thập & Chuẩn Hóa Dữ Liệu
+        </div>
+        <div class="sync-summary-grid">
+          <div class="sync-summary-item">
+            <div class="sync-summary-val">${data.summary.scraped_count}</div>
+            <div class="sync-summary-lbl">Tin cào được</div>
+          </div>
+          <div class="sync-summary-item">
+            <div class="sync-summary-val">${data.summary.valid_count}</div>
+            <div class="sync-summary-lbl">Hợp lệ Bronze</div>
+          </div>
+          <div class="sync-summary-item">
+            <div class="sync-summary-val">+${data.summary.new_jobs_added_db}</div>
+            <div class="sync-summary-lbl">Thêm mới DB</div>
+          </div>
+          <div class="sync-summary-item">
+            <div class="sync-summary-val">${data.summary.elapsed_seconds}s</div>
+            <div class="sync-summary-lbl">Thời gian</div>
+          </div>
+        </div>
+      `;
+
+      // Cập nhật số lượng trên Navbar
+      const navJobCount = document.getElementById("nav-job-count");
+      if (navJobCount && data.summary.jobs_after_db) {
+        navJobCount.textContent = `${data.summary.jobs_after_db.toLocaleString()} Việc Làm Sẵn Sàng`;
+      }
+    }
+  } else if (data.status === "error") {
+    if (badge) {
+      badge.className = "badge badge-danger";
+      badge.textContent = "Gặp lỗi xử lý";
+    }
+    if (stepText) {
+      stepText.textContent = "Lỗi: " + (data.error_message || "Không xác định");
+    }
+    if (finishBtn) {
+      finishBtn.style.display = "block";
+      finishBtn.textContent = "Đóng";
+    }
+  }
+}
+

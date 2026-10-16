@@ -27,8 +27,11 @@
     </nav>
 
     <div class="nav-status">
-      <span class="status-dot"></span>
-      <span>2,821 Việc Làm Sẵn Sàng</span>
+      <button id="btn-open-sync" class="btn-sync-trigger">Cập Nhật Việc Làm Mới</button>
+      <div style="display:inline-flex; align-items:center; gap:0.4rem;">
+        <span class="status-dot"></span>
+        <span id="nav-job-count">2,822 Việc Làm Sẵn Sàng</span>
+      </div>
     </div>
   </header>
 
@@ -307,6 +310,83 @@
       <button id="modal-close-btn" class="modal-close-btn" aria-label="Đóng">&times;</button>
       <div id="modal-body-content">
         <!-- Nội dung nạp động -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CÀO VÀ ĐỒNG BỘ DỮ LIỆU VIỆC LÀM TỰ ĐỘNG -->
+  <div id="sync-modal" class="modal-overlay">
+    <div class="modal-content sync-modal-content">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Thu Thập & Cập Nhật Việc Làm Mới</h3>
+          <p class="modal-subtitle">Tự động kích hoạt Crawler, lọc dữ liệu đạt chuẩn Bronze (QualityValidator) và nạp chuẩn hóa vào PostgreSQL (Silver & Gold).</p>
+        </div>
+        <button id="sync-modal-close-btn" class="modal-close-btn" aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- PANEL 1: CẤU HÌNH THU THẬP -->
+      <div id="sync-config-panel">
+        <div class="sync-form-grid">
+          <div class="input-group">
+            <label class="input-label" for="sync-source">Nguồn tuyển dụng mục tiêu</label>
+            <select id="sync-source" class="search-select">
+              <option value="all">Tất cả sàn (TopDev, VietnamWorks, TopCV)</option>
+              <option value="topdev" selected>TopDev (Nhanh, Next.js API)</option>
+              <option value="vietnamworks">VietnamWorks</option>
+              <option value="topcv">TopCV</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="sync-target">Số lượng tin cào (Mỗi sàn)</label>
+            <select id="sync-target" class="search-select">
+              <option value="5" selected>5 tin / nguồn (Nhanh ~ 15-20 giây)</option>
+              <option value="10">10 tin / nguồn (~ 30-40 giây)</option>
+              <option value="20">20 tin / nguồn (Chuyên sâu)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sync-checkbox-wrap">
+          <input type="checkbox" id="sync-run-etl" checked>
+          <label for="sync-run-etl">Tự động chuẩn hóa và nạp vào cơ sở dữ liệu Silver & Gold PostgreSQL</label>
+        </div>
+
+        <div style="margin-top: 1.25rem;">
+          <button id="btn-start-sync" class="btn btn-primary" style="width:100%; padding: 0.85rem 1.5rem; font-weight:700;">
+            Bắt Đầu Thu Thập & Cập Nhật
+          </button>
+        </div>
+      </div>
+
+      <!-- PANEL 2: TIẾN TRÌNH THỰC THI THỜI GIAN THỰC -->
+      <div id="sync-progress-panel" style="display:none;">
+        <div class="sync-progress-header">
+          <span id="sync-status-badge" class="badge badge-primary">Đang thực thi...</span>
+          <span id="sync-percent-text" class="sync-percent">0%</span>
+        </div>
+
+        <div class="progress-bar-container">
+          <div id="sync-progress-bar" class="progress-bar-fill" style="width: 0%;"></div>
+        </div>
+
+        <p id="sync-step-text" class="sync-step-text">Đang khởi tạo...</p>
+
+        <!-- LIVE TERMINAL CONSOLE -->
+        <div class="console-box" id="sync-console-logs">
+          <!-- Live logs stream here -->
+        </div>
+
+        <!-- SUMMARY CARD -->
+        <div id="sync-summary-card" class="sync-summary-card" style="display:none;">
+          <!-- Summary stats injected here -->
+        </div>
+
+        <div style="margin-top: 1.25rem;">
+          <button id="btn-finish-sync" class="btn btn-primary" style="display:none; width:100%; padding: 0.85rem 1.5rem; font-weight:700;">
+            Đóng & Làm Mới Dữ Liệu Việc Làm
+          </button>
+        </div>
       </div>
     </div>
   </div>
