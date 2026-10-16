@@ -12,7 +12,6 @@ if PROJECT_ROOT not in sys.path:
 from src.api.routes_jobs import router as jobs_router
 from src.api.routes_recommender import router as recommender_router
 from src.api.routes_analytics import router as analytics_router
-from src.api.routes_crawler import router as crawler_router
 
 app = FastAPI(
     title="IT Job Market Intelligence Platform",
@@ -33,7 +32,6 @@ app.add_middleware(
 app.include_router(jobs_router)
 app.include_router(recommender_router)
 app.include_router(analytics_router)
-app.include_router(crawler_router)
 
 @app.get("/api/health")
 def health_check():
