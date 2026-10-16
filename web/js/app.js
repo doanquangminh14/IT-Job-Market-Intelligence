@@ -409,11 +409,13 @@ async function loadAnalytics() {
   }
 }
 
+let chartPayingSkillsInstance = null;
+
 async function renderAllCharts() {
   if (typeof Chart === "undefined") return;
 
   try {
-    // 1. Biểu đồ Top kỹ năng
+    // 1. Biểu đồ Top 10 Kỹ năng nhu cầu cao nhất
     const skillsRes = await fetch("/api/analytics/top-skills?limit=10");
     const skillsData = await skillsRes.json();
 
@@ -425,7 +427,7 @@ async function renderAllCharts() {
         data: {
           labels: skillsData.map(s => s.skill_name),
           datasets: [{
-            label: "Số lượng tin tuyển dụng yêu cầu",
+            label: "Số tin tuyển dụng yêu cầu",
             data: skillsData.map(s => s.job_count),
             backgroundColor: "#4f46e5",
             borderRadius: 6
@@ -443,7 +445,86 @@ async function renderAllCharts() {
       });
     }
 
-    // 2. Biểu đồ lương theo cấp bậc
+    // 2. Biểu đồ Top 10 Kỹ năng có mức lương cao nhất
+    const payingRes = await fetch("/api/analytics/highest-paying-skills?limit=10");
+    const payingData = await payingRes.json();
+
+    const ctxPaying = document.getElementById("chart-paying-skills")?.getContext("2d");
+    if (ctxPaying) {
+      if (chartPayingSkillsInstance) chartPayingSkillsInstance.destroy();
+      chartPayingSkillsInstance = new Chart(ctxPaying, {
+        type: "bar",
+        data: {
+          labels: payingData.map(p => p.skill_name),
+          datasets: [
+            {
+              label: "Lương tối thiểu (Triệu VNĐ)",
+              data: payingData.map(p => p.avg_min_mil),
+              backgroundColor: "#c7d2fe",
+              borderRadius: 6
+            },
+            {
+              label: "Lương trần tối đa (Triệu VNĐ)",
+              data: payingData.map(p => p.avg_max_mil),
+              backgroundColor: "#059669",
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, grid: { color: "#f1f5f9" } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    // 3. Ma trận kỹ năng đi kèm (Tech Stack Bundles)
+    const coRes = await fetch("/api/analytics/skill-cooccurrence?limit=8");
+    const coData = await coRes.json();
+    const coTable = document.getElementById("cooccurrence-table-body");
+    if (coTable) {
+      coTable.innerHTML = coData.map(c => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:0.65rem 0.5rem; font-weight:700; color:#0f172a;">
+            <span style="background:#eef2ff; color:#4f46e5; padding:2px 8px; border-radius:4px; font-size:0.8rem; margin-right:4px;">${c.skill_a}</span>
+            +
+            <span style="background:#ecfdf5; color:#047857; padding:2px 8px; border-radius:4px; font-size:0.8rem; margin-left:4px;">${c.skill_b}</span>
+          </td>
+          <td style="padding:0.65rem 0.5rem; color:#64748b; font-size:0.8rem;">${c.category_a} &bull; ${c.category_b}</td>
+          <td style="padding:0.65rem 0.5rem; text-align:right; font-weight:800; color:#0f172a;">${c.count} tin</td>
+        </tr>
+      `).join("");
+    }
+
+    // 4. Biểu đồ phân bố địa lý
+    const geoRes = await fetch("/api/analytics/geo-distribution");
+    const geoData = await geoRes.json();
+
+    const ctxGeo = document.getElementById("chart-geo")?.getContext("2d");
+    if (ctxGeo) {
+      if (chartGeoInstance) chartGeoInstance.destroy();
+      chartGeoInstance = new Chart(ctxGeo, {
+        type: "doughnut",
+        data: {
+          labels: geoData.map(g => g.city),
+          datasets: [{
+            data: geoData.map(g => g.total_jobs),
+            backgroundColor: ["#4f46e5", "#06b6d4", "#10b981", "#f59e0b", "#64748b", "#ec4899", "#8b5cf6"]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "right" } }
+        }
+      });
+    }
+
+    // 5. Biểu đồ lương theo cấp bậc
     const rolesRes = await fetch("/api/analytics/roles-salary");
     const rolesData = await rolesRes.json();
 
@@ -480,47 +561,57 @@ async function renderAllCharts() {
       });
     }
 
-    // 3. Biểu đồ địa lý
-    const geoRes = await fetch("/api/analytics/geo-distribution");
-    const geoData = await geoRes.json();
-
-    const ctxGeo = document.getElementById("chart-geo")?.getContext("2d");
-    if (ctxGeo) {
-      if (chartGeoInstance) chartGeoInstance.destroy();
-      chartGeoInstance = new Chart(ctxGeo, {
-        type: "doughnut",
-        data: {
-          labels: geoData.map(g => g.city),
-          datasets: [{
-            data: geoData.map(g => g.total_jobs),
-            backgroundColor: ["#4f46e5", "#06b6d4", "#10b981", "#f59e0b", "#64748b"]
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: "right" } }
-        }
-      });
+    // 6. Phân bố việc làm theo số năm kinh nghiệm
+    const expRes = await fetch("/api/analytics/experience-distribution");
+    const expData = await expRes.json();
+    const expTable = document.getElementById("experience-table-body");
+    if (expTable) {
+      expTable.innerHTML = expData.map(e => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:0.65rem 0.5rem; font-weight:700; color:#0f172a;">${e.experience_bucket}</td>
+          <td style="padding:0.65rem 0.5rem; text-align:center; font-weight:700; color:#4f46e5;">${e.total_jobs.toLocaleString()} tin</td>
+          <td style="padding:0.65rem 0.5rem; text-align:right; font-weight:700; color:#059669;">${e.avg_min_mil} - ${e.avg_max_mil} triệu VNĐ</td>
+        </tr>
+      `).join("");
     }
 
-    // 4. Bảng doanh nghiệp tuyển dụng
+    // 7. Bảng doanh nghiệp tuyển dụng nhiều nhất
     const compRes = await fetch("/api/analytics/top-companies?limit=8");
     const compData = await compRes.json();
-    const tableBody = document.getElementById("top-companies-body");
-    if (tableBody) {
-      tableBody.innerHTML = compData.map((c, i) => `
+    const compTable = document.getElementById("top-companies-body");
+    if (compTable) {
+      compTable.innerHTML = compData.map((c, i) => `
         <tr style="border-bottom:1px solid #f1f5f9;">
-          <td style="padding:0.75rem 0.5rem; font-weight:700; color:#64748b;">#0${i + 1}</td>
-          <td style="padding:0.75rem 0.5rem; font-weight:700; color:#0f172a;">${c.company_name}</td>
-          <td style="padding:0.75rem 0.5rem; color:#475569;">${c.city}</td>
-          <td style="padding:0.75rem 0.5rem; font-weight:800; color:#4f46e5;">${c.total_postings} tin</td>
-          <td style="padding:0.75rem 0.5rem; color:#059669; font-weight:600;">${c.avg_min_mil} - ${c.avg_max_mil} Tr</td>
+          <td style="padding:0.65rem 0.5rem; font-weight:700; color:#64748b;">#0${i + 1}</td>
+          <td style="padding:0.65rem 0.5rem; font-weight:700; color:#0f172a;">${c.company_name}</td>
+          <td style="padding:0.65rem 0.5rem; color:#475569;">${c.city}</td>
+          <td style="padding:0.65rem 0.5rem; text-align:center; font-weight:800; color:#4f46e5;">${c.total_postings} tin</td>
+          <td style="padding:0.65rem 0.5rem; text-align:right; color:#059669; font-weight:700;">${c.avg_min_mil} - ${c.avg_max_mil} Tr</td>
+        </tr>
+      `).join("");
+    }
+
+    // 8. Cổng cơ hội việc làm Thực tập sinh / Fresher
+    const stuRes = await fetch("/api/analytics/student-jobs?limit=8");
+    const stuData = await stuRes.json();
+    const stuTable = document.getElementById("student-jobs-body");
+    if (stuTable) {
+      stuTable.innerHTML = stuData.map(s => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:0.65rem 0.5rem; font-weight:700; color:#0f172a; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${s.title}">
+            ${s.title}
+          </td>
+          <td style="padding:0.65rem 0.5rem; color:#4f46e5; font-weight:600;">${s.company_name}</td>
+          <td style="padding:0.65rem 0.5rem; color:#64748b; font-size:0.8rem;">${s.city}</td>
+          <td style="padding:0.65rem 0.5rem; color:#059669; font-weight:700; font-size:0.82rem;">${s.salary_str}</td>
+          <td style="padding:0.65rem 0.5rem; text-align:right;">
+            <a href="${s.url}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-outline" style="padding:2px 8px; font-size:0.75rem;">Nộp CV</a>
+          </td>
         </tr>
       `).join("");
     }
   } catch (err) {
-    console.error("Lỗi vẽ biểu đồ:", err);
+    console.error("Lỗi vẽ biểu đồ phân tích:", err);
   }
 }
 

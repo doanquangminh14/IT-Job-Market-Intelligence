@@ -150,3 +150,146 @@ def get_top_companies(limit: int = 10):
             "avg_max_mil": float(r[4] or 0)
         })
     return result
+
+@router.get("/skill-cooccurrence")
+def get_skill_cooccurrence(limit: int = 12):
+    """Ma trận kỹ năng đi kèm (Tech Stack Bundles)."""
+    query = """
+        SELECT skill_a, skill_b, category_a, category_b, cooccurrence_count
+        FROM vw_gold_skill_cooccurrence
+        ORDER BY cooccurrence_count DESC
+        LIMIT %s;
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, [limit])
+            rows = cur.fetchall()
+
+    result = []
+    for r in rows:
+        result.append({
+            "skill_a": r[0],
+            "skill_b": r[1],
+            "category_a": r[2],
+            "category_b": r[3],
+            "count": int(r[4] or 0)
+        })
+    return result
+
+@router.get("/highest-paying-skills")
+def get_highest_paying_skills(limit: int = 10):
+    """Top kỹ năng công nghệ có mức lương trần trung bình cao nhất."""
+    query = """
+        SELECT 
+            skill_name, 
+            skill_category, 
+            total_job_count,
+            ROUND(COALESCE(avg_skill_min_salary_vnd, 0) / 1000000, 1) AS avg_min_mil,
+            ROUND(COALESCE(avg_skill_max_salary_vnd, 0) / 1000000, 1) AS avg_max_mil
+        FROM vw_gold_skill_demand
+        WHERE total_job_count >= 8 AND avg_skill_max_salary_vnd > 0
+        ORDER BY avg_skill_max_salary_vnd DESC
+        LIMIT %s;
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, [limit])
+            rows = cur.fetchall()
+
+    result = []
+    for r in rows:
+        result.append({
+            "skill_name": r[0],
+            "category": r[1],
+            "job_count": int(r[2] or 0),
+            "avg_min_mil": float(r[3] or 0),
+            "avg_max_mil": float(r[4] or 0)
+        })
+    return result
+
+@router.get("/experience-distribution")
+def get_experience_distribution():
+    """Phân bố việc làm và mức lương theo số năm kinh nghiệm."""
+    query = """
+        SELECT 
+            experience_bucket, 
+            SUM(posting_count) AS total_jobs,
+            ROUND(AVG(avg_salary_min_vnd) / 1000000, 1) AS avg_min_mil,
+            ROUND(AVG(avg_salary_max_vnd) / 1000000, 1) AS avg_max_mil
+        FROM vw_gold_salary_experience_matrix
+        WHERE experience_bucket IS NOT NULL
+        GROUP BY experience_bucket
+        ORDER BY total_jobs DESC;
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+
+    result = []
+    for r in rows:
+        result.append({
+            "experience_bucket": r[0],
+            "total_jobs": int(r[1] or 0),
+            "avg_min_mil": float(r[2] or 0),
+            "avg_max_mil": float(r[3] or 0)
+        })
+    return result
+
+@router.get("/student-jobs")
+def get_student_jobs(limit: int = 8):
+    """Cơ hội việc làm dành riêng cho Thực tập sinh / Fresher."""
+    query = """
+        SELECT 
+            job_id, 
+            title_normalized, 
+            company_name_normalized, 
+            city, 
+            work_mode, 
+            seniority_level, 
+            salary_type, 
+            salary_min_vnd, 
+            salary_max_vnd, 
+            deadline, 
+            source_job_url
+        FROM vw_gold_student_career
+        WHERE is_active = TRUE
+        ORDER BY job_id DESC
+        LIMIT %s;
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, [limit])
+            rows = cur.fetchall()
+
+    result = []
+    for r in rows:
+        min_v = float(r[7] or 0)
+        max_v = float(r[8] or 0)
+        sal_type = r[6]
+        if min_v > 0 and max_v > 0:
+            sal_str = f"{min_v/1e6:.1f} - {max_v/1e6:.1f} triệu VNĐ" if min_v != max_v else f"{min_v/1e6:.1f} triệu VNĐ"
+        elif max_v > 0:
+            sal_str = f"Lên tới {max_v/1e6:.1f} triệu VNĐ"
+        elif min_v > 0:
+            sal_str = f"Từ {min_v/1e6:.1f} triệu VNĐ"
+        elif sal_type == "negotiable":
+            sal_str = "Thỏa thuận"
+        else:
+            sal_str = "Cạnh tranh"
+
+        dl_val = r[9]
+        dl_str = dl_val.strftime("%d/%m/%Y") if dl_val and hasattr(dl_val, "strftime") else "Đang mở"
+
+        result.append({
+            "job_id": r[0],
+            "title": r[1],
+            "company_name": r[2],
+            "city": r[3],
+            "work_mode": r[4],
+            "seniority_level": r[5],
+            "salary_str": sal_str,
+            "deadline_str": dl_str,
+            "url": r[10] or ""
+        })
+    return result

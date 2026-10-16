@@ -151,12 +151,12 @@
     <!-- VIEW 3: THỊ TRƯỜNG & KỸ NĂNG (MARKET ANALYTICS) -->
     <section id="view-analytics" class="view-section">
       <div class="hero-card">
-        <span class="hero-tag">BÁO CÁO THỊ TRƯỜNG CNTT VIỆT NAM</span>
-        <h2 class="hero-title">Bức Tranh Tổng Thể Về Nhu Cầu Tuyển Dụng & Mức Lương</h2>
-        <p class="hero-desc">Số liệu tổng hợp thời gian thực từ 2,821 tin tuyển dụng của 1,436 doanh nghiệp công nghệ, phân tích chuyên sâu về kỹ năng có nhu cầu cao và phổ lương theo cấp bậc.</p>
+        <span class="hero-tag">BÁO CÁO THỊ TRƯỜNG CNTT VIỆT NAM • GOLD LAYER ANALYTICS</span>
+        <h2 class="hero-title">Bức Tranh Toàn Cảnh Về Nhu Cầu Kỹ Năng & Định Chuẩn Mức Lương</h2>
+        <p class="hero-desc">Dữ liệu phân tích đa chiều được tổng hợp từ tầng Gold Layer của 2,821 tin tuyển dụng và 1,436 doanh nghiệp công nghệ, cung cấp thông tin chuyên sâu về xu hướng kỹ năng, ma trận Tech Stack đi kèm và dải lương theo thâm niên.</p>
       </div>
 
-      <!-- KPI METRIC CARDS -->
+      <!-- 1. VĨ MÔ THỊ TRƯỜNG & ĐỊA BÀN -->
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-label">Tổng việc làm khảo sát</div>
@@ -170,41 +170,92 @@
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Mức lương trung bình</div>
-          <div id="stat-avg-salary" class="kpi-value">18.5 - 32.2 Tr</div>
+          <div id="stat-avg-salary" class="kpi-value">19.5 - 27.0 Tr</div>
           <div class="kpi-sub">Triệu VNĐ mỗi tháng</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Tỷ lệ Remote / Hybrid</div>
-          <div id="stat-remote-ratio" class="kpi-value">14.2%</div>
+          <div id="stat-remote-ratio" class="kpi-value">1.5%</div>
           <div class="kpi-sub">Linh hoạt địa điểm làm việc</div>
         </div>
       </div>
 
-      <!-- CHARTS -->
+      <!-- 2. BIỂU ĐỒ NHU CẦU KỸ NĂNG & KỸ NĂNG LƯƠNG CAO NHẤT -->
       <div class="charts-grid">
         <div class="chart-card">
-          <h3 class="chart-title">Top 10 Kỹ Năng Công Nghệ Nhu Cầu Tuyển Dụng Cao Nhất</h3>
+          <h3 class="chart-title">Top 10 Kỹ Năng CNTT Nhu Cầu Tuyển Dụng Lớn Nhất</h3>
           <div style="height:320px; position:relative;">
             <canvas id="chart-skills"></canvas>
           </div>
         </div>
 
         <div class="chart-card">
-          <h3 class="chart-title">Mức Lương Tuyển Dụng Theo Cấp Bậc Kinh Nghiệm (Triệu VNĐ)</h3>
+          <h3 class="chart-title">Top 10 Kỹ Năng Công Nghệ Có Mức Lương Cao Nhất (Triệu VNĐ)</h3>
           <div style="height:320px; position:relative;">
-            <canvas id="chart-roles"></canvas>
+            <canvas id="chart-paying-skills"></canvas>
           </div>
         </div>
       </div>
 
+      <!-- 3. MA TRẬN KỸ NĂNG ĐI KÈM (TECH STACK BUNDLES) & PHÂN BỐ ĐỊA BÀN -->
       <div class="charts-grid">
         <div class="chart-card">
-          <h3 class="chart-title">Phân Bố Việc Làm Theo Địa Bàn Tuyển Dụng</h3>
-          <div style="height:300px; position:relative;">
-            <canvas id="chart-geo"></canvas>
+          <h3 class="chart-title">Ma Trận Kỹ Năng Đi Kèm (Tech Stack Thường Gặp Nhất)</h3>
+          <p style="font-size:0.82rem; color:var(--slate-500); margin-bottom:0.75rem;">Các cặp công nghệ thường xuyên được doanh nghiệp yêu cầu cùng lúc trong một tin tuyển dụng.</p>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.86rem;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--slate-200); color:var(--slate-600);">
+                  <th style="padding:0.6rem 0.5rem;">Cặp công nghệ</th>
+                  <th style="padding:0.6rem 0.5rem;">Nhóm chuyên môn</th>
+                  <th style="padding:0.6rem 0.5rem; text-align:right;">Số tin tuyển dụng</th>
+                </tr>
+              </thead>
+              <tbody id="cooccurrence-table-body">
+                <!-- Render động -->
+              </tbody>
+            </table>
           </div>
         </div>
 
+        <div class="chart-card">
+          <h3 class="chart-title">Phân Bố Việc Làm Theo Địa Bàn Tuyển Dụng</h3>
+          <div style="height:320px; position:relative;">
+            <canvas id="chart-geo"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. LƯƠNG THEO CẤP BẬC & THEO SỐ NĂM KINH NGHIỆM -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3 class="chart-title">Mức Lương Tuyển Dụng Theo Cấp Bậc (Triệu VNĐ)</h3>
+          <div style="height:320px; position:relative;">
+            <canvas id="chart-roles"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">Phân Bố Việc Làm & Lương Theo Số Năm Kinh Nghiệm</h3>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.86rem;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--slate-200); color:var(--slate-600);">
+                  <th style="padding:0.6rem 0.5rem;">Số năm kinh nghiệm</th>
+                  <th style="padding:0.6rem 0.5rem; text-align:center;">Số lượng tin</th>
+                  <th style="padding:0.6rem 0.5rem; text-align:right;">Dải lương trung bình</th>
+                </tr>
+              </thead>
+              <tbody id="experience-table-body">
+                <!-- Render động -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. TOP DOANH NGHIỆP TUYỂN DỤNG & VIỆC LÀM CHO SINH VIÊN / FRESHER -->
+      <div class="charts-grid">
         <div class="chart-card">
           <h3 class="chart-title">Top Doanh Nghiệp Có Nhu Cầu Tuyển Dụng Lớn Nhất</h3>
           <div style="overflow-x:auto;">
@@ -214,11 +265,32 @@
                   <th style="padding:0.6rem 0.5rem;">Hạng</th>
                   <th style="padding:0.6rem 0.5rem;">Doanh nghiệp</th>
                   <th style="padding:0.6rem 0.5rem;">Trụ sở</th>
-                  <th style="padding:0.6rem 0.5rem;">Số tin</th>
-                  <th style="padding:0.6rem 0.5rem;">Lương dự kiến</th>
+                  <th style="padding:0.6rem 0.5rem; text-align:center;">Số tin</th>
+                  <th style="padding:0.6rem 0.5rem; text-align:right;">Lương dự kiến</th>
                 </tr>
               </thead>
               <tbody id="top-companies-body">
+                <!-- Render động -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">Cổng Cơ Hội Việc Làm Dành Riêng Cho Thực Tập Sinh / Fresher</h3>
+          <p style="font-size:0.82rem; color:var(--slate-500); margin-bottom:0.75rem;">Các cơ hội nghề nghiệp đầu đời tuyển chọn từ view Gold vw_gold_student_career.</p>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.86rem;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--slate-200); color:var(--slate-600);">
+                  <th style="padding:0.6rem 0.5rem;">Vị trí tuyển dụng</th>
+                  <th style="padding:0.6rem 0.5rem;">Công ty</th>
+                  <th style="padding:0.6rem 0.5rem;">Địa điểm</th>
+                  <th style="padding:0.6rem 0.5rem;">Mức lương</th>
+                  <th style="padding:0.6rem 0.5rem; text-align:right;">Ứng tuyển</th>
+                </tr>
+              </thead>
+              <tbody id="student-jobs-body">
                 <!-- Render động -->
               </tbody>
             </table>
