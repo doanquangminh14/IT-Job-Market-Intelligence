@@ -91,6 +91,30 @@ def get_preset_profiles():
             "name": "Cloud & DevOps Engineer",
             "subtitle": "AWS / Docker / Kubernetes / CI-CD",
             "text": "Kỹ sư DevOps có kinh nghiệm quản trị hạ tầng đám mây AWS, đóng gói ứng dụng bằng Docker và điều phối cụm Kubernetes (K8s). Thành thạo thiết lập quy trình tự động hóa CI/CD pipeline, quản trị hệ điều hành Linux và giám sát hệ thống với Prometheus, Grafana."
+        },
+        {
+            "id": "ai_ml_engineer",
+            "name": "AI & Machine Learning Engineer",
+            "subtitle": "Python / PyTorch / LLM / NLP",
+            "text": "Kỹ sư Trí tuệ nhân tạo (AI/ML) thành thạo lập trình Python, xây dựng và tinh chỉnh mô hình Deep Learning với PyTorch, TensorFlow. Có kinh nghiệm triển khai các giải pháp xử lý ngôn ngữ tự nhiên (NLP), mô hình ngôn ngữ lớn (LLM, RAG) và tích hợp API mô hình học máy vào hệ thống production."
+        },
+        {
+            "id": "mobile_dev",
+            "name": "Mobile Flutter / React Native",
+            "subtitle": "Flutter / Dart / Mobile Native",
+            "text": "Lập trình viên ứng dụng di động đa nền tảng với hơn 2 năm kinh nghiệm làm việc chuyên sâu với Flutter và Dart. Thành thạo xây dựng giao diện Mobile mượt mà, quản lý trạng thái (Bloc, Provider), tích hợp Firebase, Push Notification và kết nối RESTful API."
+        },
+        {
+            "id": "qa_tester",
+            "name": "QA / Automation Tester",
+            "subtitle": "Selenium / Postman / JMeter",
+            "text": "Kỹ sư kiểm thử phần mềm (QA/QC) có kinh nghiệm thiết kế Test Case, kiểm thử chức năng (Manual Testing) và xây dựng kịch bản kiểm thử tự động (Automation Testing) với Selenium, Cypress. Thành thạo kiểm thử API bằng Postman và kiểm thử tải hiệu năng hệ thống với JMeter."
+        },
+        {
+            "id": "fullstack_web",
+            "name": "Fullstack Web Developer",
+            "subtitle": "Node.js / React / MongoDB",
+            "text": "Kỹ sư phát triển phần mềm Fullstack thành thạo hệ sinh thái JavaScript/TypeScript bao gồm React cho giao diện và Node.js, Express.js cho tầng backend. Có kinh nghiệm thiết kế CSDL MongoDB, PostgreSQL, bảo mật JWT và triển khai ứng dụng web trên môi trường Docker."
         }
     ]
 

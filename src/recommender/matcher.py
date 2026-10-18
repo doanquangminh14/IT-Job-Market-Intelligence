@@ -18,14 +18,67 @@ from src.recommender.collaborative import get_cf_recommender
 
 _CACHED_PATTERNS = None
 
+# Bổ sung các kỹ năng phân tích / công cụ phổ biến từ hồ sơ ứng viên
+EXTRA_CANDIDATE_SKILLS = {
+    "Excel": r"(?:\bexcel\b|\bms\s*excel\b|\bmicrosoft\s*excel\b)",
+    "Power BI": r"(?:\bpower\s*bi\b|\bpowerbi\b)",
+    "Tableau": r"\btableau\b",
+    "Figma": r"\bfigma\b",
+    "Firebase": r"\bfirebase\b",
+    "GraphQL": r"\bgraphql\b",
+    "Airflow": r"(?:\bairflow\b|\bapache\s*airflow\b)",
+    "GitLab": r"\bgitlab\b",
+    "GitHub": r"\bgithub\b",
+    "LangChain": r"(?:\blangchain\b|\blang\s*chain\b)",
+    "RAG": r"(?:\brag\b|\bretrieval[\s-]augmented\b)"
+}
+
+DOMAIN_CLUES = {
+    "data_engineer": [
+        "phân tích dữ liệu", "data analyst", "data analysis", "dữ liệu", "data engineer",
+        "business intelligence", "bi", "data warehouse", "báo cáo", "thống kê", "analytics",
+        "power bi", "excel", "tableau", "dwh", "etl", "big data", "spark", "pipeline dữ liệu"
+    ],
+    "frontend_react": [
+        "frontend", "front-end", "giao diện", "react", "vue", "angular", "ui/ux",
+        "web frontend", "html", "css", "tailwind", "next.js", "client-side", "responsive"
+    ],
+    "backend_java": [
+        "backend", "back-end", "java", "spring", "spring boot", "microservices",
+        "api backend", "server", "hibernate", "jpa", "restful api", "phát triển máy chủ"
+    ],
+    "fullstack_node_python": [
+        "fullstack", "full-stack", "node.js", "python backend", "django", "fastapi",
+        "express", "toàn diện", "lập trình fullstack", "web app"
+    ],
+    "mobile_dev": [
+        "mobile", "di động", "android", "ios", "flutter", "react native", "swift",
+        "kotlin", "app di động", "ứng dụng di động", "lập trình app"
+    ],
+    "ai_ml_engineer": [
+        "ai", "machine learning", "trí tuệ nhân tạo", "deep learning", "nlp", "llm",
+        "computer vision", "khoa học dữ liệu", "data science", "pytorch", "tensorflow",
+        "thị giác máy tính", "xử lý ngôn ngữ tự nhiên", "rag", "genai", "học máy"
+    ],
+    "devops_cloud": [
+        "devops", "cloud", "hạ tầng", "ci/cd", "kubernetes", "aws", "docker",
+        "sysadmin", "hệ thống", "quản trị mạng", "điện toán đám mây", "terraform", "linux"
+    ],
+    "fresher_intern": [
+        "fresher", "intern", "thực tập", "thực tập sinh", "mới tốt nghiệp", "sinh viên",
+        "chưa có kinh nghiệm", "entry-level", "trainee", "tìm chỗ thực tập"
+    ]
+}
+
 def extract_candidate_skills(candidate_text: str):
     """
     Tự động trích xuất các kỹ năng công nghệ có trong CV / mô tả của ứng viên
-    bằng bộ matcher 76 kỹ năng chuẩn hóa của dự án.
+    bằng bộ matcher 76 kỹ năng chuẩn hóa của dự án kết hợp các công cụ dữ liệu phổ biến.
     """
     global _CACHED_PATTERNS
     if _CACHED_PATTERNS is None:
-        _CACHED_PATTERNS = get_skill_patterns()
+        _CACHED_PATTERNS = dict(get_skill_patterns())
+        _CACHED_PATTERNS.update(EXTRA_CANDIDATE_SKILLS)
 
     if not candidate_text:
         return []
@@ -38,19 +91,36 @@ def extract_candidate_skills(candidate_text: str):
 
     return sorted(list(set(found_skills)))
 
-def infer_persona_from_skills(candidate_skills: List[str]) -> Dict[str, Any]:
-    """Tự động suy luận Persona / Career Track phù hợp nhất dựa trên kỹ năng phát hiện từ CV."""
-    if not candidate_skills:
-        return PERSONAS_DEF[0]
-
+def infer_persona_from_skills(candidate_skills: List[str], raw_text: str = "") -> Dict[str, Any]:
+    """
+    Tự động suy luận Persona / Career Track phù hợp nhất dựa trên:
+    1. Kỹ năng phát hiện từ CV (Skill Overlap)
+    2. Từ khóa chuyên ngành xuất hiện trong văn bản mô tả (Domain Clues)
+    """
     cand_set = set(candidate_skills)
+    raw_lower = raw_text.lower() if raw_text else ""
     best_persona = PERSONAS_DEF[0]
-    best_match = -1
+    best_score = -1.0
+
     for p in PERSONAS_DEF:
-        overlap = len(cand_set.intersection(set(p.get("skills", []))))
-        if overlap > best_match:
-            best_match = overlap
+        pid = p["id"]
+        skills_in_p = set(p.get("skills", []))
+        if pid == "data_engineer":
+            skills_in_p = skills_in_p.union({"Excel", "Tableau", "Power BI"})
+
+        overlap = len(cand_set.intersection(skills_in_p))
+        score = float(overlap)
+
+        # Cộng điểm ưu tiên nếu văn bản chứa từ khóa đặc trưng của chuyên ngành
+        clues = DOMAIN_CLUES.get(pid, [])
+        for clue in clues:
+            if clue in raw_lower:
+                score += 1.5
+
+        if score > best_score:
+            best_score = score
             best_persona = p
+
     return best_persona
 
 def recommend_jobs(
@@ -85,9 +155,9 @@ def recommend_jobs(
     if persona_id and persona_id != "auto":
         target_persona = next((p for p in PERSONAS_DEF if p["id"] == persona_id), None)
         if not target_persona:
-            target_persona = infer_persona_from_skills(candidate_skills)
+            target_persona = infer_persona_from_skills(candidate_skills, candidate_profile_text)
     else:
-        target_persona = infer_persona_from_skills(candidate_skills)
+        target_persona = infer_persona_from_skills(candidate_skills, candidate_profile_text)
 
     # 3. Lấy ma trận điểm tương thích Collaborative Filtering từ SVD Matrix Factorization
     cf_scores_map = {}
