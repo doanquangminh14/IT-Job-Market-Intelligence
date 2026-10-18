@@ -109,8 +109,10 @@ def recommend_jobs(
 
     # 6. Tính toán điểm tổng hợp True Hybrid và lọc kết quả
     candidates_ranked = []
+    total_items = min(len(metadata_list), len(semantic_scores))
 
-    for idx, meta in enumerate(metadata_list):
+    for idx in range(total_items):
+        meta = metadata_list[idx]
         # Kiểm tra bộ lọc cứng
         if filter_city != "Tất cả" and meta["city"] != filter_city:
             continue

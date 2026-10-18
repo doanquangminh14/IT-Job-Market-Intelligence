@@ -74,13 +74,14 @@ def transform_job_descriptions(bronze_data):
         requirements_raw = str(row.get('requirements_raw', '') or '').strip()
         benefits_raw = str(row.get('benefits_raw', '') or '').strip()
 
-        # Tạo description_clean từ overview và responsibilities
-        if overview_raw and responsibilities_raw:
-            desc_combined = f"{overview_raw}\n\n{responsibilities_raw}"
+        # Tạo description_clean: Ưu tiên mô tả công việc / trách nhiệm thực tế (responsibilities_raw)
+        # Chỉ fallback về overview_raw nếu công việc không có responsibilities_raw
+        if responsibilities_raw:
+            desc_combined = responsibilities_raw
         elif overview_raw:
             desc_combined = overview_raw
         else:
-            desc_combined = responsibilities_raw
+            desc_combined = ""
 
         desc_clean = clean_html_text(desc_combined)
         req_clean = clean_html_text(requirements_raw)
