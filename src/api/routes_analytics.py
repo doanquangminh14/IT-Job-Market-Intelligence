@@ -268,7 +268,10 @@ def get_student_jobs(limit: int = 8):
         max_v = float(r[8] or 0)
         sal_type = r[6]
         if min_v > 0 and max_v > 0:
-            sal_str = f"{min_v/1e6:.1f} - {max_v/1e6:.1f} triệu VNĐ" if min_v != max_v else f"{min_v/1e6:.1f} triệu VNĐ"
+            if round(min_v / 1e6, 1) == round(max_v / 1e6, 1):
+                sal_str = f"{min_v/1e6:.1f} triệu VNĐ"
+            else:
+                sal_str = f"{min_v/1e6:.1f} - {max_v/1e6:.1f} triệu VNĐ"
         elif max_v > 0:
             sal_str = f"Lên tới {max_v/1e6:.1f} triệu VNĐ"
         elif min_v > 0:

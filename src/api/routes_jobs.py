@@ -28,7 +28,7 @@ def format_salary_display(min_vnd, max_vnd, sal_type):
     has_max = max_v > 0
 
     if has_min and has_max:
-        if min_v == max_v:
+        if round(min_v / 1e6, 1) == round(max_v / 1e6, 1):
             return f"{min_v/1e6:.1f} triệu VNĐ"
         return f"{min_v/1e6:.1f} - {max_v/1e6:.1f} triệu VNĐ"
     elif has_max:
