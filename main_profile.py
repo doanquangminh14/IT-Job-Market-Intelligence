@@ -71,8 +71,8 @@ def main():
 
     # 2. Xuất file Markdown & CSV
     md_file, csv_file = reporter.save_reports(profile_result)
-    print(f"✅ Báo cáo chi tiết đã lưu tại : {md_file}")
-    print(f"📈 Chỉ số lịch sử đã cập nhật tại: {csv_file}")
+    print(f"[+] Báo cáo chi tiết đã lưu tại : {md_file}")
+    print(f"[+] Chỉ số lịch sử đã cập nhật tại: {csv_file}")
 
 
 if __name__ == "__main__":

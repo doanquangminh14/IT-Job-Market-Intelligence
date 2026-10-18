@@ -134,15 +134,19 @@ def generate_and_save_embeddings(force_recompute=False):
         has_min = pd.notna(min_v) and min_v > 0
         has_max = pd.notna(max_v) and max_v > 0
 
+        def _fmt_mil(val):
+            v = float(val) / 1e6
+            return f"{int(round(v))}" if abs(v - round(v)) < 0.05 else f"{v:.1f}"
+
         if has_min and has_max:
             if round(float(min_v) / 1e6, 1) == round(float(max_v) / 1e6, 1):
-                sal_str = f"{float(min_v)/1e6:.1f} triệu VNĐ"
+                sal_str = f"{_fmt_mil(min_v)} triệu VNĐ"
             else:
-                sal_str = f"{float(min_v)/1e6:.1f} - {float(max_v)/1e6:.1f} triệu VNĐ"
+                sal_str = f"{_fmt_mil(min_v)} - {_fmt_mil(max_v)} triệu VNĐ"
         elif has_max:
-            sal_str = f"Lên tới {max_v/1e6:.1f} triệu VNĐ"
+            sal_str = f"Lên tới {_fmt_mil(max_v)} triệu VNĐ"
         elif has_min:
-            sal_str = f"Từ {min_v/1e6:.1f} triệu VNĐ"
+            sal_str = f"Từ {_fmt_mil(min_v)} triệu VNĐ"
         elif sal_type == "negotiable":
             sal_str = "Thỏa thuận"
         else:
@@ -242,15 +246,19 @@ def refresh_metadata_file():
         has_min = pd.notna(min_v) and min_v > 0
         has_max = pd.notna(max_v) and max_v > 0
 
+        def _fmt_mil(val):
+            v = float(val) / 1e6
+            return f"{int(round(v))}" if abs(v - round(v)) < 0.05 else f"{v:.1f}"
+
         if has_min and has_max:
             if round(float(min_v) / 1e6, 1) == round(float(max_v) / 1e6, 1):
-                sal_str = f"{float(min_v)/1e6:.1f} triệu VNĐ"
+                sal_str = f"{_fmt_mil(min_v)} triệu VNĐ"
             else:
-                sal_str = f"{float(min_v)/1e6:.1f} - {float(max_v)/1e6:.1f} triệu VNĐ"
+                sal_str = f"{_fmt_mil(min_v)} - {_fmt_mil(max_v)} triệu VNĐ"
         elif has_max:
-            sal_str = f"Lên tới {max_v/1e6:.1f} triệu VNĐ"
+            sal_str = f"Lên tới {_fmt_mil(max_v)} triệu VNĐ"
         elif has_min:
-            sal_str = f"Từ {min_v/1e6:.1f} triệu VNĐ"
+            sal_str = f"Từ {_fmt_mil(min_v)} triệu VNĐ"
         elif sal_type == "negotiable":
             sal_str = "Thỏa thuận"
         else:

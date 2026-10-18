@@ -27,14 +27,18 @@ def format_salary_display(min_vnd, max_vnd, sal_type):
     has_min = min_v > 0
     has_max = max_v > 0
 
+    def _fmt_mil(val):
+        v = val / 1e6
+        return f"{int(round(v))}" if abs(v - round(v)) < 0.05 else f"{v:.1f}"
+
     if has_min and has_max:
         if round(min_v / 1e6, 1) == round(max_v / 1e6, 1):
-            return f"{min_v/1e6:.1f} triệu VNĐ"
-        return f"{min_v/1e6:.1f} - {max_v/1e6:.1f} triệu VNĐ"
+            return f"{_fmt_mil(min_v)} triệu VNĐ"
+        return f"{_fmt_mil(min_v)} - {_fmt_mil(max_v)} triệu VNĐ"
     elif has_max:
-        return f"Lên tới {max_v/1e6:.1f} triệu VNĐ"
+        return f"Lên tới {_fmt_mil(max_v)} triệu VNĐ"
     elif has_min:
-        return f"Từ {min_v/1e6:.1f} triệu VNĐ"
+        return f"Từ {_fmt_mil(min_v)} triệu VNĐ"
     elif sal_type == "negotiable":
         return "Thỏa thuận"
     return "Cạnh tranh"

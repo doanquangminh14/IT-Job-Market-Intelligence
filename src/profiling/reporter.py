@@ -28,7 +28,7 @@ class ReportGenerator:
         target_date = profile_result["target_date"]
 
         print("\n" + "=" * 80)
-        print(f"📊 BÁO CÁO KIỂM KÊ & PROFILING DỮ LIỆU THÔ (PHẠM VI: {target_date.upper()})")
+        print(f"BÁO CÁO KIỂM KÊ & PROFILING DỮ LIỆU THÔ (PHẠM VI: {target_date.upper()})")
         print("=" * 80)
         print(f"- Số nguồn cào khảo sát     : {profile_result['sources_count']} nguồn")
         print(f"- Tổng số listing ghi nhận   : {overall['total_listings']:,} tin")
@@ -66,7 +66,7 @@ class ReportGenerator:
         cross_dups = profile_result["cross_portal_duplicates"]
 
         md_lines = [
-            f"# 📋 Báo Cáo Kiểm Kê & Profiling Dữ Liệu Tuyển Dụng IT",
+            f"# Báo Cáo Kiểm Kê & Profiling Dữ Liệu Tuyển Dụng IT",
             f"",
             f"> **Phạm vi khảo sát**: `{target_date}`  ",
             f"> **Thời điểm tạo báo cáo**: `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`  ",
@@ -178,7 +178,7 @@ class ReportGenerator:
             f"",
             f"## 5. So Sánh Tính Đồng Nhất Của Cấu Trúc JSON (Schema Consistency)",
             f"",
-            f"- **Trạng thái đồng nhất**: {'✅ **Đồng nhất 100% giữa các nguồn**' if schema_comp['is_schema_uniform'] else '⚠️ **Có trường chênh lệch giữa các sàn**'}",
+            f"- **Trạng thái đồng nhất**: {'[OK] **Đồng nhất 100% giữa các nguồn**' if schema_comp['is_schema_uniform'] else '[CANH BAO] **Có trường chênh lệch giữa các sàn**'}",
             f"- **Số lượng trường chung (`common_keys`)**: `{len(schema_comp['common_keys'])}` trường",
             f"- **Danh sách trường dùng chung**: `{', '.join(schema_comp['common_keys'])}`",
             f"",

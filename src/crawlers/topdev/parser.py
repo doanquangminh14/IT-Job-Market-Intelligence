@@ -56,13 +56,23 @@ def parse_job_listings_from_html(html: str, page: int) -> List[Dict[str, Any]]:
                 sal_obj = obj.get("salary", {})
                 if sal_obj.get("is_negotiable") == "1":
                     salary = "Thương lượng"
-                elif sal_obj.get("min") and sal_obj.get("max") and (sal_obj.get("min") > 0 or sal_obj.get("max") > 0):
-                    currency = sal_obj.get("currency", "VND")
-                    salary = f"{sal_obj['min']:,} - {sal_obj['max']:,} {currency}"
-                elif sal_obj.get("value"):
-                    salary = fix_encoding(sal_obj.get("value"))
                 else:
-                    salary = "Thương lượng"
+                    s_min = sal_obj.get("min")
+                    s_max = sal_obj.get("max")
+                    currency = sal_obj.get("currency", "VND")
+                    if s_min and s_max and (s_min > 0 or s_max > 0):
+                        if s_min == s_max:
+                            salary = f"{s_min:,} {currency}"
+                        else:
+                            salary = f"{s_min:,} - {s_max:,} {currency}"
+                    elif s_min and s_min > 0:
+                        salary = f"Từ {s_min:,} {currency}"
+                    elif s_max and s_max > 0:
+                        salary = f"Lên tới {s_max:,} {currency}"
+                    elif sal_obj.get("value"):
+                        salary = fix_encoding(sal_obj.get("value"))
+                    else:
+                        salary = "Thương lượng"
 
                 exp = fix_encoding(obj.get("experiences_str", ""))
                 skills = fix_encoding(obj.get("skills_str") or ", ".join(obj.get("skills_arr", []) if isinstance(obj.get("skills_arr"), list) else []))
@@ -204,11 +214,23 @@ def parse_job_detail_html(
             sal_obj = json.loads(sal_match.group(1))
             if sal_obj.get("is_negotiable") == "1":
                 salary_raw = "Thương lượng"
-            elif sal_obj.get("min") and sal_obj.get("max") and (sal_obj.get("min") > 0 or sal_obj.get("max") > 0):
+            else:
+                s_min = sal_obj.get("min")
+                s_max = sal_obj.get("max")
                 currency = sal_obj.get("currency", "VND")
-                salary_raw = f"{sal_obj['min']:,} - {sal_obj['max']:,} {currency}"
-            elif sal_obj.get("value") and "Th" in sal_obj.get("value"):
-                salary_raw = "Thương lượng"
+                if s_min and s_max and (s_min > 0 or s_max > 0):
+                    if s_min == s_max:
+                        salary_raw = f"{s_min:,} {currency}"
+                    else:
+                        salary_raw = f"{s_min:,} - {s_max:,} {currency}"
+                elif s_min and s_min > 0:
+                    salary_raw = f"Từ {s_min:,} {currency}"
+                elif s_max and s_max > 0:
+                    salary_raw = f"Lên tới {s_max:,} {currency}"
+                elif sal_obj.get("value") and "Th" in sal_obj.get("value"):
+                    salary_raw = "Thương lượng"
+                elif sal_obj.get("value"):
+                    salary_raw = fix_encoding(sal_obj.get("value"))
         except Exception:
             pass
 
@@ -216,8 +238,21 @@ def parse_job_detail_html(
         base_sal = ld_data.get("baseSalary") or {}
         val = base_sal.get("value") if isinstance(base_sal, dict) else ""
         if isinstance(val, dict):
-            if val.get("minValue") or val.get("maxValue"):
-                salary_raw = f"{val.get('minValue', '')} - {val.get('maxValue', '')} {val.get('unitText', '')}".strip()
+            min_v = val.get("minValue")
+            max_v = val.get("maxValue")
+            val_exact = val.get("value")
+            unit = val.get("unitText", "")
+            if min_v and max_v:
+                if min_v == max_v:
+                    salary_raw = f"{min_v} {unit}".strip()
+                else:
+                    salary_raw = f"{min_v} - {max_v} {unit}".strip()
+            elif min_v:
+                salary_raw = f"Từ {min_v} {unit}".strip()
+            elif max_v:
+                salary_raw = f"Lên tới {max_v} {unit}".strip()
+            elif val_exact:
+                salary_raw = f"{val_exact} {unit}".strip()
 
     # 5. Company Info & Overview từ RSC stream
     comp_overview = ""

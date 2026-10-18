@@ -154,7 +154,22 @@ def parse_job_detail_html(
     sal_obj = ld_data.get("baseSalary") or {}
     sal_val = sal_obj.get("value") if isinstance(sal_obj, dict) else ""
     if isinstance(sal_val, dict):
-        salary_raw = str(sal_val.get("value") or sal_val.get("minValue") or job_item.get("salary_raw", ""))
+        min_v = sal_val.get("minValue")
+        max_v = sal_val.get("maxValue")
+        val = sal_val.get("value")
+        if min_v is not None and max_v is not None and min_v != "" and max_v != "":
+            if min_v == max_v:
+                salary_raw = str(min_v)
+            else:
+                salary_raw = f"{min_v} - {max_v}"
+        elif min_v is not None and min_v != "":
+            salary_raw = f"Từ {min_v}"
+        elif max_v is not None and max_v != "":
+            salary_raw = f"Lên tới {max_v}"
+        elif val is not None and val != "":
+            salary_raw = str(val)
+        else:
+            salary_raw = job_item.get("salary_raw", "")
     elif isinstance(sal_val, str) and sal_val:
         salary_raw = sal_val
     else:
