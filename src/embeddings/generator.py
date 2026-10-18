@@ -219,6 +219,12 @@ def load_embeddings_and_metadata(force_reload=False):
     with open(METADATA_FILE, "r", encoding="utf-8") as f:
         _CACHED_METADATA = json.load(f)
 
+    # Đảm bảo số lượng vector embeddings và số lượng metadata luôn đồng bộ 1-1
+    if len(_CACHED_EMBEDDINGS) != len(_CACHED_METADATA):
+        min_len = min(len(_CACHED_EMBEDDINGS), len(_CACHED_METADATA))
+        _CACHED_EMBEDDINGS = _CACHED_EMBEDDINGS[:min_len]
+        _CACHED_METADATA = _CACHED_METADATA[:min_len]
+
     return _CACHED_EMBEDDINGS, _CACHED_METADATA
 
 def refresh_metadata_file():

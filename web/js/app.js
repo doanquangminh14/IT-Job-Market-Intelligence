@@ -911,6 +911,13 @@ window.openJobDetail = async function(jobId) {
         </div>
       ` : ""}
 
+      ${job.company_overview ? `
+        <div class="modal-section">
+          <h5>Về công ty:</h5>
+          <p>${job.company_overview}</p>
+        </div>
+      ` : ""}
+
       <div id="modal-similar-jobs-box" class="modal-similar-jobs">
         <h4>Việc Làm Tương Tự Cùng Ứng Tuyển</h4>
         <p class="sub">Được tính toán dựa trên xu hướng các ứng viên cùng ứng tuyển trong cùng chuyên môn.</p>

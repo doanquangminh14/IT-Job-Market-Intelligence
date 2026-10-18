@@ -235,6 +235,7 @@ def get_job_detail(job_id: int):
             d.description_clean,
             d.requirements_clean,
             d.benefits_raw,
+            d.overview_raw,
             COALESCE(STRING_AGG(DISTINCT s.skill_name, ', '), '') AS skills_str
         FROM jobs j
         LEFT JOIN companies c ON j.company_id = c.company_id
@@ -248,7 +249,7 @@ def get_job_detail(job_id: int):
             j.work_mode, j.salary_type, j.salary_min_vnd, j.salary_max_vnd,
             j.experience_raw, j.deadline, j.published_at,
             c.company_name_normalized, c.company_logo_url, c.company_url,
-            sr.source_job_url, d.description_clean, d.requirements_clean, d.benefits_raw;
+            sr.source_job_url, d.description_clean, d.requirements_clean, d.benefits_raw, d.overview_raw;
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -258,7 +259,7 @@ def get_job_detail(job_id: int):
     if not row:
         raise HTTPException(status_code=404, detail="Không tìm thấy việc làm này")
 
-    skills_str = row[19] or ""
+    skills_str = row[20] or ""
     skills = [s.strip() for s in skills_str.split(",") if s.strip()]
 
     return {
@@ -279,5 +280,6 @@ def get_job_detail(job_id: int):
         "description": row[16] or "Đang cập nhật nội dung mô tả công việc.",
         "requirements": row[17] or "Đang cập nhật yêu cầu chuyên môn.",
         "benefits": row[18] or "Đang cập nhật chế độ đãi ngộ.",
+        "company_overview": (row[19] or "").strip(),
         "skills": skills
     }
