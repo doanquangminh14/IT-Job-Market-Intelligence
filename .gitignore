@@ -67,3 +67,6 @@ tests/test_output/
 
 # Probe output
 data/_probe/
+
+# Temporary scratch scripts
+scratch/
