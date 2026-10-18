@@ -164,6 +164,21 @@ window.quickSearch = function(keyword) {
   }
 };
 
+function formatDisplaySalary(rawSalary) {
+  if (!rawSalary) return "Thỏa thuận";
+  const str = String(rawSalary).trim();
+  const rangeMatch = str.match(/^([\d.,]+)\s*[-–—]\s*([\d.,]+)(.*)$/);
+  if (rangeMatch) {
+    const minVal = parseFloat(rangeMatch[1].replace(/,/g, ""));
+    const maxVal = parseFloat(rangeMatch[2].replace(/,/g, ""));
+    const suffix = rangeMatch[3] || "";
+    if (!isNaN(minVal) && !isNaN(maxVal) && Math.abs(minVal - maxVal) < 0.05) {
+      return `${rangeMatch[1]}${suffix}`.trim();
+    }
+  }
+  return str;
+}
+
 function renderJobCard(job, rank = null, matchScore = null, semanticScore = null, skillScore = null, matchedSkills = [], missingSkills = [], cfScore = null) {
   const companyName = job.company_name || job.company || "Doanh nghiệp IT";
   const initial = companyName ? companyName.charAt(0).toUpperCase() : "IT";
@@ -181,7 +196,7 @@ function renderJobCard(job, rank = null, matchScore = null, semanticScore = null
     ? `<span class="badge-match-pill">${matchScore}% Hybrid</span>`
     : "";
 
-  const salaryDisplay = job.salary_display || job.salary_str || "Thỏa thuận";
+  const salaryDisplay = formatDisplaySalary(job.salary_display || job.salary_str);
 
   const matchedChips = matchedSkills.length > 0
     ? matchedSkills.map(s => `<span class="skill-chip skill-chip-matched">${s}</span>`).join("")
@@ -227,13 +242,13 @@ function renderJobCard(job, rank = null, matchScore = null, semanticScore = null
         </div>
 
         <div class="job-meta-row">
-          <span>${job.city}</span>
+          <span>${job.city || "Toàn quốc"}</span>
           <span class="meta-dot">•</span>
-          <span>${job.seniority_level}</span>
+          <span>${job.seniority_level || job.seniority || "Không yêu cầu cấp bậc"}</span>
           <span class="meta-dot">•</span>
           <span>${job.experience_str || "Không yêu cầu KN"}</span>
           <span class="meta-dot">•</span>
-          <span>${job.work_mode}</span>
+          <span>${job.work_mode || "Onsite"}</span>
           ${job.deadline_str ? `<span class="meta-dot">•</span><span>Hạn: ${job.deadline_str}</span>` : ""}
         </div>
 
@@ -811,7 +826,7 @@ async function renderAllCharts() {
           </td>
           <td style="padding:0.65rem 0.5rem; color:#4f46e5; font-weight:600;">${s.company_name}</td>
           <td style="padding:0.65rem 0.5rem; color:#64748b; font-size:0.8rem;">${s.city}</td>
-          <td style="padding:0.65rem 0.5rem; color:#059669; font-weight:700; font-size:0.82rem;">${s.salary_str}</td>
+          <td style="padding:0.65rem 0.5rem; color:#059669; font-weight:700; font-size:0.82rem;">${formatDisplaySalary(s.salary_str)}</td>
           <td style="padding:0.65rem 0.5rem; text-align:right;">
             <a href="${s.url}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-outline" style="padding:2px 8px; font-size:0.75rem;">Nộp CV</a>
           </td>
@@ -873,17 +888,17 @@ window.openJobDetail = async function(jobId) {
             ${job.company_url ? `<a href="${job.company_url}" target="_blank" rel="noopener" style="font-size:0.8rem; color:#64748b; text-decoration:none;">Xem website doanh nghiệp</a>` : ""}
           </div>
         </div>
-        <div class="job-salary-highlight" style="font-size:1.05rem; padding:0.35rem 0.85rem;">${job.salary_display}</div>
+        <div class="job-salary-highlight" style="font-size:1.05rem; padding:0.35rem 0.85rem;">${formatDisplaySalary(job.salary_display || job.salary_str)}</div>
       </div>
 
       <div class="job-meta-row" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:1.25rem;">
-        <span><strong>Địa điểm:</strong> ${job.city}</span>
+        <span><strong>Địa điểm:</strong> ${job.city || "Toàn quốc"}</span>
         <span class="meta-dot">•</span>
-        <span><strong>Cấp bậc:</strong> ${job.seniority_level}</span>
+        <span><strong>Cấp bậc:</strong> ${job.seniority_level || job.seniority || "Không yêu cầu cấp bậc"}</span>
         <span class="meta-dot">•</span>
-        <span><strong>Kinh nghiệm:</strong> ${job.experience_str}</span>
+        <span><strong>Kinh nghiệm:</strong> ${job.experience_str || "Không yêu cầu KN"}</span>
         <span class="meta-dot">•</span>
-        <span><strong>Hình thức:</strong> ${job.work_mode}</span>
+        <span><strong>Hình thức:</strong> ${job.work_mode || "Onsite"}</span>
         ${job.deadline_str ? `<span class="meta-dot">•</span><span><strong>Hạn nộp:</strong> ${job.deadline_str}</span>` : ""}
       </div>
 

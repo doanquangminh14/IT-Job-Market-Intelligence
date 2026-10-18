@@ -79,12 +79,17 @@ class CollaborativeRecommender:
             with get_db_connection() as conn:
                 df = pd.read_sql(query, conn)
                 for _, r in df.iterrows():
-                    s_min = r["sal_min"] / 1e6 if r["sal_min"] else 0
-                    s_max = r["sal_max"] / 1e6 if r["sal_max"] else 0
+                    s_min = float(r["sal_min"]) / 1e6 if r["sal_min"] else 0.0
+                    s_max = float(r["sal_max"]) / 1e6 if r["sal_max"] else 0.0
                     if s_min > 0 and s_max > 0:
-                        sal_str = f"{s_min:.1f} - {s_max:.1f} triệu VNĐ"
+                        if round(s_min, 1) == round(s_max, 1):
+                            sal_str = f"{s_min:.1f} triệu VNĐ"
+                        else:
+                            sal_str = f"{s_min:.1f} - {s_max:.1f} triệu VNĐ"
                     elif s_max > 0:
                         sal_str = f"Lên đến {s_max:.1f} triệu VNĐ"
+                    elif s_min > 0:
+                        sal_str = f"Từ {s_min:.1f} triệu VNĐ"
                     else:
                         sal_str = "Thỏa thuận"
 
@@ -93,10 +98,12 @@ class CollaborativeRecommender:
                         "title": r["title_normalized"],
                         "company_name": r["company_name_normalized"],
                         "company_logo_url": r["company_logo_url"],
-                        "city": r["city"],
+                        "city": r["city"] or "Toàn quốc",
                         "seniority": r["seniority_level"],
-                        "work_mode": r["work_mode"],
+                        "seniority_level": r["seniority_level"] or "Không yêu cầu cấp bậc",
+                        "work_mode": r["work_mode"] or "Onsite",
                         "salary_str": sal_str,
+                        "salary_display": sal_str,
                         "skills": list(r["skills"])[:5]
                     }
         except Exception as e:

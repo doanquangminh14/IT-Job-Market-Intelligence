@@ -135,10 +135,10 @@ def generate_and_save_embeddings(force_recompute=False):
         has_max = pd.notna(max_v) and max_v > 0
 
         if has_min and has_max:
-            if min_v == max_v:
-                sal_str = f"{min_v/1e6:.1f} triệu VNĐ"
+            if round(float(min_v) / 1e6, 1) == round(float(max_v) / 1e6, 1):
+                sal_str = f"{float(min_v)/1e6:.1f} triệu VNĐ"
             else:
-                sal_str = f"{min_v/1e6:.1f} - {max_v/1e6:.1f} triệu VNĐ"
+                sal_str = f"{float(min_v)/1e6:.1f} - {float(max_v)/1e6:.1f} triệu VNĐ"
         elif has_max:
             sal_str = f"Lên tới {max_v/1e6:.1f} triệu VNĐ"
         elif has_min:
@@ -243,10 +243,10 @@ def refresh_metadata_file():
         has_max = pd.notna(max_v) and max_v > 0
 
         if has_min and has_max:
-            if min_v == max_v:
-                sal_str = f"{min_v/1e6:.1f} triệu VNĐ"
+            if round(float(min_v) / 1e6, 1) == round(float(max_v) / 1e6, 1):
+                sal_str = f"{float(min_v)/1e6:.1f} triệu VNĐ"
             else:
-                sal_str = f"{min_v/1e6:.1f} - {max_v/1e6:.1f} triệu VNĐ"
+                sal_str = f"{float(min_v)/1e6:.1f} - {float(max_v)/1e6:.1f} triệu VNĐ"
         elif has_max:
             sal_str = f"Lên tới {max_v/1e6:.1f} triệu VNĐ"
         elif has_min:
