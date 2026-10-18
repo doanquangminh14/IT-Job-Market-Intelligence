@@ -84,7 +84,18 @@ def get_skill_patterns():
         "OAuth": r"(?:\boauth2?\.?0?\b|\bopenid\b)",
         "Git": r"\bgit\b(?!lab|hub)",
         "Agile/Scrum": r"(?:\bagile\b|\bscrum\b)",
-        "Jira": r"\bjira\b"
+        "Jira": r"\bjira\b",
+        "Power BI": r"(?:\bpower\s*bi\b|\bpowerbi\b)",
+        "Tableau": r"\btableau\b",
+        "Excel": r"(?:\bexcel\b|\bms\s*excel\b|\bmicrosoft\s*excel\b)",
+        "Airflow": r"(?:\bairflow\b|\bapache\s*airflow\b)",
+        "Figma": r"\bfigma\b",
+        "Firebase": r"\bfirebase\b",
+        "GraphQL": r"\bgraphql\b",
+        "GitLab": r"\bgitlab\b",
+        "GitHub": r"\bgithub\b",
+        "LangChain": r"(?:\blangchain\b|\blang\s*chain\b)",
+        "RAG": r"(?:\brag\b|\bretrieval[\s-]augmented\b)"
     }
     return patterns
 
