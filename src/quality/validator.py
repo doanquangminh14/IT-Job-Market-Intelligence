@@ -152,7 +152,7 @@ class QualityValidator:
                             if k != "_":
                                 master_dict[k] = item
             except Exception as e:
-                print(f"⚠️ Cảnh báo: Không thể đọc file master cũ {target_file}: {e}")
+                print(f"[CANH BAO] Không thể đọc file master cũ {target_file}: {e}")
 
         old_count = len(master_dict)
 

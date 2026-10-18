@@ -115,17 +115,25 @@ def parse_salary(raw_str):
             res['salary_max'] = vmax * 1_000_000
             res['salary_min_vnd'] = res['salary_min']
             res['salary_max_vnd'] = res['salary_max']
-            res['salary_type'] = 'range'
+            res['salary_type'] = 'fixed' if vmin == vmax else 'range'
             return res
         elif len(clean_nums) == 1:
             val = clean_nums[0]
             if val > 1000: val /= 1_000_000
-            res['salary_max'] = val * 1_000_000
-            res['salary_max_vnd'] = res['salary_max']
-            res['salary_type'] = 'max_only' if any(k in s_lower for k in ['tới', 'up to', 'dưới', '<']) else 'fixed'
-            if res['salary_type'] == 'fixed':
+            if any(k in s_lower for k in ['từ', 'trên', '>=', 'tối thiểu', 'from', '>']):
+                res['salary_min'] = val * 1_000_000
+                res['salary_min_vnd'] = res['salary_min']
+                res['salary_type'] = 'min_only'
+            elif any(k in s_lower for k in ['tới', 'up to', 'dưới', '<', 'tối đa']):
+                res['salary_max'] = val * 1_000_000
+                res['salary_max_vnd'] = res['salary_max']
+                res['salary_type'] = 'max_only'
+            else:
+                res['salary_max'] = val * 1_000_000
+                res['salary_max_vnd'] = res['salary_max']
                 res['salary_min'] = res['salary_max']
                 res['salary_min_vnd'] = res['salary_max_vnd']
+                res['salary_type'] = 'fixed'
             return res
 
     # 3. Định dạng số nguyên gốc VNĐ (ví dụ 10,000,000 - 18,000,000)
@@ -138,7 +146,7 @@ def parse_salary(raw_str):
         res['salary_max'] = vmax
         res['salary_min_vnd'] = vmin
         res['salary_max_vnd'] = vmax
-        res['salary_type'] = 'range'
+        res['salary_type'] = 'fixed' if vmin == vmax else 'range'
         return res
     elif len(clean_nums) == 1:
         val = clean_nums[0]
@@ -151,12 +159,20 @@ def parse_salary(raw_str):
             res['salary_min'] = val
             res['salary_min_vnd'] = val_vnd
             return res
-        res['salary_max'] = val
-        res['salary_max_vnd'] = val
-        res['salary_type'] = 'max_only' if any(k in s_lower for k in ['tới', 'up to', 'dưới', '<']) else 'fixed'
-        if res['salary_type'] == 'fixed':
+        if any(k in s_lower for k in ['từ', 'trên', '>=', 'tối thiểu', 'from', '>']):
             res['salary_min'] = val
             res['salary_min_vnd'] = val
+            res['salary_type'] = 'min_only'
+        elif any(k in s_lower for k in ['tới', 'up to', 'dưới', '<', 'tối đa']):
+            res['salary_max'] = val
+            res['salary_max_vnd'] = val
+            res['salary_type'] = 'max_only'
+        else:
+            res['salary_max'] = val
+            res['salary_max_vnd'] = val
+            res['salary_min'] = val
+            res['salary_min_vnd'] = val
+            res['salary_type'] = 'fixed'
         return res
 
     return res

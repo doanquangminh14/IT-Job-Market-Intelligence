@@ -44,7 +44,7 @@ def load_raw_listings(source: str, target_date: Optional[str] = None) -> List[Di
                                 item["raw_date"] = date_folder
                                 records.append(item)
                 except Exception as e:
-                    print(f"⚠️ Không thể đọc listing file {fpath}: {e}")
+                    print(f"[CANH BAO] Không thể đọc listing file {fpath}: {e}")
     return records
 
 
@@ -76,7 +76,7 @@ def load_raw_details(source: str, target_date: Optional[str] = None) -> List[Dic
                                 item["raw_date"] = date_folder
                                 records.append(item)
                 except Exception as e:
-                    print(f"⚠️ Không thể đọc detail file {fpath}: {e}")
+                    print(f"[CANH BAO] Không thể đọc detail file {fpath}: {e}")
     return records
 
 
@@ -126,7 +126,7 @@ def main():
     target_date = args.date
     if args.latest:
         target_date = get_latest_date()
-        print(f"📅 Tự động chọn ngày mới nhất: {target_date}")
+        print(f"-> Tự động chọn ngày mới nhất: {target_date}")
 
     sources = ["topcv", "topdev", "vietnamworks"] if args.source == "all" else [args.source]
     validator = QualityValidator()
@@ -134,9 +134,9 @@ def main():
     mode_desc = "LƯU TÍCH LŨY VÀO 2 FILE MASTER BRONZE" if args.save_bronze else "Dry-Run (chỉ kiểm tra & in thống kê, dùng --save-bronze để lưu)"
 
     print("\n" + "=" * 80)
-    print("🚀 BẮT ĐẦU KIỂM ĐỊNH & HỢP NHẤT DỮ LIỆU TẦNG BRONZE (MASTER ACCUMULATION)")
-    print(f"📌 Phạm vi ngày: {target_date or 'Toàn bộ lịch sử'}")
-    print(f"📌 Chế độ      : {mode_desc}")
+    print("BẮT ĐẦU KIỂM ĐỊNH & HỢP NHẤT DỮ LIỆU TẦNG BRONZE (MASTER ACCUMULATION)")
+    print(f"Phạm vi ngày: {target_date or 'Toàn bộ lịch sử'}")
+    print(f"Chế độ      : {mode_desc}")
     print("=" * 80)
 
     all_listings: List[Dict[str, Any]] = []
@@ -156,7 +156,7 @@ def main():
         # 2. Đọc Details & Kiểm định chất lượng
         raw_details = load_raw_details(s, target_date=target_date)
         if not raw_details:
-            print(f"\n📂 [{s.upper()}] Không có bản ghi detail nào trong phạm vi quét.")
+            print(f"\n[{s.upper()}] Không có bản ghi detail nào trong phạm vi quét.")
             continue
 
         v_list, q_list, i_list, summary = validator.route_records(raw_details)
@@ -165,12 +165,12 @@ def main():
         all_invalid_details.extend(i_list)
         grand_details_scanned += summary["total_scanned"]
 
-        print(f"\n--- 📊 KẾT QUẢ QUÉT: {s.upper()} ---")
+        print(f"\n--- KẾT QUẢ QUÉT: {s.upper()} ---")
         print(f"  • Listings cào được    : {len(raw_listings):,} tin")
         print(f"  • Details quét qua     : {summary['total_scanned']:,} tin")
-        print(f"  • 🟢 HỢP LỆ (Valid)     : {summary['valid_count']:,} ({summary['valid_rate_pct']}%)")
-        print(f"  • 🟡 CÁCH LY (Quarantine): {summary['quarantine_count']:,} ({summary['quarantine_rate_pct']}%)")
-        print(f"  • 🔴 RÁC/LỖI (Invalid)  : {summary['invalid_count']:,} ({summary['invalid_rate_pct']}%)")
+        print(f"  • HỢP LỆ (Valid)     : {summary['valid_count']:,} ({summary['valid_rate_pct']}%)")
+        print(f"  • CÁCH LY (Quarantine): {summary['quarantine_count']:,} ({summary['quarantine_rate_pct']}%)")
+        print(f"  • RÁC/LỖI (Invalid)  : {summary['invalid_count']:,} ({summary['invalid_rate_pct']}%)")
 
         if summary["errors_breakdown"]:
             print("  • Chi tiết mã lỗi:")
@@ -180,37 +180,37 @@ def main():
     # 3. Lưu tích lũy vào tầng Bronze nếu có cờ --save-bronze
     if args.save_bronze:
         print("\n" + "-" * 80)
-        print("💾 ĐANG GHI DỮ LIỆU TÍCH LŨY VÀO TẦNG BRONZE...")
+        print("ĐANG GHI DỮ LIỆU TÍCH LŨY VÀO TẦNG BRONZE...")
 
         # File 1: Listings Master
         l_file, l_new, l_total = validator.save_master_listings(all_listings)
-        print(f"  ✅ [Listings Master]: {l_file}")
+        print(f"  [Listings Master]: {l_file}")
         print(f"     -> Thêm mới: +{l_new:,} tin | Tổng tích lũy hiện tại: {l_total:,} tin")
 
         # File 2: Details Valid Master
         d_file, d_new, d_total = validator.save_master_details_valid(all_valid_details)
-        print(f"  ✅ [Details Valid Master]: {d_file}")
+        print(f"  [Details Valid Master]: {d_file}")
         print(f"     -> Thêm mới: +{d_new:,} tin | Tổng tích lũy hiện tại: {d_total:,} tin")
 
         # File 3 & 4 (nếu có Quarantine hoặc Invalid)
         if all_quarantine_details:
             q_file, q_new, q_total = validator.save_master_details_quarantine(all_quarantine_details)
-            print(f"  ⚠️ [Details Quarantine Master]: {q_file} (+{q_new:,} mới | tổng: {q_total:,})")
+            print(f"  [Details Quarantine Master]: {q_file} (+{q_new:,} mới | tổng: {q_total:,})")
 
         if all_invalid_details:
             i_file, i_new, i_total = validator.save_master_details_invalid(all_invalid_details)
-            print(f"  ❌ [Details Invalid Master]: {i_file} (+{i_new:,} mới | tổng: {i_total:,})")
+            print(f"  [Details Invalid Master]: {i_file} (+{i_new:,} mới | tổng: {i_total:,})")
 
     print("\n" + "=" * 80)
-    print("🏁 TỔNG KẾT PHIÊN XỬ LÝ BRONZE")
+    print("TỔNG KẾT PHIÊN XỬ LÝ BRONZE")
     print(f"  • Tổng Listings quét qua  : {grand_listings_scanned:,} tin")
     print(f"  • Tổng Details quét qua   : {grand_details_scanned:,} tin")
     v_pct = round(len(all_valid_details) / grand_details_scanned * 100, 2) if grand_details_scanned else 0
-    print(f"  • 🟢 HỢP LỆ (Valid)        : {len(all_valid_details):,} tin ({v_pct}%)")
-    print(f"  • 🟡 CÁCH LY (Quarantine)  : {len(all_quarantine_details):,} tin")
-    print(f"  • 🔴 RÁC/LỖI (Invalid)     : {len(all_invalid_details):,} tin")
+    print(f"  • HỢP LỆ (Valid)        : {len(all_valid_details):,} tin ({v_pct}%)")
+    print(f"  • CÁCH LY (Quarantine)  : {len(all_quarantine_details):,} tin")
+    print(f"  • RÁC/LỖI (Invalid)     : {len(all_invalid_details):,} tin")
     if not args.save_bronze:
-        print("\n💡 GỢI Ý: Chạy lệnh dưới đây để thực hiện lưu thật vào Bronze:")
+        print("\n[GOI Y]: Chạy lệnh dưới đây để thực hiện lưu thật vào Bronze:")
         print("   python main_quality.py --save-bronze")
     print("=" * 80 + "\n")
 

@@ -81,15 +81,19 @@ class CollaborativeRecommender:
                 for _, r in df.iterrows():
                     s_min = float(r["sal_min"]) / 1e6 if r["sal_min"] else 0.0
                     s_max = float(r["sal_max"]) / 1e6 if r["sal_max"] else 0.0
+
+                    def _fmt_mil(val):
+                        return f"{int(round(val))}" if abs(val - round(val)) < 0.05 else f"{val:.1f}"
+
                     if s_min > 0 and s_max > 0:
                         if round(s_min, 1) == round(s_max, 1):
-                            sal_str = f"{s_min:.1f} triệu VNĐ"
+                            sal_str = f"{_fmt_mil(s_min)} triệu VNĐ"
                         else:
-                            sal_str = f"{s_min:.1f} - {s_max:.1f} triệu VNĐ"
+                            sal_str = f"{_fmt_mil(s_min)} - {_fmt_mil(s_max)} triệu VNĐ"
                     elif s_max > 0:
-                        sal_str = f"Lên đến {s_max:.1f} triệu VNĐ"
+                        sal_str = f"Lên đến {_fmt_mil(s_max)} triệu VNĐ"
                     elif s_min > 0:
-                        sal_str = f"Từ {s_min:.1f} triệu VNĐ"
+                        sal_str = f"Từ {_fmt_mil(s_min)} triệu VNĐ"
                     else:
                         sal_str = "Thỏa thuận"
 

@@ -172,8 +172,13 @@ function formatDisplaySalary(rawSalary) {
     const minVal = parseFloat(rangeMatch[1].replace(/,/g, ""));
     const maxVal = parseFloat(rangeMatch[2].replace(/,/g, ""));
     const suffix = rangeMatch[3] || "";
-    if (!isNaN(minVal) && !isNaN(maxVal) && Math.abs(minVal - maxVal) < 0.05) {
-      return `${rangeMatch[1]}${suffix}`.trim();
+    if (!isNaN(minVal) && !isNaN(maxVal)) {
+      const minFmt = (minVal % 1 === 0) ? minVal.toFixed(0) : minVal.toFixed(1);
+      const maxFmt = (maxVal % 1 === 0) ? maxVal.toFixed(0) : maxVal.toFixed(1);
+      if (Math.abs(minVal - maxVal) < 0.05) {
+        return `${minFmt}${suffix}`.trim();
+      }
+      return `${minFmt} - ${maxFmt}${suffix}`.trim();
     }
   }
   return str;
