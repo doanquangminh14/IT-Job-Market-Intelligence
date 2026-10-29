@@ -6,33 +6,33 @@ Thư mục chứa toàn bộ Jupyter Notebooks phục vụ nghiên cứu, phân 
 
 ## 📁 Cấu trúc luồng thực nghiệm chuẩn (Pipeline Flow)
 
-Các notebook được tổ chức thành **5 bước tuần tự** theo chu trình chuẩn của một bài toán Khoa học Dữ liệu & Hệ thống Gợi ý:
+Các notebook được tổ chức thành **5 bước tuần tự** theo chu trình chuẩn của bài toán Khoa học Dữ liệu & Hệ thống Gợi ý:
 
 ```text
 notebook/
 │
-├── 01_crawling/                            # [Bước 1] Thu thập dữ liệu việc làm thực tế
-│   ├── crawl_data.ipynb                    → Crawl tổng hợp đa nguồn (TopCV, TopDev, VietnamWorks)
-│   ├── crawl_topdev.ipynb                  → Thử nghiệm crawler riêng TopDev (HTML Parser)
-│   └── crawl_vietnamworks.ipynb            → Thử nghiệm crawler riêng VietnamWorks (REST API)
+├── 01_crawling/                                 # [Bước 0] Thu thập dữ liệu việc làm thực tế
+│   ├── crawl_data.ipynb                         → Thu thập đa nguồn (TopCV, TopDev, VietnamWorks)
+│   ├── crawl_topdev.ipynb                       → Thử nghiệm crawler riêng TopDev (HTML Parser)
+│   └── crawl_vietnamworks.ipynb                 → Thử nghiệm crawler riêng VietnamWorks (REST API)
 │
-├── 02_data_pipeline/                       # [Bước 2] Tiền xử lý, làm sạch & chuẩn hóa dữ liệu
-│   ├── 01_clean_jobs_for_cbf.ipynb         → 13 bước làm sạch chuyên sâu dữ liệu Bronze cho Content-Based
-│   ├── experiment_silver_cleaning.ipynb    → Thử nghiệm chuẩn hóa & khử trùng lặp (Deduplication)
-│   └── view_history_metrics.ipynb          → Theo dõi lịch sử và chỉ số chất lượng pipeline
+├── 02_data_pipeline/                            # [Bước 1, 2 & 3] Data Quality & Làm sạch dữ liệu
+│   ├── 01_data_quality_inspection.ipynb         → [BƯỚC 1 & 2]: Lấy dữ liệu cần thiết + Kiểm tra Schema, Null, Duplicates
+│   ├── 02_data_cleaning_and_deduplication.ipynb → [BƯỚC 3]: 13 công đoạn làm sạch, chuẩn hóa kỹ năng, lương, exp & Khử trùng lặp
+│   └── 03_view_history_quality_metrics.ipynb    → Theo dõi lịch sử và biến động chỉ số chất lượng dữ liệu
 │
-├── 03_nlp_embeddings/                      # [Bước 3] Xử lý ngôn ngữ tự nhiên (NLP) & Trích xuất đặc trưng
-│   ├── nlp_pipeline_deepdive.ipynb         → Chuẩn hóa chức danh, Regex-NER bóc tách kỹ năng, ma trận đồng xuất hiện
-│   └── semantic_embedding_experiment.ipynb → Thử nghiệm SentenceTransformer (384d) biểu diễn ngữ nghĩa bài đăng
+├── 03_nlp_embeddings/                           # [Chuyên đề NLP] Trích xuất thực thể & Vector ngữ nghĩa
+│   ├── 01_nlp_skill_extraction.ipynb            → Chuẩn hóa chức danh, Regex-NER bóc tách kỹ năng, ma trận đồng xuất hiện
+│   └── 02_semantic_embedding_experiment.ipynb  → Thử nghiệm SentenceTransformer (384d) biểu diễn ngữ nghĩa bài đăng
 │
-├── 04_eda/                                 # [Bước 4] Phân tích khám phá dữ liệu thị trường (EDA)
-│   └── 01_eda_job_market_insights.ipynb    → Phân tích phân bố lương, số năm kinh nghiệm, địa lý và top công nghệ hot
+├── 04_eda/                                      # [Khám phá thị trường] Exploratory Data Analysis
+│   └── 01_eda_job_market_insights.ipynb         → Phân tích phân bố lương IT, số năm kinh nghiệm, địa lý và top tech stacks
 │
-├── 05_recommender/                         # [Bước 5] Hệ thống gợi ý việc làm trọng tâm
-│   └── content_based_filtering.ipynb       → Mô hình Content-Based (Content Soup + TF-IDF + Cosine Sim + Evaluation)
+├── 05_recommender/                              # [Bước 4] Hệ thống gợi ý việc làm trọng tâm
+│   └── 01_cbf_engine_and_evaluation.ipynb       → Mô hình Content-Based (Content Soup + TF-IDF + Cosine Sim + Evaluation)
 │
-└── _archive/                               # [Lưu trữ] Các thực nghiệm kiểm tra DB hoặc giai đoạn sau
-    ├── silver_tables/                      → 9 notebook kiểm tra chi tiết các bảng SQL Database
+└── _archive/                                    # [Lưu trữ] Các thực nghiệm kiểm tra DB hoặc giai đoạn sau
+    ├── silver_tables/                           → 9 notebook kiểm tra chi tiết các bảng SQL Database
     ├── collaborative_filtering_experiment.ipynb
     └── true_hybrid_recommender_experiment.ipynb
 ```
@@ -43,14 +43,16 @@ notebook/
 
 ```mermaid
 flowchart TD
-    A["Dữ liệu việc làm sạch (3,938 jobs)"] --> B["Tạo Content Soup (Title x3, Skills x4, Desc x1)"]
-    C["Hồ sơ / CV Ứng viên (Kỹ năng, Kinh nghiệm, Thành phố)"] --> D["Bóc tách kỹ năng chuẩn hóa (Canonical Skills)"]
-    B --> E["TF-IDF Vectorizer (max_features=10,000, n-gram=1..2)"]
-    D --> F["Vector hóa truy vấn ứng viên"]
-    E & F --> G["Tính Cosine Similarity"]
-    G --> H["Bộ lọc 2 tầng (Two-stage Filtering: Kinh nghiệm, Thành phố, Lương)"]
-    H --> I["Phân tích độ lệch kỹ năng (Skill Gap Analysis: Matched vs Missing)"]
-    I --> J["Top N công việc gợi ý tốt nhất + Giải thích độ phù hợp"]
+    A["Dữ liệu thô Bronze (bronze_details_valid.json)"] --> B["01_data_quality_inspection.ipynb\n(Kiểm tra Null, Duplicates, Schema)"]
+    B --> C["02_data_cleaning_and_deduplication.ipynb\n(Làm sạch, Chuẩn hóa lương/exp, Khử trùng lặp)"]
+    C --> D["Tập dữ liệu sạch (jobs_clean.csv / 3,938 jobs)"]
+    D --> E["04_eda/01_eda_job_market_insights.ipynb\n(Phân tích thống kê & Insights thị trường)"]
+    D --> F["05_recommender/01_cbf_engine_and_evaluation.ipynb\n(Xây dựng Content Soup: Title x3, Skills x4, Desc x1)"]
+    G["CV / Hồ sơ Ứng viên (Kỹ năng, Kinh nghiệm, Thành phố)"] --> H["Bóc tách kỹ năng chuẩn hóa (Canonical Skills)"]
+    F & H --> I["TF-IDF Vectorizer + Cosine Similarity"]
+    I --> J["Two-stage Filtering (Lọc cứng kinh nghiệm/lương -> Xếp hạng)"]
+    J --> K["Phân tích Skill Gap (Kỹ năng đã có vs Kỹ năng còn thiếu)"]
+    K --> L["Gợi ý Top N việc làm phù hợp + Trực quan hóa Streamlit"]
 ```
 
 ---
@@ -66,10 +68,11 @@ flowchart TD
    jupyter lab
    ```
 3. **Thứ tự thực hiện khuyến nghị**:
-   - Chạy `02_data_pipeline/01_clean_jobs_for_cbf.ipynb` nếu muốn sinh lại file `data/notebook/content_base/jobs_clean.csv`.
-   - Chạy `04_eda/01_eda_job_market_insights.ipynb` để trực quan hóa biểu đồ thị trường.
-   - Chạy `05_recommender/content_based_filtering.ipynb` để kiểm chứng thuật toán gợi ý và đo lường độ chính xác (Precision, Recall, Diversity).
-4. **Trực quan hóa trên giao diện Streamlit**:
+   - `02_data_pipeline/01_data_quality_inspection.ipynb`: Đánh giá chất lượng dữ liệu thô (Missing, Duplicates).
+   - `02_data_pipeline/02_data_cleaning_and_deduplication.ipynb`: Thực hiện quy trình làm sạch & khử trùng lặp để sinh ra `jobs_clean.csv`.
+   - `04_eda/01_eda_job_market_insights.ipynb`: Trực quan hóa thị trường tuyển dụng.
+   - `05_recommender/01_cbf_engine_and_evaluation.ipynb`: Chạy thuật toán gợi ý và kiểm tra độ chính xác (Precision, Recall).
+4. **Khởi chạy ứng dụng Web Demo (Streamlit)**:
    ```powershell
    streamlit run app/Home.py
    ```
