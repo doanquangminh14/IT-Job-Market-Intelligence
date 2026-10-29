@@ -1,0 +1,167 @@
+[
+  {
+    "id": "backend_java",
+    "name": "Kỹ Sư Backend (Java / Microservices)",
+    "skills": [
+      "Java",
+      "Spring",
+      "Hibernate",
+      "Microservices",
+      "SQL",
+      "PostgreSQL",
+      "Docker",
+      "Kafka",
+      "Redis"
+    ],
+    "seniorities": [
+      "Junior",
+      "Middle",
+      "Senior",
+      "Lead"
+    ],
+    "target_share": 0.18
+  },
+  {
+    "id": "frontend_react",
+    "name": "Kỹ Sư Frontend (React / TypeScript)",
+    "skills": [
+      "React",
+      "TypeScript",
+      "JavaScript",
+      "HTML",
+      "CSS",
+      "Next.js",
+      "Redux",
+      "Tailwind",
+      "Vue"
+    ],
+    "seniorities": [
+      "Junior",
+      "Middle",
+      "Senior"
+    ],
+    "target_share": 0.16
+  },
+  {
+    "id": "fullstack_node_python",
+    "name": "Kỹ Sư Fullstack (Node.js / Python / Cloud)",
+    "skills": [
+      "Node.js",
+      "Python",
+      "React",
+      "TypeScript",
+      "Express.js",
+      "FastAPI",
+      "MongoDB",
+      "Docker",
+      "PostgreSQL"
+    ],
+    "seniorities": [
+      "Junior",
+      "Middle",
+      "Senior",
+      "Lead"
+    ],
+    "target_share": 0.15
+  },
+  {
+    "id": "mobile_dev",
+    "name": "Lập Trình Viên Di Động (Flutter / iOS / Android)",
+    "skills": [
+      "Flutter",
+      "React Native",
+      "iOS",
+      "Android",
+      "Swift",
+      "Kotlin",
+      "Dart"
+    ],
+    "seniorities": [
+      "Junior",
+      "Middle",
+      "Senior"
+    ],
+    "target_share": 0.1
+  },
+  {
+    "id": "data_engineer",
+    "name": "Kỹ Sư Dữ Liệu & Phân Tích (Data Platform / SQL)",
+    "skills": [
+      "Python",
+      "SQL",
+      "Spark",
+      "Pandas",
+      "PostgreSQL",
+      "Data Warehouse",
+      "Power BI",
+      "ETL",
+      "Kafka"
+    ],
+    "seniorities": [
+      "Middle",
+      "Senior",
+      "Lead"
+    ],
+    "target_share": 0.12
+  },
+  {
+    "id": "ai_ml_engineer",
+    "name": "Kỹ Sư AI & Machine Learning (PyTorch / NLP / LLM)",
+    "skills": [
+      "Python",
+      "PyTorch",
+      "TensorFlow",
+      "Machine Learning",
+      "Deep Learning",
+      "NLP",
+      "Computer Vision",
+      "LLM"
+    ],
+    "seniorities": [
+      "Middle",
+      "Senior",
+      "Lead"
+    ],
+    "target_share": 0.1
+  },
+  {
+    "id": "devops_cloud",
+    "name": "Kỹ Sư DevOps & Điện Toán Đám Mây (K8s / AWS)",
+    "skills": [
+      "Docker",
+      "Kubernetes",
+      "AWS",
+      "CI/CD",
+      "Linux",
+      "Terraform",
+      "GCP",
+      "Azure",
+      "Git"
+    ],
+    "seniorities": [
+      "Middle",
+      "Senior",
+      "Lead"
+    ],
+    "target_share": 0.09
+  },
+  {
+    "id": "fresher_intern",
+    "name": "Thực Tập Sinh & Sinh Viên IT Mới Tốt Nghiệp",
+    "skills": [
+      "Python",
+      "Java",
+      "JavaScript",
+      "SQL",
+      "Git",
+      "HTML",
+      "CSS",
+      "C++"
+    ],
+    "seniorities": [
+      "Intern",
+      "Fresher"
+    ],
+    "target_share": 0.1
+  }
+]
