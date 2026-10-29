@@ -263,25 +263,28 @@ div.stButton > button[kind="secondary"]:hover {
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# 3. Nạp mô hình Content-Based Recommender
+# 3. Nạp mô hình Content-Based Recommender (Tự động nhận diện khi có dữ liệu mới)
+silver_data_path = os.path.join(project_root, "data", "silver", "jobs_cleaned.parquet")
+data_last_modified = os.path.getmtime(silver_data_path) if os.path.exists(silver_data_path) else 0
+
 @st.cache_resource(show_spinner="Đang khởi động hệ thống gợi ý việc làm...")
-def load_recommender(_version="v6_galaxy_salary"):
+def load_recommender(_mtime: float = 0.0):
     engine = ContentBasedRecommender()
     engine.load_or_train()
     return engine
 
-recommender = load_recommender()
+recommender = load_recommender(_mtime=data_last_modified)
 jobs_df = recommender.jobs_df
 all_skills_list = sorted(list(set(CANONICAL_SKILL_MAP.values())))
 
 # 4. Header Section
 st.markdown(
-    """
+    f"""
     <div class="header-box">
         <span class="header-tag">CONTENT-BASED FILTERING SYSTEM</span>
         <h1 class="header-title">Hệ Thống Gợi Ý Việc Làm Theo Nhu Cầu</h1>
         <p class="header-subtitle">
-            Phân tích mức độ tương đồng giữa hồ sơ năng lực của ứng viên và yêu cầu tuyển dụng từ 3,938 vị trí việc làm IT đã được làm sạch và chuẩn hóa.
+            Phân tích mức độ tương đồng giữa hồ sơ năng lực của ứng viên và yêu cầu tuyển dụng từ {len(jobs_df):,} vị trí việc làm IT đã được làm sạch và chuẩn hóa.
         </p>
     </div>
     """,
