@@ -1,76 +1,75 @@
-# Notebooks — IT Job Market Intelligence
+# Jupyter Notebooks — IT Job Market Intelligence 🚀
 
-Thư mục chứa toàn bộ Jupyter Notebooks thử nghiệm, phân tích và khám phá dữ liệu của dự án.  
-Các notebook được tổ chức thành **5 nhóm** theo chức năng:
+Thư mục chứa toàn bộ Jupyter Notebooks phục vụ nghiên cứu, phân tích dữ liệu thị trường IT và phát triển **Hệ thống Gợi ý Việc làm Dựa trên Nội dung (Content-Based Recommendation System)**.
 
 ---
 
-## 📁 Cấu trúc thư mục
+## 📁 Cấu trúc luồng thực nghiệm chuẩn (Pipeline Flow)
 
-```
+Các notebook được tổ chức thành **5 bước tuần tự** theo chu trình chuẩn của một bài toán Khoa học Dữ liệu & Hệ thống Gợi ý:
+
+```text
 notebook/
 │
-├── 01_crawling/                        # Thu thập & kiểm tra dữ liệu thô
-│   ├── crawl_data.ipynb                → Crawl tổng hợp tất cả nguồn
-│   ├── crawl_topdev.ipynb              → Crawl riêng TopDev (HTML parser)
-│   └── crawl_vietnamworks.ipynb        → Crawl riêng VietnamWorks (API)
+├── 01_crawling/                            # [Bước 1] Thu thập dữ liệu việc làm thực tế
+│   ├── crawl_data.ipynb                    → Crawl tổng hợp đa nguồn (TopCV, TopDev, VietnamWorks)
+│   ├── crawl_topdev.ipynb                  → Thử nghiệm crawler riêng TopDev (HTML Parser)
+│   └── crawl_vietnamworks.ipynb            → Thử nghiệm crawler riêng VietnamWorks (REST API)
 │
-├── 02_data_pipeline/                   # Làm sạch & biến đổi dữ liệu Silver
-│   ├── experiment_silver_cleaning.ipynb  → Thử nghiệm chuẩn hóa & dedup
-│   └── view_history_metrics.ipynb        → Xem lịch sử & chỉ số pipeline
+├── 02_data_pipeline/                       # [Bước 2] Tiền xử lý, làm sạch & chuẩn hóa dữ liệu
+│   ├── 01_clean_jobs_for_cbf.ipynb         → 13 bước làm sạch chuyên sâu dữ liệu Bronze cho Content-Based
+│   ├── experiment_silver_cleaning.ipynb    → Thử nghiệm chuẩn hóa & khử trùng lặp (Deduplication)
+│   └── view_history_metrics.ipynb          → Theo dõi lịch sử và chỉ số chất lượng pipeline
 │
-├── 03_nlp_embeddings/                  # NLP & Vector Embeddings
-│   ├── nlp_pipeline_deepdive.ipynb     → Phân tích chi tiết NLP pipeline
-│   └── semantic_embedding_experiment.ipynb → Thử nghiệm SentenceTransformer 384d
+├── 03_nlp_embeddings/                      # [Bước 3] Xử lý ngôn ngữ tự nhiên (NLP) & Trích xuất đặc trưng
+│   ├── nlp_pipeline_deepdive.ipynb         → Chuẩn hóa chức danh, Regex-NER bóc tách kỹ năng, ma trận đồng xuất hiện
+│   └── semantic_embedding_experiment.ipynb → Thử nghiệm SentenceTransformer (384d) biểu diễn ngữ nghĩa bài đăng
 │
-├── 04_recommender/                     # Hệ thống gợi ý việc làm
-│   ├── collaborative_filtering_experiment.ipynb  → Item-to-Item CF & SVD
-│   └── true_hybrid_recommender_experiment.ipynb  → True Hybrid (NLP + Skill + CF)
+├── 04_eda/                                 # [Bước 4] Phân tích khám phá dữ liệu thị trường (EDA)
+│   └── 01_eda_job_market_insights.ipynb    → Phân tích phân bố lương, số năm kinh nghiệm, địa lý và top công nghệ hot
 │
-└── silver_tables/                      # Kiểm tra từng bảng Silver trong DB
-    ├── 01_companies.ipynb
-    ├── 02_jobs.ipynb
-    ├── 03_job_descriptions.ipynb
-    ├── 04_skills.ipynb
-    ├── 05_job_skills.ipynb
-    ├── 06_job_sources.ipynb
-    ├── 07_job_source_records.ipynb
-    ├── 08_job_snapshots.ipynb
-    └── 09_dq_results.ipynb
+├── 05_recommender/                         # [Bước 5] Hệ thống gợi ý việc làm trọng tâm
+│   └── content_based_filtering.ipynb       → Mô hình Content-Based (Content Soup + TF-IDF + Cosine Sim + Evaluation)
+│
+└── _archive/                               # [Lưu trữ] Các thực nghiệm kiểm tra DB hoặc giai đoạn sau
+    ├── silver_tables/                      → 9 notebook kiểm tra chi tiết các bảng SQL Database
+    ├── collaborative_filtering_experiment.ipynb
+    └── true_hybrid_recommender_experiment.ipynb
 ```
 
 ---
 
-## Hướng dẫn chạy
+## 💡 Luồng hoạt động của Hệ Thống Gợi Ý (Content-Based Recommender)
 
-1. Kích hoạt môi trường ảo:
-   ```bash
-   .venv\Scripts\activate
+```mermaid
+flowchart TD
+    A["Dữ liệu việc làm sạch (3,938 jobs)"] --> B["Tạo Content Soup (Title x3, Skills x4, Desc x1)"]
+    C["Hồ sơ / CV Ứng viên (Kỹ năng, Kinh nghiệm, Thành phố)"] --> D["Bóc tách kỹ năng chuẩn hóa (Canonical Skills)"]
+    B --> E["TF-IDF Vectorizer (max_features=10,000, n-gram=1..2)"]
+    D --> F["Vector hóa truy vấn ứng viên"]
+    E & F --> G["Tính Cosine Similarity"]
+    G --> H["Bộ lọc 2 tầng (Two-stage Filtering: Kinh nghiệm, Thành phố, Lương)"]
+    H --> I["Phân tích độ lệch kỹ năng (Skill Gap Analysis: Matched vs Missing)"]
+    I --> J["Top N công việc gợi ý tốt nhất + Giải thích độ phù hợp"]
+```
+
+---
+
+## 🚀 Hướng dẫn chạy thử nghiệm
+
+1. **Kích hoạt môi trường ảo**:
+   ```powershell
+   .\.venv\Scripts\Activate.ps1
    ```
-2. Mở Jupyter Lab:
-   ```bash
+2. **Khởi chạy Jupyter Lab**:
+   ```powershell
    jupyter lab
    ```
-3. Chọn kernel: **`.venv (Python 3.11)`**
-4. Chạy notebook từ trên xuống (Run All Cells)
-
-> **Lưu ý:**  
-> - Các notebook nhóm `01_crawling` cần kết nối internet  
-> - Các notebook nhóm `02_data_pipeline`, `silver_tables` cần kết nối PostgreSQL (xem `.env`)  
-> - Các notebook nhóm `04_recommender` cần có file `data/models/cf_*.npz` (chạy `src/recommender/collaborative.py` trước)
-
----
-
-## Kiến trúc True Hybrid Recommender
-
-```
-CV / Mô tả nghề nghiệp
-         │
-         ├──[45%]── SentenceTransformer (384d)  ──→ Semantic Score
-         │
-         ├──[30%]── Skill Overlap (Jaccard)     ──→ Skill Score
-         │
-         └──[25%]── TruncatedSVD Persona CF     ──→ CF Score
-                              │
-                     Final Hybrid Score = 0.45×Sem + 0.30×Skill + 0.25×CF
-```
+3. **Thứ tự thực hiện khuyến nghị**:
+   - Chạy `02_data_pipeline/01_clean_jobs_for_cbf.ipynb` nếu muốn sinh lại file `data/notebook/content_base/jobs_clean.csv`.
+   - Chạy `04_eda/01_eda_job_market_insights.ipynb` để trực quan hóa biểu đồ thị trường.
+   - Chạy `05_recommender/content_based_filtering.ipynb` để kiểm chứng thuật toán gợi ý và đo lường độ chính xác (Precision, Recall, Diversity).
+4. **Trực quan hóa trên giao diện Streamlit**:
+   ```powershell
+   streamlit run app/Home.py
+   ```
