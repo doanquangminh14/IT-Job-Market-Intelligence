@@ -1,6 +1,11 @@
 import os
 import sys
 
+# Đảm bảo đường dẫn gốc dự án luôn nằm trong sys.path
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 if sys.stdout.encoding != "utf-8":
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -21,19 +26,213 @@ from src.data_cleaning.skill_canonical import (
     extract_skills_from_text
 )
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-DEFAULT_DATA_PATH = os.path.join(PROJECT_ROOT, "data", "silver", "jobs_cleaned.parquet")
+DEFAULT_DATA_CANDIDATES = [
+    os.path.join(PROJECT_ROOT, "data", "notebook", "content_base", "jobs_clean.csv"),
+    os.path.join(PROJECT_ROOT, "data", "silver", "jobs_cleaned.parquet"),
+    os.path.join(PROJECT_ROOT, "data", "silver", "jobs_cleaned.csv"),
+    os.path.join(PROJECT_ROOT, "data", "cleaned", "jobs_clean.csv")
+]
 DEFAULT_MODEL_DIR = os.path.join(PROJECT_ROOT, "data", "models")
 
 
+# ==============================================================================
+# HÀM BỔ TRỢ TÍNH ĐIỂM THÀNH PHẦN (COMPONENT SCORING HELPERS)
+# ==============================================================================
+
+def compute_skill_score(
+    user_skills: List[str],
+    job_required_skills: List[str],
+    job_preferred_skills: Optional[List[str]] = None
+) -> float:
+    """S_skills: Tỷ lệ khớp kỹ năng (80% required + 20% preferred)."""
+    if not job_required_skills:
+        return 0.5
+    user_set = set(s.lower() for s in user_skills)
+    req_set = set(s.lower() for s in job_required_skills)
+    pref_set = set(s.lower() for s in job_preferred_skills) if job_preferred_skills else set()
+    
+    req_matched = len(user_set.intersection(req_set))
+    s_req = req_matched / len(req_set) if req_set else 1.0
+    
+    if pref_set:
+        pref_matched = len(user_set.intersection(pref_set))
+        s_pref = pref_matched / len(pref_set) if pref_set else 0.0
+        return round(0.8 * s_req + 0.2 * s_pref, 3)
+    return round(s_req, 3)
+
+
+def compute_exp_score(
+    user_exp: float,
+    job_min_exp: Optional[float],
+    job_max_exp: Optional[float] = None
+) -> float:
+    """S_experience: Điểm phù hợp số năm kinh nghiệm [0, 1]."""
+    if pd.isna(job_min_exp) or job_min_exp == 0:
+        return 1.0
+    diff = user_exp - job_min_exp
+    if diff >= 0:
+        if pd.notna(job_max_exp) and user_exp > job_max_exp + 3:
+            return 0.85
+        return 1.0
+    elif diff >= -1.0:
+        return 0.7
+    elif diff >= -2.0:
+        return 0.4
+    else:
+        return 0.1
+
+
+def compute_location_mode_score(
+    user_city: str,
+    user_modes: Optional[Union[str, List[str]]],
+    job_city: Any,
+    job_mode: Any
+) -> float:
+    """S_location/mode: Điểm kết hợp địa điểm và mô hình làm việc."""
+    score_mode = 0.5
+    score_city = 0.5
+    job_mode_str = str(job_mode).lower()
+    
+    if isinstance(user_modes, str):
+        user_modes = [user_modes]
+    user_modes_lower = [m.lower() for m in user_modes] if user_modes else ['tất cả']
+    
+    if 'tất cả' in user_modes_lower or not user_modes:
+        score_mode = 1.0
+    elif any(m in job_mode_str for m in user_modes_lower):
+        score_mode = 1.0
+    elif 'remote' in job_mode_str:
+        score_mode = 0.9
+    elif 'hybrid' in job_mode_str and any('remote' in m for m in user_modes_lower):
+        score_mode = 0.8
+    else:
+        score_mode = 0.2
+        
+    if user_city == 'Tất cả' or not user_city:
+        score_city = 1.0
+    elif str(job_city).lower() == str(user_city).lower():
+        score_city = 1.0
+    elif 'remote' in job_mode_str:
+        score_city = 1.0
+    else:
+        score_city = 0.1
+        
+    return round(0.5 * score_city + 0.5 * score_mode, 3)
+
+
+def compute_salary_score(
+    user_min_salary: Optional[float],
+    job_salary_min: Optional[float],
+    job_salary_max: Optional[float]
+) -> Optional[float]:
+    """S_salary: Trả về None nếu bài đăng không có số liệu lương cụ thể."""
+    if pd.isna(job_salary_max) and pd.isna(job_salary_min):
+        return None
+    max_sal = job_salary_max if pd.notna(job_salary_max) else job_salary_min
+    if not user_min_salary or user_min_salary == 0:
+        return 1.0
+    if max_sal >= user_min_salary:
+        return 1.0
+    else:
+        ratio = max_sal / user_min_salary
+        return round(max(0.0, float(ratio)), 3)
+
+
+def compute_composite_score(
+    s_skills: float,
+    s_text: float,
+    s_exp: float,
+    s_loc: float,
+    s_sal: Optional[float],
+    base_weights: Optional[Dict[str, float]] = None
+) -> Tuple[float, Dict[str, float]]:
+    """
+    Tính điểm tổng hợp Score(j, u) và tự động chuẩn hóa lại trọng số khi thiếu lương.
+    Score = 0.40*S_skills + 0.30*S_text + 0.10*S_exp + 0.10*S_loc + 0.10*S_sal
+    """
+    if base_weights is None:
+        base_weights = {
+            'skills': 0.40,
+            'text': 0.30,
+            'exp': 0.10,
+            'loc': 0.10,
+            'sal': 0.10
+        }
+    weights = base_weights.copy()
+    scores = {
+        'skills': s_skills,
+        'text': s_text,
+        'exp': s_exp,
+        'loc': s_loc,
+        'sal': s_sal
+    }
+    if s_sal is None:
+        del weights['sal']
+        del scores['sal']
+        total_w = sum(weights.values())
+        weights = {k: v / total_w for k, v in weights.items()}
+        
+    total_score = sum(weights[k] * scores[k] for k in weights)
+    return round(total_score, 4), weights
+
+
+def generate_rationale(
+    matched_skills: List[str],
+    missing_skills: List[str],
+    user_exp: float,
+    job_min_exp: Optional[float],
+    job_mode: str,
+    is_salary_fit: Optional[bool]
+) -> str:
+    """Sinh câu giải thích gợi ý trực quan."""
+    reasons = []
+    total_skills = len(matched_skills) + len(missing_skills)
+    if total_skills > 0:
+        matched_str = ', '.join(matched_skills[:3]) if matched_skills else 'Chưa trùng trực tiếp'
+        reasons.append(f"Khớp {len(matched_skills)}/{total_skills} kỹ năng ({matched_str})")
+    if pd.isna(job_min_exp) or job_min_exp == 0:
+        reasons.append("Không đòi hỏi số năm kinh nghiệm")
+    elif user_exp >= job_min_exp:
+        reasons.append(f"Kinh nghiệm phù hợp ({user_exp:.0f} năm >= yêu cầu {job_min_exp:.0f} năm)")
+    else:
+        reasons.append(f"Yêu cầu {job_min_exp:.0f} năm (bạn có {user_exp:.0f} năm)")
+    reasons.append(f"Hình thức {job_mode}")
+    if is_salary_fit is True:
+        reasons.append("Đạt kỳ vọng lương")
+    elif is_salary_fit is None:
+        reasons.append("Lương thỏa thuận")
+    else:
+        reasons.append("Thấp hơn kỳ vọng lương")
+    return "; ".join(reasons)
+
+
+def format_salary_display(s_min: Optional[float], s_max: Optional[float]) -> str:
+    """Định dạng hiển thị mức lương trực quan."""
+    if pd.notnull(s_min) and pd.notnull(s_max):
+        if s_min == s_max:
+            return f"{s_min/1e6:.0f} tr"
+        return f"{s_min/1e6:.0f} - {s_max/1e6:.0f} tr"
+    elif pd.notnull(s_max):
+        return f"Lên đến {s_max/1e6:.0f} tr"
+    elif pd.notnull(s_min):
+        return f"Từ {s_min/1e6:.0f} tr"
+    return "Thoả thuận"
+
+
+# ==============================================================================
+# LỚP CONTENT-BASED RECOMMENDER
+# ==============================================================================
+
 class ContentBasedRecommender:
     """
-    Hệ thống gợi ý việc làm dựa trên nội dung (Content-Based Filtering):
+    Hệ thống gợi ý việc làm dựa trên nội dung (Content-Based Filtering V2):
     - Sử dụng Weighted TF-IDF (Chức danh x3, Kỹ năng x4, Mô tả x1).
-    - Đo độ tương đồng qua Cosine Similarity.
-    - Two-Stage Filtering: Lọc theo Kinh nghiệm, Thành phố, Mức lương.
-    - Phân tích khoảng cách kỹ năng (Skill Gap Analysis: Đã có vs Còn thiếu).
-    - So khớp chuyên sâu 1:1 giữa CV và Công việc cụ thể.
+    - Cấu hình token_pattern bảo tồn nguyên vẹn các ký tự IT đặc thù (C++, C#, .NET, CI/CD).
+    - Công thức chấm điểm tổng hợp đa thành phần: Score = 0.40*Skills + 0.30*Text + 0.10*Exp + 0.10*Loc + 0.10*Salary.
+    - Cơ chế co giãn trọng số linh hoạt (Dynamic Re-weighting) khi bài đăng khuyết thông tin lương.
+    - Tự động sinh Lời giải thích gợi ý (Rationale) minh bạch.
+    - Phân tích khoảng cách kỹ năng (Skill Gap Analysis).
+    - Báo cáo đánh giá so khớp chi tiết 1:1 giữa CV và Công việc.
     """
 
     def __init__(
@@ -60,32 +259,28 @@ class ContentBasedRecommender:
         title = str(row.get('title', '')) if pd.notnull(row.get('title')) else ''
         skills = str(row.get('required_skills', '')) if pd.notnull(row.get('required_skills')) else ''
         desc = str(row.get('description_clean', '')) if pd.notnull(row.get('description_clean')) else ''
-        # Trọng số: Title x3, Skills x4, Description x1
         soup = f"{title} {title} {title} {skills} {skills} {skills} {skills} {desc}"
         return soup.strip()
 
     def fit(self, jobs_df: pd.DataFrame, save_model: bool = True) -> "ContentBasedRecommender":
-        """
-        Huấn luyện TF-IDF trên tập dữ liệu việc làm và lưu mô hình vào data/models/.
-        """
+        """Huấn luyện TF-IDF trên tập dữ liệu việc làm và lưu mô hình vào data/models/."""
         self.jobs_df = jobs_df.copy().reset_index(drop=True)
         
-        # Đảm bảo có content_soup
         if 'content_soup' not in self.jobs_df.columns:
             self.jobs_df['content_soup'] = self.jobs_df.apply(self.build_content_soup, axis=1)
             
-        # Ánh xạ index <-> job_id
         self.job_id_to_idx = {str(jid): idx for idx, jid in enumerate(self.jobs_df['job_id'])}
         self.idx_to_job_id = {idx: str(jid) for idx, jid in enumerate(self.jobs_df['job_id'])}
         
-        print(f" Đang huấn luyện TF-IDF ({self.max_features:,} features, n-gram {self.ngram_range})...")
+        print(f"Đang huấn luyện TF-IDF ({self.max_features:,} features, n-gram {self.ngram_range}, token_pattern bảo tồn C++/C#/.NET)...")
         self.tfidf_vectorizer = TfidfVectorizer(
+            token_pattern=r"(?u)\b[a-zA-Z0-9_+#\.]+\b",
             max_features=self.max_features,
             ngram_range=self.ngram_range,
             min_df=self.min_df
         )
         self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(self.jobs_df['content_soup'])
-        print(f" Huấn luyện hoàn tất: {self.tfidf_matrix.shape[0]:,} việc làm x {self.tfidf_matrix.shape[1]:,} đặc trưng")
+        print(f"Huấn luyện hoàn tất: {self.tfidf_matrix.shape[0]:,} việc làm x {self.tfidf_matrix.shape[1]:,} đặc trưng")
         
         if save_model:
             self.save_model()
@@ -106,7 +301,7 @@ class ContentBasedRecommender:
             "ngram_range": self.ngram_range
         }
         joblib.dump(data_to_save, model_path, compress=3)
-        print(f" Đã lưu mô hình Content-Based ra: {model_path}")
+        print(f"Đã lưu mô hình Content-Based ra: {model_path}")
 
     def load_model(self, model_path: Optional[str] = None) -> bool:
         """Nạp mô hình TF-IDF đã huấn luyện từ đĩa."""
@@ -114,7 +309,7 @@ class ContentBasedRecommender:
         if not os.path.exists(target_path):
             return False
             
-        print(f" Đang tải mô hình Content-Based từ: {target_path}")
+        print(f"Đang tải mô hình Content-Based từ: {target_path}")
         saved = joblib.load(target_path)
         self.tfidf_vectorizer = saved["tfidf_vectorizer"]
         self.tfidf_matrix = saved["tfidf_matrix"]
@@ -122,30 +317,35 @@ class ContentBasedRecommender:
         self.idx_to_job_id = saved["idx_to_job_id"]
         self.max_features = saved.get("max_features", self.max_features)
         self.ngram_range = saved.get("ngram_range", self.ngram_range)
-        print(" Tải mô hình thành công!")
+        print("Tải mô hình thành công!")
         return True
 
-    def load_or_train(self, data_path: str = DEFAULT_DATA_PATH) -> "ContentBasedRecommender":
-        """
-        Nạp dữ liệu sạch, tải mô hình có sẵn hoặc tự động huấn luyện nếu chưa có.
-        """
-        # 1. Đọc dữ liệu việc làm sạch
-        if data_path.endswith(".parquet"):
-            if not os.path.exists(data_path):
-                # Fallback CSV nếu chưa có parquet
-                data_path = data_path.replace(".parquet", ".csv")
-            self.jobs_df = pd.read_parquet(data_path) if data_path.endswith(".parquet") else pd.read_csv(data_path)
+    def load_or_train(self, data_path: Optional[str] = None) -> "ContentBasedRecommender":
+        """Nạp dữ liệu sạch, tải mô hình có sẵn hoặc tự động huấn luyện nếu chưa có."""
+        resolved_path = None
+        if data_path and os.path.exists(data_path):
+            resolved_path = data_path
         else:
-            self.jobs_df = pd.read_csv(data_path)
+            for p in DEFAULT_DATA_CANDIDATES:
+                if os.path.exists(p):
+                    resolved_path = p
+                    break
+                    
+        if not resolved_path:
+            raise FileNotFoundError(f"Không tìm thấy tập dữ liệu việc làm sạch tại bất kỳ đường dẫn nào: {DEFAULT_DATA_CANDIDATES}")
             
-        print(f" Đã nạp {len(self.jobs_df):,} công việc sạch từ: {data_path}")
+        if resolved_path.endswith(".parquet"):
+            self.jobs_df = pd.read_parquet(resolved_path)
+        else:
+            self.jobs_df = pd.read_csv(resolved_path)
+            
+        print(f"Đã nạp {len(self.jobs_df):,} công việc sạch từ: {resolved_path}")
         
-        # 2. Thử load model có sẵn, nếu không có hoặc lệch số lượng thì train lại
         model_path = os.path.join(self.model_dir, "content_based_model.joblib")
         if self.load_model(model_path):
             if self.tfidf_matrix.shape[0] == len(self.jobs_df):
                 return self
-            print(" Số lượng việc làm thay đổi so với model cũ, đang huấn luyện lại...")
+            print("Số lượng việc làm thay đổi so với model cũ, đang huấn luyện lại...")
             
         return self.fit(self.jobs_df, save_model=True)
 
@@ -155,24 +355,15 @@ class ContentBasedRecommender:
         cv_text: str = "",
         skills: Optional[List[str]] = None
     ) -> np.ndarray:
-        """
-        Tính mảng điểm Cosine Similarity (shape: [num_jobs,]) giữa hồ sơ ứng viên và toàn bộ kho việc làm.
-        Hàm này là cốt lõi phục vụ tích hợp Hybrid Recommender sau này.
-        """
+        """Tính mảng điểm Cosine Similarity văn bản giữa hồ sơ ứng viên và toàn bộ kho việc làm."""
         if self.tfidf_vectorizer is None or self.tfidf_matrix is None:
             raise ValueError("Mô hình chưa được huấn luyện. Vui lòng gọi .load_or_train() trước.")
             
         manual_skills = skills or []
         extracted_skills = extract_skills_from_text(cv_text) if cv_text else []
-        
-        all_skills = []
-        seen = set()
-        for s in manual_skills + extracted_skills:
-            if s.lower() not in seen:
-                seen.add(s.lower())
-                all_skills.append(s)
-                
+        all_skills = list(dict.fromkeys(manual_skills + extracted_skills))
         skills_soup = " ".join(all_skills)
+        
         parts = []
         if target_title:
             parts.extend([target_title, target_title, target_title])
@@ -196,151 +387,84 @@ class ContentBasedRecommender:
         skills: Optional[List[str]] = None,
         user_exp: float = 1.0,
         preferred_city: str = "Tất cả",
+        preferred_work_modes: Optional[Union[str, List[str]]] = None,
         min_salary: Optional[float] = None,
-        top_n: int = 10
+        top_n: int = 10,
+        weights: Optional[Dict[str, float]] = None
     ) -> pd.DataFrame:
         """
-        Hàm gợi ý việc làm thông minh kết hợp: Vị trí + CV Text + Kỹ năng chọn tay + Two-Stage Filtering.
+        Hàm gợi ý việc làm toàn diện chuẩn hóa đồng bộ với Notebook 05:
+        Kết hợp 5 yếu tố: Kỹ năng (40%) + Văn bản (30%) + Kinh nghiệm (10%) + Vị trí/Hình thức (10%) + Lương (10%).
+        Kèm cơ chế Dynamic Re-weighting và tự động sinh Lời giải thích (Rationale).
         """
-        if self.jobs_df is None:
-            raise ValueError("Chưa nạp dữ liệu jobs_df.")
+        if self.jobs_df is None or self.tfidf_matrix is None:
+            raise ValueError("Chưa nạp dữ liệu hoặc mô hình.")
             
-        scores = self.get_content_similarity_scores(target_title, cv_text, skills)
+        text_similarities = self.get_content_similarity_scores(target_title, cv_text, skills)
         
         manual_skills = skills or []
         extracted_skills = extract_skills_from_text(cv_text) if cv_text else []
-        seen_skills = set(s.lower() for s in manual_skills + extracted_skills)
+        all_user_skills = list(dict.fromkeys(manual_skills + extracted_skills))
+        user_skills_lower = set(s.lower() for s in all_user_skills)
         
-        results = []
-        for idx, score in enumerate(scores):
+        candidates = []
+        for idx in range(len(self.jobs_df)):
             row = self.jobs_df.iloc[idx]
             
-            # Lọc cứng 1: Trạng thái tin tuyển dụng
+            # Bỏ qua tin không còn hoạt động
             if 'is_active' in row and not row['is_active']:
                 continue
                 
-            # Lọc cứng 2: Địa điểm (nếu chọn thành phố cụ thể, chấp nhận thành phố đó hoặc Remote)
-            if preferred_city != 'Tất cả':
-                if row['city'] != preferred_city and row['work_mode'] != 'Remote':
-                    continue
-                    
-            # Lọc cứng 3: Số năm kinh nghiệm (không gợi ý job đòi hỏi exp > user_exp + 1.0)
-            job_min_exp = row.get('experience_min')
-            if pd.notnull(job_min_exp) and job_min_exp > (user_exp + 1.0):
-                continue
-                
-            # Lọc cứng 4: Mức lương tối thiểu (nếu job có công khai lương)
-            job_sal_max = row.get('salary_max')
-            if min_salary is not None and pd.notnull(job_sal_max) and job_sal_max < min_salary:
-                continue
-                
-            # Phân tích kỹ năng đáp ứng vs còn thiếu
-            job_skills = [s.strip() for s in str(row.get('required_skills', '')).split(',') if s.strip()]
-            job_skills_lower = [s.lower() for s in job_skills]
+            req_skills = [s.strip() for s in str(row.get('required_skills', '')).split(',') if s.strip()]
+            pref_skills = [s.strip() for s in str(row.get('preferred_skills', '')).split(',') if s.strip()]
             
-            matched = [s for s, sl in zip(job_skills, job_skills_lower) if sl in seen_skills]
-            missing = [s for s, sl in zip(job_skills, job_skills_lower) if sl not in seen_skills]
-            coverage_pct = round(len(matched) / len(job_skills) * 100, 1) if job_skills else 100.0
+            # 1. Tính 5 điểm thành phần
+            s_skills = compute_skill_score(all_user_skills, req_skills, pref_skills)
+            s_text = round(float(text_similarities[idx]), 4)
+            s_exp = compute_exp_score(user_exp, row.get('experience_min'), row.get('experience_max'))
+            s_loc = compute_location_mode_score(preferred_city, preferred_work_modes, row.get('city'), row.get('work_mode'))
+            s_sal = compute_salary_score(min_salary, row.get('salary_min'), row.get('salary_max'))
             
-            salary_str = "Thoả thuận"
-            s_min, s_max = row.get('salary_min'), row.get('salary_max')
-            if pd.notnull(s_min) and pd.notnull(s_max):
-                if s_min == s_max:
-                    salary_str = f"{s_min/1e6:.0f} tr"
-                else:
-                    salary_str = f"{s_min/1e6:.0f} - {s_max/1e6:.0f} tr"
-            elif pd.notnull(s_max):
-                salary_str = f"Lên đến {s_max/1e6:.0f} tr"
-            elif pd.notnull(s_min):
-                salary_str = f"Từ {s_min/1e6:.0f} tr"
-                
-            results.append({
+            # 2. Tính điểm tổng hợp Composite Score
+            composite_score, _ = compute_composite_score(s_skills, s_text, s_exp, s_loc, s_sal, base_weights=weights)
+            
+            # 3. Kỹ năng khớp và thiếu
+            matched = [s for s in req_skills if s.lower() in user_skills_lower]
+            missing = [s for s in req_skills if s.lower() not in user_skills_lower]
+            coverage_pct = round(len(matched) / len(req_skills) * 100, 1) if req_skills else 100.0
+            
+            is_sal_fit = True if s_sal == 1.0 else (None if s_sal is None else False)
+            rationale = generate_rationale(
+                matched, missing, user_exp, row.get('experience_min'),
+                row.get('work_mode', 'Onsite'), is_sal_fit
+            )
+            
+            salary_display = format_salary_display(row.get('salary_min'), row.get('salary_max'))
+            
+            candidates.append({
                 'job_id': row.get('job_id', ''),
                 'Tiêu đề': row.get('title', ''),
                 'Công ty': row.get('company_name', ''),
-                'Độ phù hợp (%)': round(score * 100, 1),
-                'Độ phủ kỹ năng (%)': f"{coverage_pct}% ({len(matched)}/{len(job_skills)})",
+                'Tổng điểm (%)': round(composite_score * 100, 1),
+                'Độ phù hợp (%)': round(composite_score * 100, 1), # Alias tương thích UI
+                'Điểm kỹ năng (%)': round(s_skills * 100, 1),
+                'Điểm văn bản (%)': round(s_text * 100, 1),
+                'Điểm kinh nghiệm (%)': round(s_exp * 100, 1),
+                'Điểm vị trí/hình thức (%)': round(s_loc * 100, 1),
+                'Lời giải thích': rationale,
+                'Độ phủ kỹ năng (%)': f"{coverage_pct}% ({len(matched)}/{len(req_skills)})",
                 'Kỹ năng đã có (Điểm mạnh)': ', '.join(matched[:4]) if matched else 'Khớp theo vị trí/mô tả',
                 'Kỹ năng còn thiếu (Gap)': ', '.join(missing[:4]) if missing else 'Đầy đủ',
                 'Kinh nghiệm yêu cầu': f"{row.get('experience_min')} năm" if pd.notnull(row.get('experience_min')) else 'Không yêu cầu',
-                'Thành phố': row.get('city', ''),
-                'Hình thức': row.get('work_mode', ''),
-                'Mức lương': salary_str,
+                'Hình thức': row.get('work_mode', 'Onsite'),
+                'Thành phố': row.get('city', 'Không rõ'),
+                'Mức lương': salary_display,
                 'job_url': row.get('job_url', ''),
                 'company_logo_url': row.get('company_logo_url', '')
             })
             
-        df_res = pd.DataFrame(results).sort_values(by='Độ phù hợp (%)', ascending=False)
+        df_res = pd.DataFrame(candidates).sort_values(by='Tổng điểm (%)', ascending=False)
         return df_res.head(top_n)
-
-    def recommend_similar_jobs(
-        self,
-        job_identifier: Union[int, str],
-        top_n: int = 5,
-        same_city_only: bool = False
-    ) -> pd.DataFrame:
-        """Gợi ý các công việc tương đồng với một công việc cho trước (Job-to-Job Recommender)."""
-        if self.jobs_df is None or self.tfidf_matrix is None:
-            raise ValueError("Mô hình chưa sẵn sàng.")
-            
-        if isinstance(job_identifier, (int, np.integer)):
-            idx = int(job_identifier)
-        elif str(job_identifier) in self.job_id_to_idx:
-            idx = self.job_id_to_idx[str(job_identifier)]
-        else:
-            match = self.jobs_df[self.jobs_df['title'].str.contains(str(job_identifier), case=False, na=False, regex=False)]
-            if match.empty:
-                print(f" Không tìm thấy công việc: {job_identifier}")
-                return pd.DataFrame()
-            idx = match.index[0]
-            
-        target_job = self.jobs_df.iloc[idx]
-        target_vec = self.tfidf_matrix[idx]
-        sim_scores = cosine_similarity(target_vec, self.tfidf_matrix).flatten()
-        sorted_indices = np.argsort(sim_scores)[::-1]
-        
-        target_skills = set(s.strip().lower() for s in str(target_job.get('required_skills', '')).split(',') if s.strip())
-        results = []
-        
-        for j_idx in sorted_indices:
-            if j_idx == idx:
-                continue  # Bỏ qua chính nó
-            cand = self.jobs_df.iloc[j_idx]
-            if same_city_only and cand['city'] != target_job['city'] and cand['work_mode'] != 'Remote':
-                continue
-                
-            cand_skills = set(s.strip().lower() for s in str(cand.get('required_skills', '')).split(',') if s.strip())
-            common = target_skills & cand_skills
-            common_display = [s.strip() for s in str(cand.get('required_skills', '')).split(',') if s.strip().lower() in common]
-            
-            salary_str = "Thoả thuận"
-            c_min, c_max = cand.get('salary_min'), cand.get('salary_max')
-            if pd.notnull(c_min) and pd.notnull(c_max):
-                if c_min == c_max:
-                    salary_str = f"{c_min/1e6:.0f} tr"
-                else:
-                    salary_str = f"{c_min/1e6:.0f} - {c_max/1e6:.0f} tr"
-            elif pd.notnull(c_max):
-                salary_str = f"Lên đến {c_max/1e6:.0f} tr"
-            elif pd.notnull(c_min):
-                salary_str = f"Từ {c_min/1e6:.0f} tr"
-                
-            results.append({
-                'job_id': cand.get('job_id', ''),
-                'Tiêu đề': cand.get('title', ''),
-                'Công ty': cand.get('company_name', ''),
-                'Độ tương đồng (%)': round(sim_scores[j_idx] * 100, 1),
-                'Địa điểm': cand.get('city', ''),
-                'Kinh nghiệm': f"{cand.get('experience_min')} năm" if pd.notnull(cand.get('experience_min')) else 'Không yêu cầu',
-                'Mức lương': salary_str,
-                'Kỹ năng trùng khớp': ', '.join(common_display[:4]) if common_display else 'Khớp theo mô tả',
-                'job_url': cand.get('job_url', ''),
-                'company_logo_url': cand.get('company_logo_url', '')
-            })
-            if len(results) >= top_n:
-                break
-                
-        return pd.DataFrame(results)
 
     def analyze_cv_fit_for_job(
         self,
@@ -349,7 +473,7 @@ class ContentBasedRecommender:
         skills: Optional[List[str]] = None,
         user_exp: float = 1.0
     ) -> str:
-        """Xuất báo cáo phân tích so khớp chi tiết 1:1 giữa hồ sơ ứng viên và một công việc cụ thể."""
+        """Báo cáo đánh giá chi tiết 1:1 giữa hồ sơ ứng viên và một công việc cụ thể."""
         if self.jobs_df is None or self.tfidf_vectorizer is None:
             raise ValueError("Mô hình chưa sẵn sàng.")
             
@@ -360,80 +484,56 @@ class ContentBasedRecommender:
         else:
             match = self.jobs_df[self.jobs_df['title'].str.contains(str(job_identifier), case=False, na=False, regex=False)]
             if match.empty:
-                return f" Không tìm thấy công việc: {job_identifier}"
+                return f"Không tìm thấy công việc: {job_identifier}"
             idx = match.index[0]
             
         job = self.jobs_df.iloc[idx]
         
         manual_skills = skills or []
         extracted_skills = extract_skills_from_text(cv_text) if cv_text else []
-        all_user_skills = []
-        seen_skills = set()
-        for s in manual_skills + extracted_skills:
-            if s.lower() not in seen_skills:
-                seen_skills.add(s.lower())
-                all_user_skills.append(s)
-                
+        all_user_skills = list(dict.fromkeys(manual_skills + extracted_skills))
+        user_skills_lower = set(s.lower() for s in all_user_skills)
+        
         input_text = f"{' '.join(all_user_skills)} {cv_text}".strip()
         user_vec = self.tfidf_vectorizer.transform([input_text])
         job_vec = self.tfidf_matrix[idx]
         sim_score = cosine_similarity(user_vec, job_vec)[0][0]
         
         job_skills = [s.strip() for s in str(job.get('required_skills', '')).split(',') if s.strip()]
-        job_skills_lower = [s.lower() for s in job_skills]
-        
-        matched = [s for s, sl in zip(job_skills, job_skills_lower) if sl in seen_skills]
-        missing = [s for s, sl in zip(job_skills, job_skills_lower) if sl not in seen_skills]
+        matched = [s for s in job_skills if s.lower() in user_skills_lower]
+        missing = [s for s in job_skills if s.lower() not in user_skills_lower]
         
         exp_required = job.get('experience_min') if pd.notnull(job.get('experience_min')) else 0.0
-        if user_exp >= exp_required:
-            exp_status = f" Đạt yêu cầu ({user_exp} năm >= {exp_required} năm)"
-        elif user_exp + 1.0 >= exp_required:
-            exp_status = f" Chấp nhận được ({user_exp} năm xấp xỉ yêu cầu {exp_required} năm)"
-        else:
-            exp_status = f" Chưa đủ kinh nghiệm ({user_exp} năm < yêu cầu {exp_required} năm)"
-            
+        exp_status = f"Đạt yêu cầu ({user_exp} năm >= {exp_required} năm)" if user_exp >= exp_required else f"Chưa đủ kinh nghiệm ({user_exp} năm < yêu cầu {exp_required} năm)"
         coverage_pct = round(len(matched) / len(job_skills) * 100, 1) if job_skills else 100.0
         
-        sal_str = "Thoả thuận"
-        s_min, s_max = job.get('salary_min'), job.get('salary_max')
-        if pd.notnull(s_min) and pd.notnull(s_max):
-            sal_str = f"{s_min/1e6:.0f} - {s_max/1e6:.0f} triệu"
-        elif pd.notnull(s_max):
-            sal_str = f"Lên đến {s_max/1e6:.0f} triệu"
-            
+        salary_str = format_salary_display(job.get('salary_min'), job.get('salary_max'))
+        
         report = f"""================================================================================
- BÁO CÁO ĐÁNH GIÁ ĐỘ PHÙ HỢP HỒ SƠ VỚI CÔNG VIỆC (FIT REPORT)
+BÁO CÁO ĐÁNH GIÁ ĐỘ PHÙ HỢP HỒ SƠ VỚI CÔNG VIỆC (1:1 FIT REPORT)
 ================================================================================
 Công việc mục tiêu: {job.get('title')}
 Công ty:             {job.get('company_name')}
-Địa điểm:            {job.get('city')} ({job.get('work_mode')})
-Mức lương:           {sal_str}
+Địa điểm:            {job.get('city')} ({job.get('work_mode', 'Tại văn phòng')})
+Mức lương:           {salary_str}
 
 --- 1. ĐIỂM SỐ TỔNG QUAN ---
-• Điểm tương đồng nội dung (Content Similarity): {sim_score * 100:.1f}%
+• Điểm tương đồng nội dung (Text Similarity):    {sim_score * 100:.1f}%
 • Tỷ lệ đáp ứng kỹ năng (Skill Coverage):         {coverage_pct}% ({len(matched)}/{len(job_skills)} kỹ năng)
 • Đánh giá số năm kinh nghiệm:                   {exp_status}
 
 --- 2. CHI TIẾT KỸ NĂNG ---
- Kỹ năng bạn đã có ({len(matched)}):
-   {', '.join(matched) if matched else 'Không có kỹ năng trùng khớp trực tiếp'}
- Kỹ năng còn thiếu mà công ty yêu cầu ({len(missing)}):
-   {', '.join(missing) if missing else 'Tuyệt vời! Bạn đáp ứng đầy đủ tất cả kỹ năng cốt lõi'}
-
---- 3. LỜI KHUYÊN DÀNH CHO BẠN ---
-"""
-        if missing:
-            report += f" Để tăng cơ hội trúng tuyển, bạn nên bổ sung thêm kinh nghiệm hoặc học thêm về: {', '.join(missing)}.\n"
-        else:
-            report += " Hồ sơ của bạn rất mạnh cho vị trí này! Hãy tự tin nộp đơn ứng tuyển ngay.\n"
-        report += "================================================================================"
+Kỹ năng bạn đã có ({len(matched)}):
+   {', '.join(matched) if matched else 'Chưa trùng trực tiếp kỹ năng công nghệ'}
+Kỹ năng còn thiếu mà công ty yêu cầu ({len(missing)}):
+   {', '.join(missing) if missing else 'Tuyệt vời! Bạn đáp ứng đầy đủ tất cả kỹ năng'}
+================================================================================"""
         return report
 
 
 _CACHED_CB_ENGINE: Optional[ContentBasedRecommender] = None
 
-def get_content_based_recommender(data_path: str = DEFAULT_DATA_PATH) -> ContentBasedRecommender:
+def get_content_based_recommender(data_path: Optional[str] = None) -> ContentBasedRecommender:
     """Singleton getter để dùng chung một thể hiện mô hình Content-Based trên toàn dự án."""
     global _CACHED_CB_ENGINE
     if _CACHED_CB_ENGINE is None:
@@ -447,22 +547,19 @@ if __name__ == "__main__":
     print("=== KIỂM THỬ MODULE CONTENT-BASED RECOMMENDER ===")
     recommender = get_content_based_recommender()
     
-    print("\n1. Test gợi ý theo CV:")
-    sample_cv = """
-    Kỹ sư Backend với 2 năm kinh nghiệm.
-    Thành thạo lập trình Python (Django, FastAPI), làm việc với cơ sở dữ liệu PostgreSQL và MySQL.
-    Có kinh nghiệm Docker, CI/CD và triển khai ứng dụng trên Linux AWS.
-    """
+    print("\n1. Test Case 1 chuẩn (Python, SQL, ML | 1 năm | Hà Nội | Remote/Hybrid | Lương >= 20tr):")
     df_recs = recommender.recommend(
-        target_title="Backend Developer",
-        cv_text=sample_cv,
-        user_exp=2.0,
+        target_title="Python Developer Machine Learning",
+        skills=["Python", "SQL", "Machine Learning"],
+        user_exp=1.0,
         preferred_city="Hà Nội",
-        top_n=3
+        preferred_work_modes=["Remote", "Hybrid"],
+        min_salary=20000000,
+        top_n=5
     )
-    print(df_recs[['Tiêu đề', 'Công ty', 'Độ phù hợp (%)', 'Độ phủ kỹ năng (%)', 'Kỹ năng đã có (Điểm mạnh)']])
+    print(df_recs[['Tiêu đề', 'Công ty', 'Tổng điểm (%)', 'Điểm kỹ năng (%)', 'Điểm văn bản (%)', 'Lời giải thích', 'Mức lương']])
     
     print("\n2. Test Báo cáo So khớp 1:1:")
     top1_id = df_recs.iloc[0]['job_id']
-    rep = recommender.analyze_cv_fit_for_job(top1_id, cv_text=sample_cv, user_exp=2.0)
+    rep = recommender.analyze_cv_fit_for_job(top1_id, skills=["Python", "SQL", "Machine Learning"], user_exp=1.0)
     print(rep)
