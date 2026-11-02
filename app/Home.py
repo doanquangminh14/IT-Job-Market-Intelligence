@@ -355,6 +355,15 @@ with col_right:
         index=cities_options.index(curr_city) if curr_city in cities_options else 0
     )
 
+    work_modes_options = ["Onsite", "Remote", "Hybrid"]
+    curr_modes = st.session_state.get("preferred_work_modes", ["Onsite", "Remote", "Hybrid"])
+    preferred_work_modes = st.multiselect(
+        "Hình thức làm việc ưu tiên:",
+        options=work_modes_options,
+        default=curr_modes,
+        help="Chọn một hoặc nhiều hình thức làm việc bạn mong muốn"
+    )
+
     min_salary = st.number_input(
         "Mức lương tối thiểu kỳ vọng (VNĐ/tháng):",
         min_value=0,
@@ -394,6 +403,7 @@ if btn_search or ("target_title" in st.session_state):
             skills=skills,
             user_exp=user_exp,
             preferred_city=preferred_city,
+            preferred_work_modes=preferred_work_modes,
             min_salary=salary_filter,
             top_n=top_n
         )
@@ -409,8 +419,8 @@ if btn_search or ("target_title" in st.session_state):
     else:
         # Bảng tổng hợp
         display_cols = [
-            'Tiêu đề', 'Công ty', 'Độ phù hợp (%)', 'Độ phủ kỹ năng (%)',
-            'Kỹ năng đã có (Điểm mạnh)', 'Kỹ năng còn thiếu (Gap)',
+            'Tiêu đề', 'Công ty', 'Tổng điểm (%)', 'Lời giải thích',
+            'Độ phủ kỹ năng (%)', 'Kỹ năng đã có (Điểm mạnh)', 'Kỹ năng còn thiếu (Gap)',
             'Kinh nghiệm yêu cầu', 'Thành phố', 'Hình thức', 'Mức lương'
         ]
         if 'job_url' in df_results.columns:
@@ -458,6 +468,22 @@ if btn_search or ("target_title" in st.session_state):
                 title_html = f'<span style="font-size:1.15rem; font-weight:700; color:#0f172a;">{row["Tiêu đề"]}</span>'
                 btn_html = ''
 
+            rationale_text = str(row.get("Lời giải thích", "")).strip()
+            rationale_html = (
+                f'<div style="margin:8px 0; padding:8px 12px; background:#f8fafc; border-left:3px solid #2563eb; border-radius:4px; font-size:0.82rem; color:#334155;">'
+                f'<strong>Lý do gợi ý:</strong> {rationale_text}'
+                f'</div>'
+            ) if rationale_text else ''
+
+            score_breakdown_html = (
+                f'<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; font-size:0.75rem; color:#64748b;">'
+                f'<span>Kỹ năng: <strong>{row.get("Điểm kỹ năng (%)", 0)}%</strong></span> &bull; '
+                f'<span>Nội dung: <strong>{row.get("Điểm văn bản (%)", 0)}%</strong></span> &bull; '
+                f'<span>Kinh nghiệm: <strong>{row.get("Điểm kinh nghiệm (%)", 0)}%</strong></span> &bull; '
+                f'<span>Vị trí/Hình thức: <strong>{row.get("Điểm vị trí/hình thức (%)", 0)}%</strong></span>'
+                f'</div>'
+            )
+
             card_html = (
                 f'<div class="job-item">'
                 f'<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">'
@@ -466,11 +492,13 @@ if btn_search or ("target_title" in st.session_state):
                 f'<div>{title_html}<p class="job-company">{company_name}</p></div>'
                 f'</div>'
                 f'<div style="text-align:right; min-width:140px;">'
-                f'<span class="score-badge">Độ phù hợp: {row["Độ phù hợp (%)"]}%</span>'
+                f'<span class="score-badge">Tổng điểm: {row["Tổng điểm (%)"]}%</span>'
                 f'<div style="font-size:0.75rem; color:#64748b; margin-top:4px;">Độ phủ kỹ năng: <strong>{row["Độ phủ kỹ năng (%)"]}</strong></div>'
                 f'</div>'
                 f'</div>'
-                f'<div style="margin:12px 0 8px 0;">'
+                f'{score_breakdown_html}'
+                f'{rationale_html}'
+                f'<div style="margin:10px 0 8px 0;">'
                 f'<span class="meta-tag">Lương: {row["Mức lương"]}</span>'
                 f'<span class="meta-tag">Khu vực: {row["Thành phố"]}</span>'
                 f'<span class="meta-tag">Yêu cầu: {row["Kinh nghiệm yêu cầu"]}</span>'

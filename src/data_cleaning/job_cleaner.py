@@ -371,10 +371,16 @@ class JobCleaner:
         return df_clean
 
 if __name__ == "__main__":
+    import shutil
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     bronze_path = os.path.join(PROJECT_ROOT, "data", "bronze", "bronze_details_valid.json")
     csv_path = os.path.join(PROJECT_ROOT, "data", "silver", "jobs_cleaned.csv")
     parquet_path = os.path.join(PROJECT_ROOT, "data", "silver", "jobs_cleaned.parquet")
+    nb_csv_path = os.path.join(PROJECT_ROOT, "data", "notebook", "content_base", "jobs_clean.csv")
     
     cleaner = JobCleaner()
     cleaner.clean_and_save(bronze_path, csv_path, parquet_path)
+    
+    os.makedirs(os.path.dirname(nb_csv_path), exist_ok=True)
+    shutil.copy(csv_path, nb_csv_path)
+    print(f" Đồng bộ lưu ra Notebook CSV: {nb_csv_path}")
