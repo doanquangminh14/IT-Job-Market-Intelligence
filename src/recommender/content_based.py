@@ -44,21 +44,18 @@ def compute_skill_score(
     job_required_skills: List[str],
     job_preferred_skills: Optional[List[str]] = None
 ) -> float:
-    """S_skills: Tỷ lệ khớp kỹ năng (80% required + 20% preferred)."""
-    if not job_required_skills:
+    """
+    S_skills: Tỷ lệ khớp kỹ năng bắt buộc cốt lõi [0, 1].
+    (Trường preferred_skills đã được loại bỏ khỏi công thức do dữ liệu thực tế bị rỗng >99.4%).
+    """
+    user_set = set(s.lower() for s in user_skills if s and s.lower() != 'nan')
+    req_set = set(s.lower() for s in job_required_skills if s and s.lower() != 'nan') if job_required_skills else set()
+    
+    if not req_set:
         return 0.5
-    user_set = set(s.lower() for s in user_skills)
-    req_set = set(s.lower() for s in job_required_skills)
-    pref_set = set(s.lower() for s in job_preferred_skills) if job_preferred_skills else set()
     
     req_matched = len(user_set.intersection(req_set))
-    s_req = req_matched / len(req_set) if req_set else 1.0
-    
-    if pref_set:
-        pref_matched = len(user_set.intersection(pref_set))
-        s_pref = pref_matched / len(pref_set) if pref_set else 0.0
-        return round(0.8 * s_req + 0.2 * s_pref, 3)
-    return round(s_req, 3)
+    return round(req_matched / len(req_set), 3)
 
 
 def compute_exp_score(
@@ -415,11 +412,11 @@ class ContentBasedRecommender:
             if 'is_active' in row and not row['is_active']:
                 continue
                 
-            req_skills = [s.strip() for s in str(row.get('required_skills', '')).split(',') if s.strip()]
-            pref_skills = [s.strip() for s in str(row.get('preferred_skills', '')).split(',') if s.strip()]
+            raw_req = row.get('required_skills', '')
+            req_skills = [s.strip() for s in str(raw_req).split(',') if s.strip() and s.strip().lower() != 'nan'] if pd.notna(raw_req) else []
             
-            # 1. Tính 5 điểm thành phần
-            s_skills = compute_skill_score(all_user_skills, req_skills, pref_skills)
+            # 1. Tính 5 điểm thành phần (không dùng preferred_skills do >99.4% rỗng)
+            s_skills = compute_skill_score(all_user_skills, req_skills)
             s_text = round(float(text_similarities[idx]), 4)
             s_exp = compute_exp_score(user_exp, row.get('experience_min'), row.get('experience_max'))
             s_loc = compute_location_mode_score(preferred_city, preferred_work_modes, row.get('city'), row.get('work_mode'))
