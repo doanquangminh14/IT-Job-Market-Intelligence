@@ -13,12 +13,17 @@ from src.recommender.content_based import (
 def test_compute_skill_score():
     user_skills = ["Python", "SQL", "Docker"]
     req_skills = ["Python", "Docker", "Kubernetes"]
-    pref_skills = ["AWS", "SQL"]
-    # req: 2/3 (Python, Docker)
-    # pref: 1/2 (SQL)
-    # score = 0.8 * (2/3) + 0.2 * (1/2) = 0.5333 + 0.1000 = 0.633
-    score = compute_skill_score(user_skills, req_skills, pref_skills)
-    assert score == 0.633
+    # req: 2/3 (Python, Docker) -> 0.667
+    score = compute_skill_score(user_skills, req_skills)
+    assert score == 0.667
+
+    # Khớp toàn bộ kỹ năng yêu cầu
+    score_full = compute_skill_score(["SQL", "Power BI", "Excel"], ["SQL", "Power BI", "Excel"])
+    assert score_full == 1.0
+
+    # Không có kỹ năng yêu cầu
+    score_empty = compute_skill_score(["SQL"], [])
+    assert score_empty == 0.5
 
 def test_compute_exp_score():
     # User 2 years, job [1, 3] -> 1.0

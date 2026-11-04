@@ -109,3 +109,35 @@ def plot_heatmap(matrix_df, title):
         color_continuous_scale="Viridis"
     )
     return _apply_modern_layout(fig, title)
+
+def plot_boxplot(df, x_col, y_col, title, color_col=None):
+    """Vẽ biểu đồ Boxplot phân bố mức lương theo nhóm/địa phương."""
+    fig = px.box(
+        df,
+        x=x_col,
+        y=y_col,
+        color=color_col or x_col,
+        color_discrete_sequence=CHART_THEME["palette"]
+    )
+    fig.update_layout(
+        xaxis_title="",
+        yaxis_title="Triệu VNĐ",
+        showlegend=False
+    )
+    return _apply_modern_layout(fig, title)
+
+def plot_histogram(df, x_col, title, nbins=12):
+    """Vẽ biểu đồ phân bố tần suất (Histogram)."""
+    fig = px.histogram(
+        df,
+        x=x_col,
+        nbins=nbins,
+        color_discrete_sequence=[CHART_THEME["primary"]]
+    )
+    fig.update_layout(
+        xaxis_title="",
+        yaxis_title="Số lượng việc làm",
+        bargap=0.08
+    )
+    return _apply_modern_layout(fig, title)
+
