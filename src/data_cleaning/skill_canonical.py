@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional
+from typing import Dict, List, Optional, Set, Tuple
 
 # Bảng quy chuẩn hiển thị cho các công nghệ IT & Data phổ biến (Canonical Mapping)
 CANONICAL_SKILL_MAP = {
@@ -311,3 +311,51 @@ def extract_skills_from_text(text: str) -> List[str]:
 def normalize_user_skills(skills) -> List[str]:
     """Chuẩn hóa kỹ năng người dùng nhập tay: 'reactjs' ➔ 'React', 'k8s' ➔ 'Kubernetes'."""
     return [TECH_LOOKUP.get(str(s).strip().lower(), str(s).strip()) for s in (skills or []) if str(s).strip()]
+
+
+# Nhóm kỹ năng THAY THẾ ĐƯỢC cho nhau (đồng bộ với notebook 05, mục 5.1): biết một kỹ năng trong nhóm thì học
+# kỹ năng còn lại nhanh. Viết tay (không dùng đồng xuất hiện) vì kỹ năng hay đi cùng nhau (Python + SQL)
+# chưa chắc thay thế được nhau. Tên phải là tên chuẩn của TECH_LOOKUP.
+SKILL_GROUPS = [
+    ["React", "Next.js", "React Native"], ["Vue", "Nuxt.js"], ["React", "Vue", "Angular", "Svelte"],
+    ["JavaScript", "TypeScript"], ["Node.js", "Express.js", "NestJS"],
+    ["Java", "Spring Boot", "Kotlin"], ["Python", "Django", "FastAPI", "Flask"], ["PHP", "Laravel"],
+    ["C#", ".NET"], ["Ruby", "Ruby on Rails"], ["Golang", "Gin"],
+    ["Flutter", "Dart", "React Native"], ["Android", "Kotlin"], ["iOS", "Swift"],
+    ["SQL", "PostgreSQL", "MySQL", "SQL Server", "Oracle Database", "MariaDB", "SQLite", "T-SQL", "PL/SQL"],
+    ["MongoDB", "Cassandra", "DynamoDB", "Firebase"], ["Redis", "Elasticsearch"],
+    ["AWS", "Azure", "GCP", "Cloud"], ["Docker", "Kubernetes"], ["CI/CD", "Jenkins", "DevOps"],
+    ["Terraform", "Ansible"], ["Prometheus", "Grafana"], ["Apache Kafka", "RabbitMQ"],
+    ["Power BI", "Tableau", "Looker", "Qlik", "Metabase", "Business Intelligence"],
+    ["Apache Spark", "PySpark", "Hadoop", "Big Data"],
+    ["ETL", "ELT", "Data Pipeline", "Apache Airflow", "SSIS", "Data Warehouse"],
+    ["PyTorch", "TensorFlow", "Keras", "Deep Learning"],
+    ["Machine Learning", "Deep Learning", "AI", "NLP", "Computer Vision", "LLM", "Generative AI", "Data Science"],
+    ["Data Analysis", "Data Science", "Statistics", "Pandas"],
+    ["Selenium", "Cypress", "Playwright", "Appium", "Automation Testing"],
+    ["Manual Testing", "Software Testing", "QA", "API Testing"], ["Postman", "API Testing", "JMeter"],
+    ["Linux", "Bash", "Shell", "System Administration"], ["An Ninh Mạng", "Network Security"],
+    ["Networking", "Network Security", "System Administration"],
+    ["Agile", "Scrum"], ["Jira", "Confluence"],
+]
+RELATED_SKILLS: Dict[str, Set[str]] = {}
+for _group in SKILL_GROUPS:
+    for _a in _group:
+        RELATED_SKILLS.setdefault(_a.lower(), set()).update(b.lower() for b in _group if b != _a)
+
+
+def split_skill_match(user_skills, job_required_skills) -> Tuple[List[str], List[str], List[str]]:
+    """Chia kỹ năng job yêu cầu thành 3 nhóm: khớp chính xác / gần nhau (bạn có kỹ năng cùng nhóm) / còn thiếu."""
+    user_set = {str(s).lower() for s in (user_skills or []) if s and str(s).lower() != 'nan'}
+    matched, related, missing = [], [], []
+    for s in job_required_skills or []:
+        if not s or str(s).lower() == 'nan':
+            continue
+        key = str(s).lower()
+        if key in user_set:
+            matched.append(s)
+        elif RELATED_SKILLS.get(key, set()) & user_set:
+            related.append(s)
+        else:
+            missing.append(s)
+    return matched, related, missing

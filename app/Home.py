@@ -269,6 +269,19 @@ div.stButton > button[kind="secondary"]:hover {
     font-weight: 500;
 }
 
+.skill-tag-related {
+    display: inline-block;
+    font-size: 0.76rem;
+    color: #1e40af;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
 .skill-tag-missing {
     display: inline-block;
     font-size: 0.76rem;
@@ -567,9 +580,10 @@ with tab_recommender:
             if view_mode in ["Bảng so sánh tổng quan", "Xem cả hai"]:
                 display_cols = [
                     'Tiêu đề', 'Công ty', 'Tổng điểm (%)', 'Lời giải thích',
-                    'Độ phủ kỹ năng (%)', 'Kỹ năng đã có (Điểm mạnh)', 'Kỹ năng còn thiếu (Gap)',
+                    'Độ phủ kỹ năng (%)', 'Kỹ năng đã có (Điểm mạnh)', 'Kỹ năng gần nhau', 'Kỹ năng còn thiếu (Gap)',
                     'Kinh nghiệm yêu cầu', 'Thành phố', 'Hình thức', 'Mức lương'
                 ]
+                display_cols = [c for c in display_cols if c in df_results.columns]
                 if 'job_url' in df_results.columns:
                     display_cols.append('job_url')
 
@@ -584,6 +598,10 @@ with tab_recommender:
                         "Kỹ năng đã có (Điểm mạnh)": st.column_config.TextColumn(
                             "Kỹ năng đáp ứng (Khớp vị trí)",
                             help="Các kỹ năng bạn sở hữu trùng khớp với yêu cầu vị trí này"
+                        ),
+                        "Kỹ năng gần nhau": st.column_config.TextColumn(
+                            "Kỹ năng gần với kỹ năng bạn có",
+                            help="Kỹ năng vị trí yêu cầu mà bạn chưa có, nhưng bạn có kỹ năng cùng nhóm (vd. PostgreSQL ~ MySQL), tính 0,5 điểm"
                         ),
                         "Kỹ năng còn thiếu (Gap)": st.column_config.TextColumn(
                             "Kỹ năng vị trí yêu cầu còn thiếu",
@@ -604,6 +622,11 @@ with tab_recommender:
 
                     matched_html = " ".join([f"<span class='skill-tag-matched'>{s}</span>" for s in matched_list]) if matched_list else "<span style='color:#94a3b8; font-size:0.8rem;'>Phù hợp theo vị trí công việc</span>"
                     missing_html = " ".join([f"<span class='skill-tag-missing'>{s}</span>" for s in missing_list[:5]]) if missing_list else "<span style='color:#059669; font-size:0.8rem; font-weight:600;'>Đáp ứng đầy đủ kỹ năng cốt lõi</span>"
+                    related_list = [s.strip() for s in str(row.get("Kỹ năng gần nhau", "") or "").split(',') if s.strip()]
+                    related_html = (
+                        f'<div style="margin-bottom:6px;"><span style="font-size:0.8rem; font-weight:600; color:#1d4ed8; display:inline-block; min-width:220px;">Gần với kỹ năng bạn có:</span> '
+                        + " ".join(f"<span class='skill-tag-related'>{s}</span>" for s in related_list) + '</div>'
+                    ) if related_list else ''
 
                     company_name = str(row["Công ty"])
                     quoted_company = urllib.parse.quote(company_name)
@@ -666,6 +689,7 @@ with tab_recommender:
                         f'<div style="margin-top:12px; padding-top:12px; border-top:1px dashed #e2e8f0; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">'
                         f'<div style="flex:1; min-width:280px;">'
                         f'<div style="margin-bottom:6px;"><span style="font-size:0.8rem; font-weight:600; color:#15803d; display:inline-block; min-width:220px;">Kỹ năng bạn đáp ứng (Khớp vị trí):</span> {matched_html}</div>'
+                        f'{related_html}'
                         f'<div><span style="font-size:0.8rem; font-weight:600; color:#b45309; display:inline-block; min-width:220px;">Kỹ năng vị trí yêu cầu còn thiếu:</span> {missing_html}</div>'
                         f'</div>'
                         f'<div>{btn_html}</div>'

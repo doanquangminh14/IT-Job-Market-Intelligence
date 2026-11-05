@@ -6,6 +6,8 @@ from src.data_cleaning.skill_canonical import (
     normalize_user_skills,
     extract_skills_from_text,
     extract_skills_and_tags,
+    RELATED_SKILLS,
+    split_skill_match,
 )
 
 __all__ = [
@@ -16,4 +18,6 @@ __all__ = [
     "normalize_user_skills",
     "extract_skills_from_text",
     "extract_skills_and_tags",
+    "RELATED_SKILLS",
+    "split_skill_match",
 ]
