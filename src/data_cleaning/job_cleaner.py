@@ -22,10 +22,10 @@ from src.data_cleaning.skill_canonical import (
     extract_skills_and_tags
 )
 from src.data_cleaning.location import extract_city as _extract_city
+from src.data_cleaning.salary import parse_salary_vnd as _parse_salary_vnd, EXCHANGE_RATE_USD
 from src.data_cleaning.dedup import deduplicate_jobs
 from src.data_cleaning.it_filter import is_it_job
 
-EXCHANGE_RATE_USD = 25400
 
 class JobCleaner:
     """
@@ -136,43 +136,8 @@ class JobCleaner:
 
     @staticmethod
     def parse_salary_vnd(sal_str: Any, title_str: Any = "") -> Tuple[Optional[float], Optional[float]]:
-        """Quy đổi mức lương sang đơn vị VND (xử lý USD, triệu VND, khoảng lương)."""
-        # 1. Bổ trợ từ tiêu đề nếu tiêu đề chứa khoảng lương rõ ràng (vd: '15 - 20M', '15 - 20 triệu')
-        if title_str and pd.notnull(title_str):
-            m_title = re.search(r'(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(?:m|tr|triệu|usd|\$)', str(title_str), re.I)
-            if m_title:
-                v1, v2 = float(m_title.group(1)), float(m_title.group(2))
-                is_usd = '$' in str(title_str) or 'usd' in str(title_str).lower()
-                mult = EXCHANGE_RATE_USD if is_usd else (1_000_000 if (v1 < 500 and v2 < 500) else 1)
-                return min(v1, v2) * mult, max(v1, v2) * mult
-
-        if not sal_str or pd.isna(sal_str):
-            return None, None
-        s = str(sal_str).strip().lower()
-        if any(k in s for k in ['thương lượng', 'cạnh tranh', 'thoa thuan', 'thỏa thuận', 'negotiable', 'deal']):
-            return None, None
-            
-        has_usd = ('$' in s or 'usd' in s) and not ('tr' in s or 'triệu' in s)
-        nums = [float(n.replace(',', '')) for n in re.findall(r'(\d+(?:,\d+)*(?:\.\d+)?)', s)]
-        if not nums:
-            return None, None
-            
-        if has_usd:
-            nums = [n * EXCHANGE_RATE_USD for n in nums]
-        else:
-            if any(k in s for k in ['tr', 'triệu', 'trieu', 'm']) or any(n < 500 for n in nums):
-                nums = [n * 1_000_000 for n in nums]
-                
-        if len(nums) >= 2:
-            return min(nums[0], nums[1]), max(nums[0], nums[1])
-        elif len(nums) == 1:
-            val = nums[0]
-            if any(k in s for k in ['tới', 'up to', 'dưới', '<', 'tối đa']):
-                return None, val
-            elif any(k in s for k in ['từ', 'trên', '>=', 'tối thiểu', 'from', '>']):
-                return val, None
-            return val, val
-        return None, None
+        """Quy đổi lương về VNĐ/tháng (triệu, USD, lương năm, số trần), loại giá trị phi lý. Xem salary.py."""
+        return _parse_salary_vnd(sal_str, title_str)
 
     @staticmethod
     def clean_employment_type(emp_str: Any, title_str: str = "") -> str:
