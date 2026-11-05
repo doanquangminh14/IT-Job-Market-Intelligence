@@ -15,7 +15,11 @@ tests/
 │   ├── test_topcv_parser.py          # Test parse thẻ job card, chi tiết TopCV
 │   ├── test_topdev_parser.py         # Test decode Next.js RSC, chi tiết TopDev
 │   ├── test_vietnamworks_parser.py   # Test parse item API, validate Pydantic schema
-│   └── test_profiling.py             # Test nhận diện ngôn ngữ, tính toán profiling metrics
+│   ├── test_profiling.py             # Test nhận diện ngôn ngữ, tính toán profiling metrics
+│   ├── test_data_quality.py          # Test rule engine valid / invalid / quarantine
+│   ├── test_location_and_dedup.py    # Test chuẩn hóa thành phố (không dấu), khử trùng lặp 3 lớp
+│   ├── test_cbf_text_and_filter.py   # Test tokenizer (C++/C#/.NET, tiếng Việt), bóc kỹ năng, lọc ngành IT
+│   └── test_recommender.py           # Test điểm thành phần, co giãn trọng số, engine CBF, nhất quán recommend ↔ báo cáo 1:1
 │
 └── integration/                      # Kiểm thử tích hợp luồng
     └── test_sandbox_output.py        # Kiểm tra tính cô lập của thư mục Sandbox
