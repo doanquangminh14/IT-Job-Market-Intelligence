@@ -69,14 +69,15 @@ flowchart TD
 ```
 
 ### Các mục trong notebook
-1. Nạp dữ liệu, lọc ngành IT. 2. Khảo sát chất lượng. 3. Chuẩn hóa kỹ năng, dựng content soup. 4. TF-IDF và tokenizer (có bảng so sánh tokenizer cũ/mới). 5. Bộ chấm điểm. 6. Case studies. 7. Chẩn đoán phân bố điểm. 8. Đánh giá và ba bảng ablation.
+1. Nạp dữ liệu, lọc ngành IT. 2. Khảo sát chất lượng. 3. Chuẩn hóa kỹ năng, dựng content soup. 4. TF-IDF và tokenizer (có bảng so sánh tokenizer cũ/mới). 5. Bộ chấm điểm. 6. Case studies. 7. Chẩn đoán phân bố điểm. 8. Đánh giá: ba bảng ablation (8.1-8.3) và đánh giá không dùng tiêu đề (8.4).
 
-### Ba lỗi đã tìm ra và sửa (chi tiết ở mục 4 và 5 của notebook)
+### Các lỗi đã tìm ra và sửa (chi tiết ở mục 4 và 5 của notebook)
 | Lỗi | Hậu quả | Cách sửa |
 | :--- | :--- | :--- |
 | `token_pattern` cũ không giữ được `C++`/`C#` (cùng thành `c`) và **xóa sạch chữ tiếng Việt có dấu** | Vector văn bản mất thông tin | Tiền xử lý `C++`➔`cpp`, `C#`➔`csharp`...; dùng `\w\w+` |
 | Điểm kỹ năng = tỷ lệ kỹ năng job yêu cầu mà bạn có ➔ job chỉ yêu cầu 1 kỹ năng đạt ngay 100% | Job lệch nghề vẫn thắng job đúng nghề (Precision@5 chỉ 0,48) | Nhân hệ số tin cậy $m/(m+1)$; loại thành phần khi job không có kỹ năng |
 | Cosine thô hiếm khi vượt 0,5 nên trọng số văn bản bị các thành phần thang 0-1 lấn át | Văn bản gần như không ảnh hưởng thứ hạng | Chuẩn hóa theo truy vấn (job giống nhất = 1,0) |
+| Kỹ năng chỉ khớp khi trùng tên chính xác | Biết PostgreSQL vẫn bị tính là thiếu MySQL, biết Vue bị tính là thiếu React | Nhóm kỹ năng thay thế được (viết tay, `SKILL_GROUPS`); kỹ năng gần nhau tính 0,5 và hiện riêng trong Skill Gap |
 
 ### Kết quả đánh giá (25 hồ sơ mẫu, 5 nhóm nghề, top-5)
 
@@ -85,12 +86,25 @@ flowchart TD
 | Ban đầu (trọng số kỹ năng : văn bản = 0,40 : 0,30) | 0,51 | 0,52 |
 | + chuẩn hóa điểm văn bản (vẫn 0,40 : 0,30) | 0,67 | 0,69 |
 | + hệ số tin cậy kỹ năng (vẫn 0,40 : 0,30) | 0,78 | 0,79 |
-| + đổi trọng số sang 0,30 : 0,40 (**đang dùng**) | **0,82** | **0,82** |
+| + đổi trọng số sang 0,30 : 0,40 | 0,82 | 0,82 |
+| + kỹ năng gần nhau tính 0,5 (**đang dùng**) | **0,84** | **0,85** |
 | Tham chiếu: chỉ dùng văn bản | 0,87 | 0,85 |
 
 *Bảng ablation 8.2 trong notebook chạy hoàn toàn ở trọng số đang dùng (0,30 : 0,40), nên dòng "V0. Công thức cũ" ở đó là 0,63 / 0,63 chứ không phải 0,51: cùng một công thức cũ nhưng đo ở trọng số mới. Các số có thể lệch ±0,01 khi dữ liệu được làm mới.*
 
-> ⚠️ **Đọc kết quả cho đúng:** nhãn "liên quan" suy ra từ **tiêu đề** và chỉ có 25 hồ sơ, nên đây là thước đo gần đúng; chênh lệch ~0,03 có thể chỉ là nhiễu. Chỉ **tokenizer mới** và **công thức chấm điểm** cho cải thiện nhất quán. Việc tách kỹ năng/thẻ và lọc IT được giữ vì lý do thiết kế, chưa chứng minh được bằng số liệu. Mục 8.3 quét trọng số cũng chịu thiên lệch này (truy vấn chứa tiêu đề, trùng nguồn với nhãn), nên không nên hiểu "`w_skills = 0` tốt nhất" là nên bỏ điểm kỹ năng.
+**Đánh giá không dùng tiêu đề (mục 8.4).** Bảng trên có thiên lệch: truy vấn chứa tiêu đề hồ sơ, mà nhãn cũng lấy từ tiêu đề job. Mục 8.4 bỏ tiêu đề khỏi truy vấn (chỉ còn kỹ năng, kinh nghiệm, thành phố) để truy vấn và nhãn không còn chung nguồn:
+
+| Cấu hình (không tiêu đề) | P@5 | NDCG@5 |
+| :--- | :--- | :--- |
+| Toàn pipeline, kỹ năng khớp chính xác (V2) | 0,80 | 0,80 |
+| Toàn pipeline, có kỹ năng gần nhau (V3, **đang dùng**) | **0,83** | **0,82** |
+| Chỉ điểm kỹ năng V2 ➔ V3 | 0,63 ➔ 0,70 | 0,61 ➔ 0,69 |
+
+Bỏ tiêu đề, điểm chỉ giảm nhẹ (0,84 ➔ 0,83), nên engine tìm đúng nhóm nghề nhờ nội dung kỹ năng chứ không nhờ trùng chữ tiêu đề. Kỹ năng gần nhau cải thiện ở mọi cấu hình và ở cả hai nửa hồ sơ. Mức 0,5 tốt nhất khi chỉ dùng điểm kỹ năng; mức 1,0 (coi như khớp chính xác) lại tệ hơn cả khi tắt.
+
+> ⚠️ **Đọc kết quả cho đúng:** nhãn "liên quan" suy ra từ **tiêu đề** và chỉ có 25 hồ sơ, nên đây là thước đo gần đúng; chênh lệch ~0,03 có thể chỉ là nhiễu. Cải thiện nhất quán gồm **tokenizer mới**, **công thức chấm điểm** và **kỹ năng gần nhau** (thấy rõ ở chế độ chỉ kỹ năng, cả hai nửa hồ sơ). Việc tách kỹ năng/thẻ và lọc IT được giữ vì lý do thiết kế, chưa chứng minh được bằng số liệu. Mục 8.3 quét trọng số cũng chịu thiên lệch truy vấn chứa tiêu đề, nên không nên hiểu "`w_skills = 0` tốt nhất" là nên bỏ điểm kỹ năng.
+>
+> ~21% tin IT không có kỹ năng **không phải do thiếu bước bóc tách**: notebook 02 đã quét cả mô tả; các tin này là BA, kinh doanh phần mềm, quản lý sản phẩm... mà mô tả không nhắc công nghệ nào.
 
 ---
 
@@ -104,8 +118,7 @@ flowchart TD
    (Môi trường hiện có `ipykernel` nhưng chưa cài JupyterLab; muốn dùng `jupyter lab` hãy `pip install jupyterlab`.)
 3. **Chạy theo thứ tự**: `02_data_pipeline/02_data_cleaning_and_deduplication.ipynb` ➔ `04_eda/...` ➔ `05_recommender/...`.
    - Notebook 05 **yêu cầu** các cột `job_tags` và `is_it` do notebook 02 mới sinh ra; thiếu sẽ báo lỗi rõ ràng ngay ở cell đầu.
-   - Mục 8.1-8.3 của notebook 05 chạy khoảng 2 phút (gọi nhiều lần hàm gợi ý).
-   - Output đã bị xóa ở các cell được sửa gần đây; chạy lại để thấy kết quả.
+   - Mục 8.1-8.4 của notebook 05 chạy khoảng 3 phút (gọi nhiều lần hàm gợi ý).
 4. **Chạy ứng dụng Streamlit**
    ```powershell
    streamlit run app/Home.py
