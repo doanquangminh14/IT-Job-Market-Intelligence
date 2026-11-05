@@ -13,17 +13,21 @@ from src.recommender.content_based import (
 def test_compute_skill_score():
     user_skills = ["Python", "SQL", "Docker"]
     req_skills = ["Python", "Docker", "Kubernetes"]
-    # req: 2/3 (Python, Docker) -> 0.667
-    score = compute_skill_score(user_skills, req_skills)
-    assert score == 0.667
+    # coverage 2/3, hệ số tin cậy m/(m+1) = 2/3  ->  0.444
+    assert compute_skill_score(user_skills, req_skills) == 0.444
+    # công thức cũ (v1) chỉ lấy coverage
+    assert compute_skill_score(user_skills, req_skills, mode='v1') == 0.667
 
-    # Khớp toàn bộ kỹ năng yêu cầu
-    score_full = compute_skill_score(["SQL", "Power BI", "Excel"], ["SQL", "Power BI", "Excel"])
-    assert score_full == 1.0
+    # Khớp toàn bộ 3 kỹ năng: coverage 1.0 x 3/4
+    assert compute_skill_score(["SQL", "Power BI", "Excel"], ["SQL", "Power BI", "Excel"]) == 0.75
 
-    # Không có kỹ năng yêu cầu
-    score_empty = compute_skill_score(["SQL"], [])
-    assert score_empty == 0.5
+    # Job chỉ yêu cầu 1 kỹ năng và bạn có nó: KHÔNG còn đạt 100% (lỗi của công thức cũ)
+    assert compute_skill_score(["Python"], ["Python"]) == 0.5
+    assert compute_skill_score(["Python"], ["Python"], mode='v1') == 1.0
+
+    # Job không liệt kê kỹ năng: không có dữ liệu (None), thay vì 0.5 giả
+    assert compute_skill_score(["SQL"], []) is None
+    assert compute_skill_score(["SQL"], [], mode='v1') == 0.5
 
 def test_compute_exp_score():
     # User 2 years, job [1, 3] -> 1.0
@@ -50,16 +54,21 @@ def test_compute_salary_score():
     assert compute_salary_score(30_000_000, 10_000_000, 20_000_000) == 0.667
 
 def test_compute_composite_score():
-    # Case with salary: all 1.0 -> 1.0
+    # Tất cả điểm 1.0 -> 1.0, trọng số mặc định 0.30/0.40/0.10/0.10/0.10
     score, used_w = compute_composite_score(1.0, 1.0, 1.0, 1.0, 1.0)
     assert score == 1.0
-    assert used_w['sal'] == 0.10
+    assert used_w == pytest.approx({'skills': 0.30, 'text': 0.40, 'exp': 0.10, 'loc': 0.10, 'sal': 0.10})
 
-    # Case without salary (dynamic re-weighting)
+    # Thiếu lương: loại thành phần và co giãn lại trọng số
     score_nosal, used_w_nosal = compute_composite_score(1.0, 1.0, 1.0, 1.0, None)
     assert score_nosal == 1.0
     assert 'sal' not in used_w_nosal
-    assert round(used_w_nosal['skills'], 4) == round(0.40 / 0.90, 4)
+    assert round(used_w_nosal['skills'], 4) == round(0.30 / 0.90, 4)
+
+    # Job không liệt kê kỹ năng: cũng bị loại, không kéo điểm xuống
+    score_noskill, w_noskill = compute_composite_score(None, 1.0, 1.0, 1.0, 1.0)
+    assert score_noskill == 1.0 and 'skills' not in w_noskill
+    assert abs(sum(w_noskill.values()) - 1.0) < 1e-9
 
 def test_generate_rationale():
     rationale = generate_rationale(
@@ -149,3 +158,45 @@ def test_recommender_pipeline():
     assert "Python" in top_job['Tiêu đề']
     assert top_job['Tổng điểm (%)'] > 0
     assert "Khớp" in top_job['Lời giải thích']
+
+
+def _mock_jobs():
+    base = dict(preferred_skills='', experience_min=1.0, experience_max=3.0, city='Hà Nội', work_mode='Onsite',
+                salary_min=None, salary_max=None, is_active=True, job_url='', company_name='X', company_logo_url='')
+    return pd.DataFrame([
+        dict(base, job_id='a', title='C++ Embedded Engineer', required_skills='C++, Linux', job_tags='Nhúng',
+             description_clean='Lập trình C++ cho thiết bị nhúng, yêu cầu kinh nghiệm CI/CD'),
+        dict(base, job_id='b', title='C# .NET Developer', required_skills='C#, .NET, SQL Server', job_tags='',
+             description_clean='Phát triển ứng dụng .NET Core bằng C#'),
+        dict(base, job_id='c', title='Kế toán', required_skills='', job_tags='Tài chính',
+             description_clean='Hạch toán sổ sách'),
+    ])
+
+
+def test_engine_vectorizer_uses_tech_aware_tokenizer(tmp_path):
+    """Hồi quy: vectorizer của engine phải giữ C++/C#/.NET khác nhau và giữ chữ tiếng Việt có dấu."""
+    rec = ContentBasedRecommender(model_dir=str(tmp_path), min_df=1)
+    rec.fit(_mock_jobs(), save_model=False)
+    vocab = rec.tfidf_vectorizer.vocabulary_
+    assert {'cpp', 'csharp', 'dotnet', 'cicd'} <= set(vocab)
+    assert 'nghiệm' in vocab
+
+
+def test_recommend_and_fit_report_are_consistent(tmp_path):
+    rec = ContentBasedRecommender(model_dir=str(tmp_path), min_df=1)
+    rec.fit(_mock_jobs(), save_model=False)
+    kwargs = dict(target_title="C# .NET Developer", skills=["C#", ".NET"], user_exp=2.0, preferred_city="Hà Nội")
+    res = rec.recommend(top_n=3, **kwargs)
+    assert res.iloc[0]['job_id'] == 'b'
+    report = rec.analyze_cv_fit_for_job('b', **kwargs)
+    assert f"Tổng điểm: {res.iloc[0]['Tổng điểm (%)']:.1f}%" in report
+    assert "Xếp hạng: 1/" in report
+
+
+def test_job_without_skills_drops_skill_component(tmp_path):
+    rec = ContentBasedRecommender(model_dir=str(tmp_path), min_df=1)
+    rec.fit(_mock_jobs(), save_model=False)
+    sc = rec.score_components(target_title="Kế toán", skills=["Python"])
+    assert sc['comps'].loc[2, 'skills'] != sc['comps'].loc[2, 'skills']   # NaN: job không liệt kê kỹ năng
+    res = rec.recommend(target_title="Kế toán", skills=["Python"], top_n=3)
+    assert res.loc[res['job_id'] == 'c', 'Điểm kỹ năng (%)'].isna().all()

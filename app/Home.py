@@ -631,9 +631,12 @@ with tab_recommender:
                         f'</div>'
                     ) if rationale_text else ''
 
+                    skill_score_val = row.get("Điểm kỹ năng (%)")
+                    skill_score_text = "không có dữ liệu" if pd.isna(skill_score_val) else f"{skill_score_val}%"
+
                     score_breakdown_html = (
                         f'<div style="display:flex; gap:12px; flex-wrap:wrap; margin:8px 0; padding:6px 12px; background:#f8fafc; border-radius:6px; border:1px solid #f1f5f9; font-size:0.77rem; color:#64748b;">'
-                        f'<span>Kỹ năng: <strong style="color:#0f172a;">{row.get("Điểm kỹ năng (%)", 0)}%</strong></span> &bull; '
+                        f'<span>Kỹ năng: <strong style="color:#0f172a;">{skill_score_text}</strong></span> &bull; '
                         f'<span>Nội dung: <strong style="color:#0f172a;">{row.get("Điểm văn bản (%)", 0)}%</strong></span> &bull; '
                         f'<span>Kinh nghiệm: <strong style="color:#0f172a;">{row.get("Điểm kinh nghiệm (%)", 0)}%</strong></span> &bull; '
                         f'<span>Vị trí / Hình thức: <strong style="color:#0f172a;">{row.get("Điểm vị trí/hình thức (%)", 0)}%</strong></span>'
