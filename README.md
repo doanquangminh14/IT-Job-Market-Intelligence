@@ -51,11 +51,11 @@ Người dùng nhập **chức danh mong muốn, kỹ năng, đoạn CV, số n�
 $$\text{Score} = 0{,}30\,S_{\text{skills}} + 0{,}40\,S_{\text{text}} + 0{,}10\,S_{\text{exp}} + 0{,}10\,S_{\text{loc}} + 0{,}10\,S_{\text{salary}}$$
 
 - **$S_{\text{text}}$**: cosine TF-IDF giữa hồ sơ và "content soup" của job (*Title ×3 + Skills ×4 + Tags ×1 + Description*), **chuẩn hóa theo truy vấn** (job giống nhất = 1,0). Tokenizer giữ nguyên `C++`, `C#`, `.NET`, `CI/CD` và chữ tiếng Việt có dấu.
-- **$S_{\text{skills}}$**: tỷ lệ khớp kỹ năng công nghệ, nhân **hệ số tin cậy** $\frac{m}{m+1}$ ($m$ = số kỹ năng khớp) để job chỉ yêu cầu 1 kỹ năng không tự động đạt 100%.
+- **$S_{\text{skills}}$**: tỷ lệ khớp kỹ năng công nghệ, nhân **hệ số tin cậy** $\frac{m}{m+1}$ ($m$ = số kỹ năng khớp) để job chỉ yêu cầu 1 kỹ năng không tự động đạt 100%. **Kỹ năng gần nhau** (cùng nhóm thay thế được, vd. PostgreSQL ~ MySQL, Vue ~ React) được tính 0,5 kỹ năng khớp và hiển thị riêng trong phần Skill Gap.
 - **Co giãn trọng số**: thành phần thiếu dữ liệu (lương thỏa thuận, job không liệt kê kỹ năng) bị loại và các trọng số còn lại được chuẩn hóa về tổng 1.
 - **Dữ liệu đầu vào**: kỹ năng công nghệ (`required_skills`) được **tách khỏi thẻ ngành/chức danh** (`job_tags`) và rác (phúc lợi, học vấn); chỉ giữ tin thuộc ngành IT (`is_it`).
 
-**Kết quả đánh giá** (25 hồ sơ mẫu, 5 nhóm nghề, top-5): Precision@5 ≈ **0,82**, NDCG@5 ≈ **0,82** (công thức đầu tiên chỉ đạt ~0,51 / 0,52). Bảng ablation đầy đủ ở mục 8 của [notebook 05](notebook/05_recommender/01_cbf_engine_and_evaluation.ipynb).
+**Kết quả đánh giá** (25 hồ sơ mẫu, 5 nhóm nghề, top-5): Precision@5 ≈ **0,84**, NDCG@5 ≈ **0,85** (công thức đầu tiên chỉ đạt ~0,51 / 0,52). Khi **bỏ tiêu đề khỏi truy vấn** (để truy vấn và nhãn không chung nguồn), kết quả vẫn đạt 0,83 / 0,82, tức engine tìm đúng nhóm nghề nhờ nội dung kỹ năng chứ không nhờ trùng chữ tiêu đề. Bảng ablation đầy đủ ở mục 8 của [notebook 05](notebook/05_recommender/01_cbf_engine_and_evaluation.ipynb).
 
 > ⚠️ **Hạn chế:** nhãn "liên quan" được suy ra từ *tiêu đề* và chỉ có 25 hồ sơ, nên đây là thước đo gần đúng (proxy); chênh lệch nhỏ (~0,03) có thể chỉ là nhiễu. Chưa có dữ liệu click/ứng tuyển thật hay tập nhãn tay.
 
@@ -179,5 +179,6 @@ IT-Job-Market-Intelligence/
 - [x] **Phase 2 - Profiling & Data Quality**: Báo cáo kiểm kê, nhận diện ngôn ngữ, rule engine `valid` / `invalid` / `quarantine`, Master Bronze.
 - [x] **Phase 3 - Silver**: Chuẩn hóa lương / kinh nghiệm / địa điểm, tách kỹ năng và thẻ ngành, khử trùng lặp nhiều lớp, pipeline nạp PostgreSQL.
 - [x] **Phase 4 - Recommender & App**: Content-Based Filtering (TF-IDF + chấm điểm đa thành phần), Streamlit gợi ý việc làm và phân tích thị trường.
-- [ ] **Cải thiện CBF**: tập nhãn tay / log tương tác thật để đánh giá đáng tin hơn; hybrid với embedding ngữ nghĩa (cần sinh lại vector cho khớp dữ liệu); kỹ năng gần nghĩa (React ~ Next.js); xử lý ~21% job IT không liệt kê kỹ năng; tinh chỉnh thành phần vị trí/hình thức (98,7% tin là Onsite).
+- [x] **Kỹ năng gần nhau** (PostgreSQL ~ MySQL, Vue ~ React) tính 0,5 điểm; đánh giá không dùng tiêu đề (notebook 05, mục 8.4).
+- [ ] **Cải thiện CBF**: tập nhãn tay / log tương tác thật để đánh giá đáng tin hơn; hybrid với embedding ngữ nghĩa (cần sinh lại vector cho khớp dữ liệu); tinh chỉnh thành phần vị trí/hình thức (98,7% tin là Onsite). ~21% job IT không liệt kê kỹ năng là vì mô tả thật sự không nhắc công nghệ nào (BA, kinh doanh phần mềm, quản lý sản phẩm...), không bóc thêm được.
 - [ ] **Gold layer**: bảng tổng hợp xu hướng kỹ năng theo cấp bậc / thời gian.
