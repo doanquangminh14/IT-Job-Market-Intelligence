@@ -18,8 +18,12 @@ from src.data_cleaning.skill_canonical import (
     CANONICAL_SKILL_MAP,
     EXCLUDE_PATTERNS,
     normalize_skill_name,
-    extract_skills_from_text
+    extract_skills_from_text,
+    extract_skills_and_tags
 )
+from src.data_cleaning.location import extract_city as _extract_city
+from src.data_cleaning.dedup import deduplicate_jobs
+from src.data_cleaning.it_filter import is_it_job
 
 EXCHANGE_RATE_USD = 25400
 
@@ -68,34 +72,12 @@ class JobCleaner:
         return '\n'.join([l for l in lines if l])
 
     @staticmethod
-    def extract_and_normalize_skills(row: pd.Series) -> List[str]:
-        """Loại bỏ các tag phúc lợi, nhân thân và chuẩn hóa tên kỹ năng về dạng chuẩn."""
-        raw_skills = str(row.get('required_skills_raw', ''))
-        desc = str(row.get('description_clean', '')).lower()
-        
-        clean_skills = []
-        seen = set()
-        
-        # 1. Lọc từ các tag thô
-        for p in re.split(r'[,;|/•\n]', raw_skills):
-            item = re.sub(r'\s+', ' ', p).strip()
-            if not item or len(item) <= 1 or len(item) > 40:
-                continue
-            if any(re.search(pat, item.lower()) for pat in EXCLUDE_PATTERNS):
-                continue
-            norm_name = normalize_skill_name(item)
-            if norm_name and norm_name.lower() not in seen:
-                seen.add(norm_name.lower())
-                clean_skills.append(norm_name)
-                
-        # 2. Bổ sung kỹ năng từ văn bản mô tả JD
-        for key_tech, canonical_name in CANONICAL_SKILL_MAP.items():
-            if re.search(r'\b' + re.escape(key_tech) + r'\b', desc):
-                if canonical_name.lower() not in seen:
-                    seen.add(canonical_name.lower())
-                    clean_skills.append(canonical_name)
-                    
-        return clean_skills
+    def extract_and_normalize_skills(row: pd.Series) -> Tuple[List[str], List[str]]:
+        """
+        Tách thẻ thô của sàn thành (kỹ năng công nghệ, thẻ ngành/chức danh). Phúc lợi/kinh nghiệm/học vấn bị loại.
+        Kỹ năng được bổ sung thêm bằng cách quét mô tả JD. Xem skill_canonical.extract_skills_and_tags.
+        """
+        return extract_skills_and_tags(row)
 
     @staticmethod
     def extract_preferred_skills(row: pd.Series) -> List[str]:
@@ -149,19 +131,8 @@ class JobCleaner:
 
     @staticmethod
     def extract_city(loc_str: Any) -> str:
-        """Phân loại địa điểm về các thành phố chuẩn."""
-        if not loc_str or pd.isna(loc_str):
-            return "Toàn quốc"
-        s = str(loc_str).lower()
-        if any(k in s for k in ['hồ chí minh', 'hcm', 'sài gòn', 'saigon', 'thủ đức']):
-            return "Hồ Chí Minh"
-        if any(k in s for k in ['hà nội', 'hn', 'cầu giấy', 'nam từ liêm', 'ba đình', 'đống đa']):
-            return "Hà Nội"
-        if any(k in s for k in ['đà nẵng', 'da nang']):
-            return "Đà Nẵng"
-        if any(k in s for k in ['cần thơ', 'hải phòng', 'bình dương', 'đồng nai']):
-            return "Khác"
-        return "Khác"
+        """Phân loại địa điểm về thành phố chuẩn (không phân biệt có dấu/không dấu). Xem location.py."""
+        return _extract_city(loc_str)
 
     @staticmethod
     def parse_salary_vnd(sal_str: Any, title_str: Any = "") -> Tuple[Optional[float], Optional[float]]:
@@ -306,7 +277,9 @@ class JobCleaner:
         jobs['description_clean'] = jobs['description_raw'].apply(self.clean_html_description)
         
         # 3. Skills
-        jobs['required_skills'] = jobs.apply(self.extract_and_normalize_skills, axis=1)
+        skill_tag = jobs.apply(self.extract_and_normalize_skills, axis=1)
+        jobs['required_skills'] = skill_tag.apply(lambda x: x[0])
+        jobs['job_tags'] = skill_tag.apply(lambda x: x[1])
         jobs['preferred_skills'] = jobs.apply(self.extract_preferred_skills, axis=1)
         
         # 4. Experience
@@ -332,16 +305,18 @@ class JobCleaner:
         jobs['deadline'] = dl_res.apply(lambda x: x[0])
         jobs['is_active'] = dl_res.apply(lambda x: x[1])
         
-        # 9. Khử trùng lặp theo (company_name, title)
-        jobs['desc_len'] = jobs['description_clean'].str.len()
-        jobs = jobs.sort_values(by=['company_name', 'title', 'deadline', 'desc_len'], ascending=[True, True, False, False])
-        jobs = jobs.drop_duplicates(subset=['company_name', 'title'], keep='first')
-        jobs = jobs.drop(columns=['desc_len'])
-        
+        # 9. Khử trùng lặp: trùng chính xác + biến thể tên công ty + đăng lại (xem dedup.py)
+        jobs, self.last_dedup_report = deduplicate_jobs(jobs)
+        print(f" Khử trùng lặp: loại {len(self.last_dedup_report):,} bản ghi "
+              f"({self.last_dedup_report['reason'].value_counts().to_dict()})")
+
+        # 10. Gắn cờ tin thuộc ngành IT (lọc nhiễu cho recommender/EDA)
+        jobs['is_it'] = jobs.apply(lambda r: is_it_job(r['title'], r['required_skills']), axis=1)
+
         final_columns = [
-            'job_id', 'company_name', 'title', 'description_clean', 'required_skills', 'preferred_skills',
+            'job_id', 'company_name', 'title', 'description_clean', 'required_skills', 'preferred_skills', 'job_tags',
             'experience_min', 'experience_max', 'location', 'city', 'salary_min', 'salary_max',
-            'employment_type', 'work_mode', 'deadline', 'is_active', 'job_url', 'company_logo_url'
+            'employment_type', 'work_mode', 'deadline', 'is_active', 'is_it', 'job_url', 'company_logo_url'
         ]
         return jobs[final_columns]
 
@@ -358,6 +333,7 @@ class JobCleaner:
         df_export = df_clean.copy()
         df_export['required_skills'] = df_export['required_skills'].apply(lambda x: ', '.join(x) if isinstance(x, list) else '')
         df_export['preferred_skills'] = df_export['preferred_skills'].apply(lambda x: ', '.join(x) if isinstance(x, list) else '')
+        df_export['job_tags'] = df_export['job_tags'].apply(lambda x: ', '.join(x) if isinstance(x, list) else '')
         
         os.makedirs(os.path.dirname(os.path.abspath(output_csv_path)), exist_ok=True)
         df_export.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
