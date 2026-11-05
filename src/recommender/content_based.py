@@ -26,7 +26,8 @@ import hashlib
 from src.data_cleaning.skill_canonical import (
     CANONICAL_SKILL_MAP,
     extract_skills_from_text,
-    normalize_user_skills
+    normalize_user_skills,
+    split_skill_match,
 )
 from src.data_cleaning.it_filter import is_it_job
 from src.recommender.text_utils import normalize_tech_text, TOKEN_PATTERN
@@ -41,6 +42,7 @@ DEFAULT_MODEL_DIR = os.path.join(PROJECT_ROOT, "data", "models")
 TOKENIZER_VERSION = 3  # tăng khi đổi cách tokenize / dựng content soup để buộc huấn luyện lại model cũ
 DEFAULT_WEIGHTS = {'skills': 0.30, 'text': 0.40, 'exp': 0.10, 'loc': 0.10, 'sal': 0.10}
 COMPONENTS = ['skills', 'text', 'exp', 'loc', 'sal']
+RELATED_SKILL_CREDIT = 0.5  # một kỹ năng gần nhau (PostgreSQL ~ MySQL) = nửa kỹ năng khớp (notebook 05, mục 8.4)
 
 
 # ==============================================================================
@@ -51,24 +53,25 @@ def compute_skill_score(
     user_skills: List[str],
     job_required_skills: List[str],
     job_preferred_skills: Optional[List[str]] = None,
-    mode: str = 'v2'
+    mode: str = 'v3',
+    related_credit: float = RELATED_SKILL_CREDIT
 ) -> Optional[float]:
     """
-    S_skills: mức khớp kỹ năng bắt buộc [0, 1]; trả về None nếu job không liệt kê kỹ năng nào (mode v2).
+    S_skills: mức khớp kỹ năng bắt buộc [0, 1]; trả về None nếu job không liệt kê kỹ năng nào (mode v2, v3).
       - 'v1' (cũ)  : coverage = số kỹ năng khớp / số kỹ năng job yêu cầu  (job yêu cầu 1 kỹ năng bạn có => 100%)
-      - 'v2' (mới) : coverage x m/(m+1) với m = số kỹ năng khớp (khớp càng nhiều, bằng chứng càng đáng tin)
+      - 'v2'       : coverage x m/(m+1) với m = số kỹ năng khớp (khớp càng nhiều, bằng chứng càng đáng tin)
+      - 'v3' (mới) : như v2 nhưng m = khớp chính xác + related_credit x số kỹ năng gần nhau (PostgreSQL ~ MySQL)
     (preferred_skills đã được loại bỏ do dữ liệu thực tế bị rỗng >99%).
     """
-    user_set = set(s.lower() for s in user_skills if s and s.lower() != 'nan')
     req_set = set(s.lower() for s in job_required_skills if s and s.lower() != 'nan') if job_required_skills else set()
-
     if not req_set:
-        return None if mode == 'v2' else 0.5
-    matched = len(user_set & req_set)
-    coverage = matched / len(req_set)
+        return None if mode in ('v2', 'v3') else 0.5
+    matched, related, _ = split_skill_match(user_skills, list(req_set))
+    m = len(matched) + (related_credit * len(related) if mode == 'v3' else 0)
+    coverage = m / len(req_set)
     if mode == 'v1':
         return round(coverage, 3)
-    return round(coverage * matched / (matched + 1), 3)
+    return round(coverage * m / (m + 1), 3)
 
 
 def compute_exp_score(
@@ -176,14 +179,18 @@ def generate_rationale(
     user_exp: float,
     job_min_exp: Optional[float],
     job_mode: str,
-    is_salary_fit: Optional[bool]
+    is_salary_fit: Optional[bool],
+    related_skills: Optional[List[str]] = None
 ) -> str:
     """Sinh câu giải thích gợi ý trực quan."""
     reasons = []
-    total_skills = len(matched_skills) + len(missing_skills)
+    related_skills = related_skills or []
+    total_skills = len(matched_skills) + len(related_skills) + len(missing_skills)
     if total_skills > 0:
         matched_str = ', '.join(matched_skills[:3]) if matched_skills else 'Chưa trùng trực tiếp'
         reasons.append(f"Khớp {len(matched_skills)}/{total_skills} kỹ năng ({matched_str})")
+        if related_skills:
+            reasons.append(f"Gần với {', '.join(related_skills[:3])}")
     if pd.isna(job_min_exp) or job_min_exp == 0:
         reasons.append("Không đòi hỏi số năm kinh nghiệm")
     elif user_exp >= job_min_exp:
@@ -436,13 +443,13 @@ class ContentBasedRecommender:
         preferred_city: str = "Tất cả",
         preferred_work_modes: Optional[Union[str, List[str]]] = None,
         min_salary: Optional[float] = None,
-        skill_mode: str = 'v2',
+        skill_mode: str = 'v3',
         normalize_text: bool = True
     ) -> Optional[Dict[str, Any]]:
         """
         Bước 1: tính 5 điểm thành phần cho TẤT CẢ job. Trả về None nếu hồ sơ rỗng, ngược lại dict gồm:
         user_skills, raw_sim (cosine thô), comps (DataFrame 5 cột, NaN = thiếu dữ liệu), active (mask tin còn hạn).
-        skill_mode='v1' và normalize_text=False tái hiện công thức CŨ (dùng cho ablation).
+        skill_mode='v1'/'v2' và normalize_text=False tái hiện các công thức CŨ (dùng cho ablation).
         """
         if self.jobs_df is None or self.tfidf_matrix is None:
             raise ValueError("Chưa nạp dữ liệu hoặc mô hình.")
@@ -477,10 +484,13 @@ class ContentBasedRecommender:
         """
         Bước 2: gộp 5 điểm thành phần thành tổng điểm [0, 1] cho mọi job (vector hóa).
         Thành phần NaN bị loại và trọng số còn lại co giãn về tổng 1.0 (cùng quy tắc compute_composite_score).
+        Job không còn thành phần nào có trọng số (vd. chỉ chấm kỹ năng mà job không ghi kỹ năng) được 0 điểm.
         """
         w = np.array([(weights or DEFAULT_WEIGHTS)[k] for k in COMPONENTS], dtype=float)
         M = comps[COMPONENTS].values
-        return np.nansum(M * w, axis=1) / (~np.isnan(M) * w).sum(axis=1)
+        available_weight = (~np.isnan(M) * w).sum(axis=1)
+        weighted = np.nansum(M * w, axis=1)
+        return np.divide(weighted, available_weight, out=np.zeros_like(weighted), where=available_weight > 0)
 
     def recommend(
         self,
@@ -493,7 +503,7 @@ class ContentBasedRecommender:
         min_salary: Optional[float] = None,
         top_n: int = 10,
         weights: Optional[Dict[str, float]] = None,
-        skill_mode: str = 'v2',
+        skill_mode: str = 'v3',
         normalize_text: bool = True
     ) -> pd.DataFrame:
         """
@@ -507,14 +517,12 @@ class ContentBasedRecommender:
 
         total = np.where(sc['active'], self.combine_scores(sc['comps'], weights), -1.0)   # bỏ tin hết hạn
         top_idx = np.argsort(-total, kind='stable')[:top_n]
-        user_skills_lower = {s.lower() for s in sc['user_skills']}
 
         out = []
         for idx in top_idx:
             row, c = self.jobs_df.iloc[idx], sc['comps'].iloc[idx]
             req = row['req_list']
-            matched = [s for s in req if s.lower() in user_skills_lower]
-            missing = [s for s in req if s.lower() not in user_skills_lower]
+            matched, related, missing = split_skill_match(sc['user_skills'], req)
             coverage_pct = round(len(matched) / len(req) * 100, 1) if req else 100.0
             sal_fit = None if np.isnan(c['sal']) else bool(c['sal'] == 1.0)
             composite = round(float(total[idx]) * 100, 1)
@@ -530,9 +538,10 @@ class ContentBasedRecommender:
                 'Điểm kinh nghiệm (%)': round(c['exp'] * 100, 1),
                 'Điểm vị trí/hình thức (%)': round(c['loc'] * 100, 1),
                 'Lời giải thích': generate_rationale(matched, missing, user_exp, row.get('experience_min'),
-                                                     row.get('work_mode', 'Onsite'), sal_fit),
+                                                     row.get('work_mode', 'Onsite'), sal_fit, related),
                 'Độ phủ kỹ năng (%)': f"{coverage_pct}% ({len(matched)}/{len(req)})",
                 'Kỹ năng đã có (Điểm mạnh)': ', '.join(matched[:4]) if matched else 'Khớp theo vị trí/mô tả',
+                'Kỹ năng gần nhau': ', '.join(related[:4]),
                 'Kỹ năng còn thiếu (Gap)': ', '.join(missing[:4]) if missing else 'Đầy đủ',
                 'Kinh nghiệm yêu cầu': f"{row.get('experience_min')} năm" if pd.notnull(row.get('experience_min')) else 'Không yêu cầu',
                 'Hình thức': row.get('work_mode', 'Onsite'),
@@ -580,15 +589,14 @@ class ContentBasedRecommender:
         rank = int((np.where(sc['active'], total, -1.0) > total[idx]).sum()) + 1
 
         job, c = self.jobs_df.iloc[idx], sc['comps'].iloc[idx]
-        user_skills_lower = {s.lower() for s in sc['user_skills']}
         req = job['req_list']
-        matched = [s for s in req if s.lower() in user_skills_lower]
-        missing = [s for s in req if s.lower() not in user_skills_lower]
+        matched, related, missing = split_skill_match(sc['user_skills'], req)
         fmt = lambda v: "không có dữ liệu (bỏ qua)" if np.isnan(v) else f"{v * 100:.1f}%"
         exp_req = job.get('experience_min') if pd.notnull(job.get('experience_min')) else 0.0
         exp_status = (f"Đạt yêu cầu ({user_exp} năm >= {exp_req} năm)" if user_exp >= exp_req
                       else f"Chưa đủ kinh nghiệm ({user_exp} năm < yêu cầu {exp_req} năm)")
-        coverage = f"{len(matched) / len(req) * 100:.1f}% ({len(matched)}/{len(req)} kỹ năng)" if req else "job không liệt kê kỹ năng"
+        coverage = (f"{len(matched)}/{len(req)} kỹ năng, thêm {len(related)} kỹ năng gần nhau tính 0,5" if req
+                    else "job không liệt kê kỹ năng")
 
         return f"""================================================================================
 BÁO CÁO ĐÁNH GIÁ ĐỘ PHÙ HỢP HỒ SƠ VỚI CÔNG VIỆC (1:1 FIT REPORT)
@@ -611,6 +619,8 @@ Mức lương:           {format_salary_display(job.get('salary_min'), job.get('
 --- 3. CHI TIẾT KỸ NĂNG ---
 Kỹ năng bạn đã có ({len(matched)}):
    {', '.join(matched) if matched else 'Chưa trùng trực tiếp kỹ năng công nghệ'}
+Kỹ năng gần với kỹ năng bạn có, học thêm nhanh ({len(related)}):
+   {', '.join(related) if related else 'Không có'}
 Kỹ năng còn thiếu mà công ty yêu cầu ({len(missing)}):
    {', '.join(missing) if missing else 'Tuyệt vời! Bạn đáp ứng đầy đủ tất cả kỹ năng'}
 ================================================================================"""

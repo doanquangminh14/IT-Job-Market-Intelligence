@@ -9,12 +9,14 @@ from src.recommender.content_based import (
     generate_rationale,
     ContentBasedRecommender
 )
+from src.data_cleaning.skill_canonical import SKILL_GROUPS, TECH_LOOKUP, split_skill_match
 
 def test_compute_skill_score():
-    user_skills = ["Python", "SQL", "Docker"]
-    req_skills = ["Python", "Docker", "Kubernetes"]
-    # coverage 2/3, hệ số tin cậy m/(m+1) = 2/3  ->  0.444
+    user_skills = ["Python", "SQL", "Redis"]
+    req_skills = ["Python", "Redis", "Kubernetes"]
+    # coverage 2/3, hệ số tin cậy m/(m+1) = 2/3  ->  0.444 (Kubernetes không gần kỹ năng nào của hồ sơ)
     assert compute_skill_score(user_skills, req_skills) == 0.444
+    assert compute_skill_score(user_skills, req_skills, mode='v2') == 0.444
     # công thức cũ (v1) chỉ lấy coverage
     assert compute_skill_score(user_skills, req_skills, mode='v1') == 0.667
 
@@ -28,6 +30,32 @@ def test_compute_skill_score():
     # Job không liệt kê kỹ năng: không có dữ liệu (None), thay vì 0.5 giả
     assert compute_skill_score(["SQL"], []) is None
     assert compute_skill_score(["SQL"], [], mode='v1') == 0.5
+
+
+def test_related_skills_get_partial_credit():
+    # PostgreSQL ~ MySQL, Vue ~ React: mỗi kỹ năng gần nhau tính 0,5 ➔ m = 1, coverage 1/3, x 1/2
+    user, req = ["PostgreSQL", "Vue"], ["MySQL", "React", "Docker"]
+    assert split_skill_match(user, req) == ([], ["MySQL", "React"], ["Docker"])
+    assert compute_skill_score(user, req, mode='v2') == 0.0
+    assert compute_skill_score(user, req) == 0.167
+    # khớp chính xác vẫn được ưu tiên hơn khớp gần
+    assert compute_skill_score(["MySQL"], ["MySQL", "Docker"]) > compute_skill_score(["PostgreSQL"], ["MySQL", "Docker"]) > 0
+    # tắt điểm gần nhau thì v3 == v2
+    assert compute_skill_score(user, req, related_credit=0) == compute_skill_score(user, req, mode='v2')
+    # kỹ năng đồng xuất hiện nhưng KHÔNG thay thế được nhau thì không được tính
+    assert split_skill_match(["Python"], ["SQL"]) == ([], [], ["SQL"])
+
+
+def test_related_skill_groups_use_canonical_names():
+    """Mọi tên trong SKILL_GROUPS phải là tên chuẩn của từ điển, nếu không nhóm sẽ không bao giờ khớp."""
+    canonical = {v.lower() for v in TECH_LOOKUP.values()}
+    unknown = sorted({s for grp in SKILL_GROUPS for s in grp if s.lower() not in canonical})
+    assert unknown == []
+
+
+def test_rationale_mentions_related_skills():
+    text = generate_rationale(["Python"], ["Docker"], 2.0, 1.0, "Onsite", True, related_skills=["MySQL"])
+    assert "Khớp 1/3 kỹ năng" in text and "Gần với MySQL" in text
 
 def test_compute_exp_score():
     # User 2 years, job [1, 3] -> 1.0
