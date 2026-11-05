@@ -46,6 +46,7 @@ notebook/
 | :--- | :--- | :--- |
 | 4 | Kỹ năng | `required_skills_raw` của sàn **trộn lẫn** kỹ năng, thẻ ngành và rác. Tách thành `required_skills` (chỉ kỹ năng công nghệ), `job_tags` (ngành/chức danh/ngoại ngữ) và loại bỏ rác (phúc lợi, học vấn). Không tách thì thẻ `It - Phần Mềm` (~31% tin) trở thành "kỹ năng" phổ biến nhất. |
 | 7 | Thành phố | Bỏ dấu trước khi so khớp (nhận cả `hanoi`, `ha noi`), dùng ranh giới từ, địa chỉ nhiều thành phố lấy thành phố xuất hiện đầu tiên. |
+| 8 | Lương | Quy đổi về **VNĐ/tháng**. Sửa các lỗi từng làm lương sai: chữ `M` trong `MONTH` (TopDev) bị hiểu là "triệu" ➔ 10¹³ VNĐ; lương **năm** (`/năm`, VietnamWorks) chưa chia 12; số trần của TopCV (`500 - 2000`) thực chất là USD; giá trị ngoài [1 triệu, 300 triệu]/tháng bị loại. Khoảng lương ghi trong tiêu đề chỉ dùng khi chuỗi gốc không có số. |
 | 12 | Khử trùng lặp | 3 lớp: trùng chính xác, biến thể tên công ty (`MBBANK` ↔ `NGÂN HÀNG TMCP QUÂN ĐỘI – MBBANK`), đăng lại. Lớp 3 **bắt buộc** kèm điều kiện tiêu đề, thành phố, kinh nghiệm vì nhiều tin cùng công ty chia sẻ phần giới thiệu/phúc lợi giống hệt nhau. Loại 380 bản ghi. |
 | 12b | Cờ `is_it` | Dữ liệu có cả việc thiết kế đồ họa, kinh doanh, kế toán. Gắn cờ thay vì xóa để mỗi bước sau tự chọn. 3.470/5.111 tin là IT. |
 | 13 | Xuất file | `data/notebook/content_base/jobs_clean.csv` (cho notebook), `data/silver/jobs_cleaned.{csv,parquet}` (cho Streamlit). **Ghi đè** file cũ. |
@@ -81,12 +82,13 @@ flowchart TD
 
 | Công thức | P@5 | NDCG@5 |
 | :--- | :--- | :--- |
-| Ban đầu (trọng số kỹ năng : văn bản = 0,40 : 0,30) | 0,49 | 0,49 |
-| Sau khi sửa cách chấm điểm (vẫn 0,40 : 0,30) | 0,78 | 0,80 |
-| + đổi trọng số sang 0,30 : 0,40 (**đang dùng**) | **0,82** | **0,83** |
-| Tham chiếu: chỉ dùng văn bản | 0,87 | 0,84 |
+| Ban đầu (trọng số kỹ năng : văn bản = 0,40 : 0,30) | 0,51 | 0,52 |
+| + chuẩn hóa điểm văn bản (vẫn 0,40 : 0,30) | 0,67 | 0,69 |
+| + hệ số tin cậy kỹ năng (vẫn 0,40 : 0,30) | 0,78 | 0,79 |
+| + đổi trọng số sang 0,30 : 0,40 (**đang dùng**) | **0,82** | **0,82** |
+| Tham chiếu: chỉ dùng văn bản | 0,87 | 0,85 |
 
-*Bảng ablation 8.2 trong notebook chạy hoàn toàn ở trọng số đang dùng (0,30 : 0,40), nên dòng "công thức cũ" ở đó là 0,59 / 0,60 chứ không phải 0,49: cùng một công thức cũ nhưng đo ở trọng số mới.*
+*Bảng ablation 8.2 trong notebook chạy hoàn toàn ở trọng số đang dùng (0,30 : 0,40), nên dòng "V0. Công thức cũ" ở đó là 0,63 / 0,63 chứ không phải 0,51: cùng một công thức cũ nhưng đo ở trọng số mới. Các số có thể lệch ±0,01 khi dữ liệu được làm mới.*
 
 > ⚠️ **Đọc kết quả cho đúng:** nhãn "liên quan" suy ra từ **tiêu đề** và chỉ có 25 hồ sơ, nên đây là thước đo gần đúng; chênh lệch ~0,03 có thể chỉ là nhiễu. Chỉ **tokenizer mới** và **công thức chấm điểm** cho cải thiện nhất quán. Việc tách kỹ năng/thẻ và lọc IT được giữ vì lý do thiết kế, chưa chứng minh được bằng số liệu. Mục 8.3 quét trọng số cũng chịu thiên lệch này (truy vấn chứa tiêu đề, trùng nguồn với nhãn), nên không nên hiểu "`w_skills = 0` tốt nhất" là nên bỏ điểm kỹ năng.
 
@@ -98,10 +100,8 @@ flowchart TD
    ```powershell
    .\.venv\Scripts\Activate.ps1
    ```
-2. **Mở Jupyter**
-   ```powershell
-   jupyter lab
-   ```
+2. **Mở notebook trong VS Code**: mở file `.ipynb`, chọn kernel `.venv` (góc phải trên), bấm **Run All**.
+   (Môi trường hiện có `ipykernel` nhưng chưa cài JupyterLab; muốn dùng `jupyter lab` hãy `pip install jupyterlab`.)
 3. **Chạy theo thứ tự**: `02_data_pipeline/02_data_cleaning_and_deduplication.ipynb` ➔ `04_eda/...` ➔ `05_recommender/...`.
    - Notebook 05 **yêu cầu** các cột `job_tags` và `is_it` do notebook 02 mới sinh ra; thiếu sẽ báo lỗi rõ ràng ngay ở cell đầu.
    - Mục 8.1-8.3 của notebook 05 chạy khoảng 2 phút (gọi nhiều lần hàm gợi ý).
