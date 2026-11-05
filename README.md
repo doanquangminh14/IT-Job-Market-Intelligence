@@ -36,7 +36,7 @@ flowchart LR
 | :--- | :--- | :--- |
 | **Raw** (`data/raw/`) | JSON gốc bất biến theo ngày, gồm `listings/` (sổ trạng thái pending/success/failed) và `details/`. | ✅ Hoạt động |
 | **Bronze** (`data/bronze/`) | Bản ghi đã kiểm định chất lượng: `bronze_details_valid.json`, `bronze_details_quarantine.json`, `bronze_listings_master.json`. | ✅ Hoạt động |
-| **Silver** (`data/silver/`, `data/notebook/content_base/jobs_clean.csv`) | Dữ liệu làm sạch, chuẩn hóa lương/kinh nghiệm/địa điểm, tách kỹ năng, khử trùng lặp. | ✅ Hoạt động |
+| **Silver** (`data/silver/`, `data/notebook/content_base/jobs_clean.csv`) | Dữ liệu làm sạch, chuẩn hóa lương (VNĐ/tháng, loại giá trị phi lý)/kinh nghiệm/địa điểm, tách kỹ năng, khử trùng lặp. | ✅ Hoạt động |
 | **Silver PostgreSQL** (`sql/`) | Nạp Bronze vào DB quan hệ 9 bảng (cần PostgreSQL, cấu hình qua `.env`). *Tùy chọn: hệ gợi ý và app không phụ thuộc DB.* | ✅ Có pipeline |
 | **Gold** (`data/gold/`, `sql/schema_gold.sql`) | Bảng tổng hợp phục vụ phân tích. | 🟡 Mới có schema |
 
@@ -55,7 +55,7 @@ $$\text{Score} = 0{,}30\,S_{\text{skills}} + 0{,}40\,S_{\text{text}} + 0{,}10\,S
 - **Co giãn trọng số**: thành phần thiếu dữ liệu (lương thỏa thuận, job không liệt kê kỹ năng) bị loại và các trọng số còn lại được chuẩn hóa về tổng 1.
 - **Dữ liệu đầu vào**: kỹ năng công nghệ (`required_skills`) được **tách khỏi thẻ ngành/chức danh** (`job_tags`) và rác (phúc lợi, học vấn); chỉ giữ tin thuộc ngành IT (`is_it`).
 
-**Kết quả đánh giá** (25 hồ sơ mẫu, 5 nhóm nghề, top-5): Precision@5 ≈ **0,82**, NDCG@5 ≈ **0,83** (công thức đầu tiên chỉ đạt ~0,48 / 0,49). Bảng ablation đầy đủ ở mục 8 của [notebook 05](notebook/05_recommender/01_cbf_engine_and_evaluation.ipynb).
+**Kết quả đánh giá** (25 hồ sơ mẫu, 5 nhóm nghề, top-5): Precision@5 ≈ **0,82**, NDCG@5 ≈ **0,82** (công thức đầu tiên chỉ đạt ~0,51 / 0,52). Bảng ablation đầy đủ ở mục 8 của [notebook 05](notebook/05_recommender/01_cbf_engine_and_evaluation.ipynb).
 
 > ⚠️ **Hạn chế:** nhãn "liên quan" được suy ra từ *tiêu đề* và chỉ có 25 hồ sơ, nên đây là thước đo gần đúng (proxy); chênh lệch nhỏ (~0,03) có thể chỉ là nhiễu. Chưa có dữ liệu click/ứng tuyển thật hay tập nhãn tay.
 
@@ -99,7 +99,8 @@ Có hai cách, cho **cùng một kết quả** (đã đối chiếu 100% trên `
 
 ```powershell
 # (a) Khuyên dùng khi muốn hiểu logic: chạy notebook 02 trong Jupyter
-jupyter lab    # mở notebook/02_data_pipeline/02_data_cleaning_and_deduplication.ipynb
+# Mở notebook/02_data_pipeline/02_data_cleaning_and_deduplication.ipynb trong VS Code,
+# chọn kernel ".venv" (góc phải trên) rồi bấm "Run All"
 
 # (b) Chạy tự động bằng module Python
 python -m src.data_cleaning.job_cleaner
