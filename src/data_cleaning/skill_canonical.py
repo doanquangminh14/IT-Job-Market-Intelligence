@@ -221,22 +221,93 @@ def normalize_skill_name(skill_str: str) -> Optional[str]:
     return None
 
 
+# ==============================================================================
+# KỸ NĂNG CÔNG NGHỆ vs THẺ NGÀNH (đồng bộ với notebook 02, Bước 4)
+# ==============================================================================
+# required_skills_raw của TopCV/VietnamWorks trộn lẫn kỹ năng công nghệ, thẻ ngành/chức danh/ngoại ngữ và rác
+# (phúc lợi, kinh nghiệm...). Kỹ năng ➔ `required_skills`, thẻ ➔ `job_tags`, rác ➔ loại bỏ.
+
+# 2. Khái niệm công nghệ hay gặp trong thẻ của sàn nhưng chưa có trong từ điển trên
+TECH_EXTRA = {
+    'data analysis': 'Data Analysis', 'data analytics': 'Data Analysis', 'phân tích dữ liệu': 'Data Analysis',
+    'data science': 'Data Science', 'big data': 'Big Data', 'business intelligence': 'Business Intelligence',
+    'data management': 'Data Management', 'data governance': 'Data Governance',
+    'cloud': 'Cloud', 'điện toán đám mây (cloud)': 'Cloud', 'devops': 'DevOps', 'api': 'API', 'api testing': 'API Testing',
+    'erp': 'ERP', 'sap': 'SAP', 'scada': 'SCADA', 'vmware': 'VMware', 'hosting': 'Hosting', 'server': 'Server',
+    'software testing': 'Software Testing', 'kiểm thử phần mềm': 'Software Testing', 'qa': 'QA',
+    'information security': 'An Ninh Mạng', 'it security': 'An Ninh Mạng', 'an toàn thông tin': 'An Ninh Mạng',
+    'network security': 'Network Security',
+    'lập trình nhúng': 'Embedded', 'embedded': 'Embedded', 'network': 'Networking', 'quản trị mạng': 'Networking',
+    'system administration': 'System Administration', 'quản trị hệ thống': 'System Administration',
+    'agile scrum': 'Agile', 'ux design': 'UX Design', 'ui': 'UI Design',
+    'ms sql': 'SQL Server', 'python programming': 'Python', 'java spring boot': 'Spring Boot',
+    'ci': 'CI/CD', 'cd': 'CI/CD', 'cd methodologies': 'CI/CD', 'ai': 'AI', 'blockchain': 'Blockchain',
+}
+TECH_LOOKUP = {**CANONICAL_SKILL_MAP, **TECH_EXTRA}
+
+# 3. Khóa quá mơ hồ khi quét VĂN BẢN TỰ DO (vd 'go' trong "go to market", 'cv' trong "gửi CV", 'ml' viết tắt)
+#    ➔ chỉ chấp nhận chúng khi xuất hiện như một THẺ rõ ràng, không quét từ mô tả.
+AMBIGUOUS_FREE_TEXT_KEYS = {'cv', 'go', 'r', 'ml', 'dl', 'py', 'ts', 'js', 'macro', 'gin', 'spring', 'express',
+                            'node', 'shell', 'elastic', 'ai', 'ui', 'ci', 'cd', 'api', 'qa', 'server', 'cloud', 'network', 'sap'}
+
+# 4. Mẫu nhận diện thẻ RÁC (phúc lợi, kinh nghiệm, học vấn, nhân thân...)
+JUNK_PATTERN = re.compile(
+    r'bảo hiểm|thưởng|bonus|du lịch|team\s*building|khám sức khỏe|phụ cấp|xăng|tai nghe|cước|điện thoại|phương tiện|'
+    r'giờ hành chính|giọng|phát âm|diễn đạt|kinh nghiệm|trở lên|đại học|cao đẳng|trung cấp|tuổi|xem tất cả|'
+    r'toàn thời gian|bán thời gian|thực tập|signing', re.IGNORECASE)
+
+# 5. Regex quét kỹ năng trong văn bản. Dùng lookaround thay cho \b để nhận đúng C++, C#, .NET, CI/CD
+TECH_PATTERNS = [
+    (re.compile(r'(?<![\w+#.])' + re.escape(key) + r'(?![\w+#])'), canonical)
+    for key, canonical in TECH_LOOKUP.items() if key not in AMBIGUOUS_FREE_TEXT_KEYS
+]
+
+
+def classify_tag(tag):
+    """Phân loại một thẻ thô: ('skill', tên chuẩn) | ('tag', tên giữ nguyên) | ('junk', None)."""
+    key = re.sub(r'\s+', ' ', tag).strip().lower()
+    if key in TECH_LOOKUP:
+        return 'skill', TECH_LOOKUP[key]
+    if JUNK_PATTERN.search(key):
+        return 'junk', None
+    return 'tag', re.sub(r'\s+', ' ', tag).strip()
+
+
+def extract_skills_and_tags(row):
+    skills, tags, seen_s, seen_t = [], [], set(), set()
+
+    # (a) Tách chuỗi thẻ thô. KHÔNG tách theo dấu "/" để giữ nguyên CI/CD, A/B Testing
+    for part in re.split(r'[,;|•\n]', str(row.get('required_skills_raw', ''))):
+        item = part.strip()
+        if len(item) <= 1 or len(item) > 60:
+            continue
+        kind, name = classify_tag(item)
+        if kind == 'skill' and name.lower() not in seen_s:
+            seen_s.add(name.lower()); skills.append(name)
+        elif kind == 'tag' and name.lower() not in seen_t:
+            seen_t.add(name.lower()); tags.append(name)
+
+    # (b) Bổ sung kỹ năng công nghệ quét từ mô tả JD
+    desc = str(row.get('description_clean', '')).lower()
+    for pattern, canonical in TECH_PATTERNS:
+        if canonical.lower() not in seen_s and pattern.search(desc):
+            seen_s.add(canonical.lower()); skills.append(canonical)
+    return skills, tags
+
+
 def extract_skills_from_text(text: str) -> List[str]:
-    """
-    Tự động quét và trích xuất danh sách kỹ năng chuẩn hóa từ văn bản bất kỳ (mô tả JD hoặc nội dung CV).
-    """
+    """Bóc tách kỹ năng công nghệ chuẩn hóa từ văn bản tự do (mô tả JD / nội dung CV)."""
     if not text:
         return []
     text_lower = str(text).lower()
-    detected = []
-    seen = set()
-    
-    for key, val in CANONICAL_SKILL_MAP.items():
-        # Kiểm tra biên từ để tránh nhận nhầm từ con
-        pattern = r'\b' + re.escape(key) + r'\b'
-        if re.search(pattern, text_lower):
-            if val.lower() not in seen:
-                seen.add(val.lower())
-                detected.append(val)
-                
-    return detected
+    found, seen = [], set()
+    for pattern, canonical in TECH_PATTERNS:
+        if canonical.lower() not in seen and pattern.search(text_lower):
+            seen.add(canonical.lower())
+            found.append(canonical)
+    return found
+
+
+def normalize_user_skills(skills) -> List[str]:
+    """Chuẩn hóa kỹ năng người dùng nhập tay: 'reactjs' ➔ 'React', 'k8s' ➔ 'Kubernetes'."""
+    return [TECH_LOOKUP.get(str(s).strip().lower(), str(s).strip()) for s in (skills or []) if str(s).strip()]
