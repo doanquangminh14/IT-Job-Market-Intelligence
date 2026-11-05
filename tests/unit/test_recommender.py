@@ -84,7 +84,7 @@ def test_generate_rationale():
     assert "Hình thức Remote" in rationale
     assert "Đạt kỳ vọng lương" in rationale
 
-def test_recommender_pipeline():
+def test_recommender_pipeline(tmp_path):
     mock_data = pd.DataFrame([
         {
             'job_id': 'job_1',
@@ -139,8 +139,9 @@ def test_recommender_pipeline():
         }
     ])
     
-    rec = ContentBasedRecommender()
-    rec.fit(mock_data)
+    # Dùng thư mục tạm + không lưu: tránh ghi đè model thật trong data/models/
+    rec = ContentBasedRecommender(model_dir=str(tmp_path))
+    rec.fit(mock_data, save_model=False)
     
     results = rec.recommend(
         target_title="Python Developer",
