@@ -156,4 +156,4 @@ Dự án chưa có log tương tác thật, nên notebook 06 **sinh dữ liệu 
    streamlit run app/Home.py
    ```
 
-> **Lưu ý:** notebook 03 (`01_nlp_skill_extraction`) đang báo lỗi `too many values to unpack` ở cell 21 khi chạy lại; lỗi này không liên quan đến `jobs_clean.csv` và chưa được xử lý.
+> **Lưu ý:** notebook 03/02 (`02_semantic_embedding_experiment`) dùng bộ vector embedding sinh từ dữ liệu cũ (3.249 tin) và chưa được chạy lại; đây là thử nghiệm riêng, không ảnh hưởng hệ gợi ý.
