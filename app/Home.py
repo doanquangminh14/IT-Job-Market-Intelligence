@@ -3,6 +3,7 @@ import sys
 import re
 import datetime
 import urllib.parse
+import uuid
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -13,6 +14,9 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from src.recommender.content_based import ContentBasedRecommender, data_file_version
+from src.recommender.collaborative import (CFModel, InteractionLog, build_training_events,
+                                           simulated_data_available)
+from src.recommender.hybrid import HybridRecommender
 from src.data_cleaning.skill_canonical import CANONICAL_SKILL_MAP, extract_skills_from_text
 from app.components.market_insights import render_market_insights
 
@@ -359,6 +363,18 @@ def load_recommender(data_version: tuple):
     return engine
 
 recommender = load_recommender(data_version)
+interaction_log = InteractionLog()
+
+
+@st.cache_resource(show_spinner="Đang huấn luyện mô hình lọc cộng tác (ALS)...")
+def load_cf_model(log_version: tuple, use_simulated: bool):
+    """Huấn luyện lại ALS khi log tương tác đổi (khoảng 1 giây ở quy mô hiện tại; notebook 07, mục 6)."""
+    return CFModel().fit(build_training_events(InteractionLog(), use_simulated))
+
+
+def get_hybrid(use_simulated: bool) -> HybridRecommender:
+    cf = load_cf_model(interaction_log.version(), use_simulated)
+    return HybridRecommender(recommender, interaction_log, use_simulated, cf_model=cf)
 jobs_df = recommender.jobs_df
 all_skills_list = sorted(list(set(CANONICAL_SKILL_MAP.values())))
 
@@ -480,6 +496,24 @@ with tab_recommender:
                 value=int(st.session_state.get("top_n", 5))
             )
 
+            st.markdown('<p style="font-size:0.86rem; font-weight:600; color:#334155; margin:10px 0 6px 0;">3. Cá nhân hóa theo hành vi (Hybrid CBF + CF)</p>', unsafe_allow_html=True)
+            if "user_id" not in st.session_state:
+                st.session_state["user_id"] = f"khach-{uuid.uuid4().hex[:6]}"
+            user_id = st.text_input(
+                "Mã người dùng:",
+                key="user_id",
+                help="Các lượt 'Quan tâm' / 'Ứng tuyển' được lưu theo mã này. Dùng lại cùng mã ở lần sau để hệ thống nhớ sở thích của bạn."
+            ).strip() or "khach"
+            if "use_simulated" not in st.session_state:
+                st.session_state["use_simulated"] = simulated_data_available()
+            use_simulated = st.checkbox(
+                "Dùng dữ liệu tương tác mô phỏng làm nền (demo)",
+                key="use_simulated",
+                disabled=not simulated_data_available(),
+                help="Ứng dụng chưa có nhiều người dùng thật, nên có thể mượn 3.000 người dùng mô phỏng của notebook 06 "
+                     "để mô hình CF có dữ liệu học. Đây là dữ liệu MÔ PHỎNG, chỉ dùng để trình diễn."
+            )
+
         st.write("")
         col_btn, _ = st.columns([1, 2])
         with col_btn:
@@ -497,7 +531,10 @@ with tab_recommender:
             detected_skills = extract_skills_from_text(cv_text) if cv_text else []
             all_candidate_skills = list(dict.fromkeys(detected_skills + skills))
 
-            df_results = recommender.recommend(
+            hybrid = get_hybrid(use_simulated)
+            df_results, rec_info = hybrid.recommend(
+                user_id=user_id,
+                top_n=top_n,
                 target_title=target_title,
                 cv_text=cv_text,
                 skills=skills,
@@ -505,11 +542,15 @@ with tab_recommender:
                 preferred_city=preferred_city,
                 preferred_work_modes=preferred_work_modes,
                 min_salary=salary_filter,
-                top_n=top_n
             )
+            if not df_results.empty:   # lưu lượt hiển thị (vị trí + chế độ) để sau này đánh giá được trên log thật
+                interaction_log.log_impressions(user_id, df_results["job_id"], source="recommend", mode=rec_info["mode"])
 
             # Lưu kết quả và thông tin vào session_state
             st.session_state["df_results"] = df_results
+            st.session_state["rec_info"] = rec_info
+            st.session_state["rec_user_id"] = user_id
+            st.session_state["pending_feedback"] = False
             st.session_state["detected_skills"] = detected_skills
             st.session_state["all_candidate_skills"] = all_candidate_skills
             st.session_state["summary_target_title"] = target_title
@@ -560,6 +601,21 @@ with tab_recommender:
         """
         st.markdown(profile_box_html, unsafe_allow_html=True)
 
+        # Chế độ gợi ý đã dùng: CBF thuần hay Hybrid CBF + CF
+        rec_info = st.session_state.get("rec_info", {})
+        if rec_info:
+            if rec_info.get("mode") == "Hybrid":
+                st.success(f"**Chế độ: Hybrid CBF + CF.** {rec_info.get('reason', '')} "
+                           f"Danh sách được xếp theo Hybrid; 'Độ phù hợp' là điểm nội dung (CBF), 'Điểm CF' là mức quan tâm "
+                           f"của những người dùng có hành vi giống bạn.")
+            else:
+                st.info(f"**Chế độ: CBF (dựa trên nội dung hồ sơ).** {rec_info.get('reason', '')}")
+            if st.session_state.get("use_simulated"):
+                st.caption(f"Dữ liệu CF đang gồm tương tác MÔ PHỎNG của notebook 06 làm nền (demo): "
+                           f"{rec_info.get('cf_users', 0):,} người dùng, {rec_info.get('cf_items', 0):,} tin.")
+            if st.session_state.get("pending_feedback"):
+                st.caption("Bạn vừa ghi nhận thêm tương tác: bấm **Tìm Kiếm** lại để cập nhật gợi ý theo sở thích mới.")
+
         if df_results.empty:
             st.info("Không tìm thấy công việc nào thỏa mãn toàn bộ tiêu chí lọc. Bạn có thể thử giảm số năm kinh nghiệm hoặc đặt mức lương tối thiểu về 0 để mở rộng kết quả.")
         else:
@@ -582,7 +638,7 @@ with tab_recommender:
             if view_mode in ["Bảng so sánh tổng quan", "Xem cả hai"]:
                 display_cols = [
                     'Tiêu đề', 'Công ty', 'Tổng điểm (%)', 'Lời giải thích',
-                    'Độ phủ kỹ năng (%)', 'Kỹ năng đã có (Điểm mạnh)', 'Kỹ năng gần nhau', 'Kỹ năng còn thiếu (Gap)',
+                    'Điểm CF (%)', 'Độ phủ kỹ năng (%)', 'Kỹ năng đã có (Điểm mạnh)', 'Kỹ năng gần nhau', 'Kỹ năng còn thiếu (Gap)',
                     'Kinh nghiệm yêu cầu', 'Thành phố', 'Hình thức', 'Mức lương'
                 ]
                 display_cols = [c for c in display_cols if c in df_results.columns]
@@ -665,7 +721,10 @@ with tab_recommender:
                         f'<span>Nội dung: <strong style="color:#0f172a;">{row.get("Điểm văn bản (%)", 0)}%</strong></span> &bull; '
                         f'<span>Kinh nghiệm: <strong style="color:#0f172a;">{row.get("Điểm kinh nghiệm (%)", 0)}%</strong></span> &bull; '
                         f'<span>Vị trí / Hình thức: <strong style="color:#0f172a;">{row.get("Điểm vị trí/hình thức (%)", 0)}%</strong></span>'
-                        f'</div>'
+                        + (f' &bull; <span>Hành vi người dùng tương tự (CF): <strong style="color:#1d4ed8;">'
+                           f'{"tin mới, chưa có dữ liệu" if pd.isna(row.get("Điểm CF (%)")) else str(row.get("Điểm CF (%)")) + "%"}</strong></span>'
+                           if "Điểm CF (%)" in row.index else '')
+                        + f'</div>'
                     )
 
                     card_html = (
@@ -699,6 +758,24 @@ with tab_recommender:
                         f'</div>'
                     )
                     st.markdown(card_html, unsafe_allow_html=True)
+
+                    # Phản hồi của người dùng ➔ log tương tác ➔ dữ liệu cho CF (Quan tâm = lưu, trọng số 3; Ứng tuyển = 5)
+                    fb_job = str(row.get("job_id", ""))
+                    fb_user = st.session_state.get("rec_user_id", user_id)
+                    fb_done = st.session_state.setdefault("feedback_done", {})
+                    fb_cols = st.columns([1, 1, 4])
+                    for fb_col, fb_event, fb_label, fb_done_label in ((fb_cols[0], "save", "Quan tâm", "Đã quan tâm"),
+                                                                       (fb_cols[1], "apply", "Ứng tuyển", "Đã ứng tuyển")):
+                        fb_key = f"fb_{fb_event}_{fb_user}_{fb_job}"
+                        with fb_col:
+                            if st.button(fb_done_label if fb_key in fb_done else fb_label, key=fb_key,
+                                         disabled=fb_key in fb_done, use_container_width=True):
+                                interaction_log.log_event(fb_user, fb_job, fb_event, position=int(idx),
+                                                          source=st.session_state.get("rec_info", {}).get("mode", ""))
+                                fb_done[fb_key] = True
+                                st.session_state["pending_feedback"] = True
+                                st.toast(f"Đã ghi nhận '{fb_label}' cho tin: {row['Tiêu đề']}")
+                                st.rerun()
 
 with tab_market:
     render_market_insights()

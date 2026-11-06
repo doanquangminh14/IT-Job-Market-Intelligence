@@ -15,7 +15,7 @@ if sys.stdout.encoding != "utf-8":
 
 import re
 import joblib
-from typing import Dict, Any, List, Optional, Tuple, Union
+from typing import Dict, Any, Iterable, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -526,14 +526,30 @@ class ContentBasedRecommender:
         Gợi ý việc làm: Kỹ năng + Văn bản + Kinh nghiệm + Vị trí/Hình thức + Lương, kèm lời giải thích và Skill Gap.
         Lời giải thích chỉ được sinh cho top_n job tốt nhất.
         """
+        scored = self.score_all(target_title, cv_text, skills, user_exp, preferred_city, preferred_work_modes,
+                                min_salary, weights, skill_mode, normalize_text)
+        if scored is None:
+            return pd.DataFrame()
+        sc, total = scored
+        top_idx = np.argsort(-total, kind='stable')[:top_n]
+        return self.format_results(sc, total, top_idx, user_exp)
+
+    def score_all(self, target_title: str = "", cv_text: str = "", skills: Optional[List[str]] = None,
+                  user_exp: float = 1.0, preferred_city: str = "Tất cả",
+                  preferred_work_modes: Optional[Union[str, List[str]]] = None, min_salary: Optional[float] = None,
+                  weights: Optional[Dict[str, float]] = None, skill_mode: str = 'v3',
+                  normalize_text: bool = True) -> Optional[Tuple[Dict[str, Any], np.ndarray]]:
+        """Điểm CBF tổng hợp cho MỌI tin (tin hết hạn = -1). Trả về (score_components, total) hoặc None nếu hồ sơ rỗng."""
         sc = self.score_components(target_title, cv_text, skills, user_exp, preferred_city,
                                    preferred_work_modes, min_salary, skill_mode, normalize_text)
         if sc is None:
-            return pd.DataFrame()
+            return None
+        return sc, np.where(sc['active'], self.combine_scores(sc['comps'], weights), -1.0)
 
-        total = np.where(sc['active'], self.combine_scores(sc['comps'], weights), -1.0)   # bỏ tin hết hạn
-        top_idx = np.argsort(-total, kind='stable')[:top_n]
-
+    def format_results(self, sc: Dict[str, Any], total: np.ndarray, top_idx: Iterable[int], user_exp: float,
+                       extra_columns: Optional[Dict[str, np.ndarray]] = None) -> pd.DataFrame:
+        """Bảng kết quả (điểm thành phần, lời giải thích, Skill Gap) cho các tin top_idx theo đúng thứ tự truyền vào.
+        extra_columns: cột bổ sung {tên: mảng theo chỉ số tin}, vd. điểm CF của hệ Hybrid."""
         out = []
         for idx in top_idx:
             row, c = self.jobs_df.iloc[idx], sc['comps'].iloc[idx]
@@ -565,6 +581,7 @@ class ContentBasedRecommender:
                 'Mức lương': format_salary_display(row.get('salary_min'), row.get('salary_max')),
                 'job_url': row.get('job_url', ''),
                 'company_logo_url': row.get('company_logo_url', ''),
+                **{name: values[idx] for name, values in (extra_columns or {}).items()},
             })
         return pd.DataFrame(out)
 
