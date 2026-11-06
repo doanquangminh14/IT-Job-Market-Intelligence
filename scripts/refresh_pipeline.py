@@ -1,16 +1,17 @@
 """
 Chạy lại toàn bộ chuỗi xử lý sau khi crawl thêm dữ liệu, và LƯU output vào từng notebook (như bấm "Run All").
 
-    python scripts/refresh_pipeline.py                 # Bronze ➔ notebook 02 ➔ 04 ➔ 05 ➔ 06
+    python scripts/refresh_pipeline.py                 # Bronze ➔ notebook 02/01 ➔ 02/02 ➔ 04 ➔ 05 ➔ 06
     python scripts/refresh_pipeline.py --skip-quality  # bỏ bước Bronze (đã chạy main_quality.py --save-bronze)
     python scripts/refresh_pipeline.py --only 05 06    # chỉ chạy lại một số notebook
 
 Thứ tự:
   1. main_quality.py --save-bronze : kiểm định toàn bộ data/raw, gộp vào data/bronze (tin crawl lại ghi đè bản cũ)
-  2. notebook 02 : làm sạch + khử trùng lặp ➔ data/notebook/content_base/jobs_clean.csv và data/silver/ (GHI ĐÈ)
-  3. notebook 04 : EDA
-  4. notebook 05 : CBF + đánh giá (khoảng 3 phút)
-  5. notebook 06 : CF trên dữ liệu mô phỏng ➔ data/simulated/ (GHI ĐÈ)
+  2. notebook 01 (02_data_pipeline/01): kiểm tra chất lượng Bronze (chỉ đọc)
+  3. notebook 02 : làm sạch + khử trùng lặp ➔ data/notebook/content_base/jobs_clean.csv và data/silver/ (GHI ĐÈ)
+  4. notebook 04 : EDA
+  5. notebook 05 : CBF + đánh giá (khoảng 3 phút)
+  6. notebook 06 : CF trên dữ liệu mô phỏng ➔ data/simulated/ (GHI ĐÈ)
 Dừng ngay ở bước lỗi đầu tiên; notebook lỗi KHÔNG bị ghi đè.
 Streamlit tự nạp lại dữ liệu mới (khóa cache theo thời điểm sửa file), không cần sửa gì; mô hình TF-IDF tự huấn luyện lại.
 """
@@ -32,6 +33,7 @@ if sys.stdout.encoding != "utf-8":
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOKS = {
+    "01": ROOT / "notebook" / "02_data_pipeline" / "01_data_quality_inspection.ipynb",
     "02": ROOT / "notebook" / "02_data_pipeline" / "02_data_cleaning_and_deduplication.ipynb",
     "04": ROOT / "notebook" / "04_eda" / "01_eda_job_market_insights.ipynb",
     "05": ROOT / "notebook" / "05_recommender" / "01_cbf_engine_and_evaluation.ipynb",
@@ -110,7 +112,7 @@ def run_notebook(nb_path: Path, per_cell_timeout: int = 1800) -> bool:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Chạy lại Bronze ➔ notebook 02 ➔ 04 ➔ 05 ➔ 06 sau khi crawl thêm dữ liệu.")
+    ap = argparse.ArgumentParser(description="Chạy lại Bronze ➔ notebook 01 ➔ 02 ➔ 04 ➔ 05 ➔ 06 sau khi crawl thêm dữ liệu.")
     ap.add_argument("--skip-quality", action="store_true", help="bỏ bước main_quality.py --save-bronze")
     ap.add_argument("--only", nargs="+", choices=list(NOTEBOOKS), help="chỉ chạy các notebook này (vd. --only 05 06)")
     args = ap.parse_args()
