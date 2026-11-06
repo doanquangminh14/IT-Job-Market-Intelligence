@@ -1,7 +1,7 @@
 """
 Chạy lại toàn bộ chuỗi xử lý sau khi crawl thêm dữ liệu, và LƯU output vào từng notebook (như bấm "Run All").
 
-    python scripts/refresh_pipeline.py                 # Bronze ➔ notebook 02/01 ➔ 02/02 ➔ 04 ➔ 05 ➔ 06
+    python scripts/refresh_pipeline.py                 # Bronze ➔ notebook 02/01 ➔ 02/02 ➔ 04 ➔ 05 ➔ 06 ➔ 07
     python scripts/refresh_pipeline.py --skip-quality  # bỏ bước Bronze (đã chạy main_quality.py --save-bronze)
     python scripts/refresh_pipeline.py --only 05 06    # chỉ chạy lại một số notebook
 
@@ -12,6 +12,7 @@ Thứ tự:
   4. notebook 04 : EDA
   5. notebook 05 : CBF + đánh giá (khoảng 3 phút)
   6. notebook 06 : CF trên dữ liệu mô phỏng ➔ data/simulated/ (GHI ĐÈ)
+  7. notebook 07 : thiết kế & kiểm chứng Hybrid CBF + CF cho ứng dụng (đọc data/simulated/)
 Dừng ngay ở bước lỗi đầu tiên; notebook lỗi KHÔNG bị ghi đè.
 Streamlit tự nạp lại dữ liệu mới (khóa cache theo thời điểm sửa file), không cần sửa gì; mô hình TF-IDF tự huấn luyện lại.
 """
@@ -38,6 +39,7 @@ NOTEBOOKS = {
     "04": ROOT / "notebook" / "04_eda" / "01_eda_job_market_insights.ipynb",
     "05": ROOT / "notebook" / "05_recommender" / "01_cbf_engine_and_evaluation.ipynb",
     "06": ROOT / "notebook" / "06_recommender_cf" / "01_simulation_and_matrix_factorization.ipynb",
+    "07": ROOT / "notebook" / "07_hybrid" / "01_hybrid_cbf_cf_for_app.ipynb",
 }
 ANSI = re.compile(chr(27) + r"\[[0-9;]*m")
 
@@ -112,7 +114,7 @@ def run_notebook(nb_path: Path, per_cell_timeout: int = 1800) -> bool:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Chạy lại Bronze ➔ notebook 01 ➔ 02 ➔ 04 ➔ 05 ➔ 06 sau khi crawl thêm dữ liệu.")
+    ap = argparse.ArgumentParser(description="Chạy lại Bronze ➔ notebook 01 ➔ 02 ➔ 04 ➔ 05 ➔ 06 ➔ 07 sau khi crawl thêm dữ liệu.")
     ap.add_argument("--skip-quality", action="store_true", help="bỏ bước main_quality.py --save-bronze")
     ap.add_argument("--only", nargs="+", choices=list(NOTEBOOKS), help="chỉ chạy các notebook này (vd. --only 05 06)")
     args = ap.parse_args()
