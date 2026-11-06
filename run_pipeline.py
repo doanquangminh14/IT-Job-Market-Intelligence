@@ -168,7 +168,9 @@ def main():
     print(f"  - Loi (Invalid)      : {len(invalid_records):,}")
 
     _, new_list_added, total_list_master = validator.save_master_listings(all_listings)
-    _, new_det_added, total_det_master = validator.save_master_details_valid(valid_records)
+    # Lưu cả 3 file chi tiết, giữ nhất quán (tin bị kiểm định lại thành cách ly được gỡ khỏi file hợp lệ)
+    saved = validator.save_master_details(valid_records, quarantine_records, invalid_records)
+    _, new_det_added, total_det_master = saved.get("valid", (None, 0, 0))
 
     print(f"\nLuu nhat ky Master Bronze:")
     print(f"  - bronze_listings_master.json : +{new_list_added:,} tin moi (Tong: {total_list_master:,})")
