@@ -31,10 +31,13 @@ notebook/
 ├── 05_recommender/
 │   └── 01_cbf_engine_and_evaluation.ipynb       → Engine CBF + đánh giá + bảng ablation  ★
 │
+├── 06_recommender_cf/
+│   └── 01_simulation_and_matrix_factorization.ipynb → Dữ liệu tương tác mô phỏng + Matrix Factorization (ALS) + Hybrid
+│
 └── _archive/                                    # Thử nghiệm cũ (collaborative filtering, hybrid, bảng Silver)
 ```
 
-**Thứ tự khuyến nghị:** `02/01` ➔ `02/02` (sinh `jobs_clean.csv`) ➔ `04` ➔ `05`.
+**Thứ tự khuyến nghị:** `02/01` ➔ `02/02` (sinh `jobs_clean.csv`) ➔ `04` ➔ `05` ➔ `06`.
 
 ---
 
@@ -108,6 +111,33 @@ Bỏ tiêu đề, điểm chỉ giảm nhẹ (0,84 ➔ 0,83), nên engine tìm �
 
 ---
 
+## 🤝 Notebook 06 - Lọc cộng tác trên dữ liệu mô phỏng
+
+Dự án chưa có log tương tác thật, nên notebook 06 **sinh dữ liệu mô phỏng** từ 3.470 tin IT thật rồi so sánh CF với CBF. Bộ mô phỏng cũ (`_archive/collaborative_filtering/`) bị bỏ vì sinh tương tác chỉ từ khớp kỹ năng, đúng thứ CBF dùng, nên phép so sánh bị vòng tròn.
+
+| Thành phần | Thiết kế |
+| :--- | :--- |
+| Người dùng (3.000) | kỹ năng lấy mẫu từ kỹ năng thật của tin cùng nhóm nghề; kinh nghiệm, thành phố theo phân bố của kho |
+| Sở thích thật | $U = \alpha \cdot z(\text{nội dung}) + (1-\alpha) \cdot z(\text{ẩn})$. Phần ẩn (loại công ty theo 6 cụm khẩu vị, thương hiệu, độ hấp dẫn của tin) CBF không thấy được |
+| Hành vi | mỗi phiên thấy 20 tin đang mở (tìm kiếm / gợi ý / khám phá), thiên lệch vị trí, phễu bấm ➔ lưu ➔ ứng tuyển; tỷ lệ bấm ~6%, độ thưa 99,8% |
+| Đánh giá | chia theo thời gian (10 ngày cuối làm test), chọn tham số trên validation riêng; NDCG@10 theo log và **Oracle-P@10** theo sở thích thật |
+
+**Kết quả chính ($\alpha = 0{,}5$, test):**
+
+| Mô hình | NDCG@10 (log) | Oracle-P@10 | Recall@10 tin mới |
+| :--- | :--- | :--- | :--- |
+| ItemKNN | 0,029 | 0,084 | 0 |
+| SVD (coi ô trống là "không thích") | 0,033 | 0,136 | 0 |
+| ALS (MF cho phản hồi ngầm) | 0,040 | 0,159 | 0 |
+| CBF (rút gọn) | 0,050 | 0,099 | 0,099 |
+| **Hybrid CBF + ALS** | **0,061** | **0,181** | 0,094 |
+
+- ALS là mô hình CF tốt nhất nhưng **không gợi ý được tin mới** (~43% tin ứng viên ở giai đoạn test chưa có tương tác). Hybrid giữ được điểm mạnh của cả hai.
+- **Log hành vi thiên vị CBF:** theo sở thích thật, ALS hơn CBF khi $\alpha \le 0{,}5$; nhưng theo log, CBF đã hơn từ $\alpha = 0{,}35$, vì người dùng chủ yếu được hiển thị tin do hệ thống dựa trên nội dung chọn.
+- Đây là dữ liệu mô phỏng: chỉ nên đọc **xu hướng và thứ tự** giữa các mô hình, không đọc giá trị tuyệt đối. Bộ dữ liệu được lưu ở `data/simulated/` (sinh lại y hệt nhờ cố định `SEED`).
+
+---
+
 ## 🚀 Hướng dẫn chạy
 
 1. **Kích hoạt môi trường ảo**
@@ -119,7 +149,9 @@ Bỏ tiêu đề, điểm chỉ giảm nhẹ (0,84 ➔ 0,83), nên engine tìm �
 3. **Chạy theo thứ tự**: `02_data_pipeline/02_data_cleaning_and_deduplication.ipynb` ➔ `04_eda/...` ➔ `05_recommender/...`.
    - Notebook 05 **yêu cầu** các cột `job_tags` và `is_it` do notebook 02 mới sinh ra; thiếu sẽ báo lỗi rõ ràng ngay ở cell đầu.
    - Mục 8.1-8.4 của notebook 05 chạy khoảng 3 phút (gọi nhiều lần hàm gợi ý).
-4. **Chạy ứng dụng Streamlit**
+   - Notebook 06 chạy khoảng 1 phút và ghi dữ liệu mô phỏng ra `data/simulated/` (khoảng 37 MB).
+4. **Khi crawl thêm dữ liệu**: chạy `python scripts/refresh_pipeline.py` để làm mới Bronze rồi chạy lại 02 ➔ 04 ➔ 05 ➔ 06 và lưu output (khoảng 5 phút). Script dừng ở notebook lỗi đầu tiên và không ghi đè notebook đó. Số liệu trong các ô markdown là của ảnh chụp 05/11/2026; số liệu mới xem ở output.
+5. **Chạy ứng dụng Streamlit**
    ```powershell
    streamlit run app/Home.py
    ```

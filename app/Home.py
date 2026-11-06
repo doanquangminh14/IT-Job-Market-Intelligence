@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+import datetime
 import urllib.parse
 import streamlit as st
 import pandas as pd
@@ -11,7 +12,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from src.recommender.content_based import get_content_based_recommender, ContentBasedRecommender
+from src.recommender.content_based import ContentBasedRecommender, data_file_version
 from src.data_cleaning.skill_canonical import CANONICAL_SKILL_MAP, extract_skills_from_text
 from app.components.market_insights import render_market_insights
 
@@ -347,16 +348,17 @@ div.stButton > button[kind="secondary"]:hover {
 st.markdown(custom_css, unsafe_allow_html=True)
 
 # 3. Nạp mô hình Content-Based Recommender (Tự động nhận diện khi có dữ liệu mới)
-silver_data_path = os.path.join(project_root, "data", "silver", "jobs_cleaned.parquet")
-data_last_modified = os.path.getmtime(silver_data_path) if os.path.exists(silver_data_path) else 0
+# Khóa cache = (thời điểm sửa file dữ liệu, ngày hôm nay): chạy lại notebook 02 hoặc sang ngày mới thì nạp lại
+# (ngày mới để tính lại tin nào đã hết hạn). Lưu ý: Streamlit KHÔNG đưa tham số bắt đầu bằng "_" vào khóa cache.
+data_version = (data_file_version(), datetime.date.today().isoformat())
 
 @st.cache_resource(show_spinner="Đang khởi động hệ thống gợi ý việc làm...")
-def load_recommender(_mtime: float = 0.0):
+def load_recommender(data_version: tuple):
     engine = ContentBasedRecommender()
     engine.load_or_train()
     return engine
 
-recommender = load_recommender(_mtime=data_last_modified)
+recommender = load_recommender(data_version)
 jobs_df = recommender.jobs_df
 all_skills_list = sorted(list(set(CANONICAL_SKILL_MAP.values())))
 

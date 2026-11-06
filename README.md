@@ -13,7 +13,7 @@ Hệ thống thu thập, làm sạch, phân tích dữ liệu thị trường vi
 | **`src/quality/`** | [📖 Data Quality](src/quality/README.md) | Rule engine phân luồng bản ghi `valid` / `invalid` / `quarantine`, sinh tầng Master Bronze. |
 | **`sql/`** | [📖 Thiết kế Silver (PostgreSQL)](sql/README.md) | ERD 9 bảng, schema Silver / Gold. |
 | **`notebook/`** | [📖 Notebook](notebook/README.md) | Quy trình làm sạch, NLP, EDA và xây dựng + đánh giá hệ gợi ý CBF. **Nơi nên đọc đầu tiên để hiểu logic.** |
-| **`tests/`** | [📖 Test Suite](tests/README.md) | Pytest (56 test), cơ chế Sandbox Output cô lập không làm bẩn dữ liệu raw. |
+| **`tests/`** | [📖 Test Suite](tests/README.md) | Pytest (81 test), cơ chế Sandbox Output cô lập không làm bẩn dữ liệu raw. |
 | **`reports/`** | [📋 Báo cáo Profiling](reports/profiling/latest_summary.md) | Tình trạng dữ liệu thô và lịch sử chỉ số chất lượng. |
 
 ---
@@ -56,6 +56,8 @@ $$\text{Score} = 0{,}30\,S_{\text{skills}} + 0{,}40\,S_{\text{text}} + 0{,}10\,S
 - **Dữ liệu đầu vào**: kỹ năng công nghệ (`required_skills`) được **tách khỏi thẻ ngành/chức danh** (`job_tags`) và rác (phúc lợi, học vấn); chỉ giữ tin thuộc ngành IT (`is_it`).
 
 **Kết quả đánh giá** (25 hồ sơ mẫu, 5 nhóm nghề, top-5): Precision@5 ≈ **0,84**, NDCG@5 ≈ **0,85** (công thức đầu tiên chỉ đạt ~0,51 / 0,52). Khi **bỏ tiêu đề khỏi truy vấn** (để truy vấn và nhãn không chung nguồn), kết quả vẫn đạt 0,83 / 0,82, tức engine tìm đúng nhóm nghề nhờ nội dung kỹ năng chứ không nhờ trùng chữ tiêu đề. Bảng ablation đầy đủ ở mục 8 của [notebook 05](notebook/05_recommender/01_cbf_engine_and_evaluation.ipynb).
+
+**Lọc cộng tác (thử nghiệm trên dữ liệu mô phỏng):** [notebook 06](notebook/06_recommender_cf/01_simulation_and_matrix_factorization.ipynb) sinh 3.000 người dùng và log hành vi (hiển thị, bấm, lưu, ứng tuyển) từ tin thật, rồi so sánh Matrix Factorization (ALS cho phản hồi ngầm) với CBF và Hybrid. Kết quả: ALS không gợi ý được tin mới, còn Hybrid CBF + ALS tốt nhất ở hầu hết các giả định. Chưa đưa vào ứng dụng vì chưa có log thật.
 
 > ⚠️ **Hạn chế:** nhãn "liên quan" được suy ra từ *tiêu đề* và chỉ có 25 hồ sơ, nên đây là thước đo gần đúng (proxy); chênh lệch nhỏ (~0,03) có thể chỉ là nhiễu. Chưa có dữ liệu click/ứng tuyển thật hay tập nhãn tay.
 
@@ -115,6 +117,20 @@ streamlit run app/Home.py
 ```
 
 Lần đầu mở app, mô hình TF-IDF sẽ tự huấn luyện lại nếu dữ liệu hoặc phiên bản tokenizer thay đổi (vài giây), rồi lưu vào `data/models/`.
+
+### 🔄 Cập nhật khi crawl thêm dữ liệu
+
+```powershell
+python main_crawl.py --source all --target 100     # 1. crawl thêm
+python scripts/refresh_pipeline.py                 # 2. Bronze ➔ notebook 02 ➔ 04 ➔ 05 ➔ 06 (khoảng 5 phút, lưu output vào notebook)
+```
+
+- Bronze gộp theo mã tin: tin crawl lại được **cập nhật bản mới nhất**, tin mới được thêm vào.
+- Mọi số liệu trong notebook đều tính lại từ dữ liệu. Notebook 06 tự suy ra **ngày chụp dữ liệu** từ file và có ô **tự kiểm tra lại các kết luận**.
+- Streamlit **tự nạp lại** khi file dữ liệu đổi, không cần khởi động lại.
+- Cờ "còn hạn" được **tính lại theo ngày hôm nay** mỗi lần nạp, nên tin hết hạn không được gợi ý dù dữ liệu chưa làm mới.
+- Phần chữ trong README và các ô markdown ghi số liệu của ảnh chụp 05/11/2026; số liệu mới xem ở output của notebook.
+- Chỉ chạy lại một phần: `python scripts/refresh_pipeline.py --only 05 06`.
 
 ### 7. Pipeline tự động đến PostgreSQL (tùy chọn)
 
@@ -180,5 +196,6 @@ IT-Job-Market-Intelligence/
 - [x] **Phase 3 - Silver**: Chuẩn hóa lương / kinh nghiệm / địa điểm, tách kỹ năng và thẻ ngành, khử trùng lặp nhiều lớp, pipeline nạp PostgreSQL.
 - [x] **Phase 4 - Recommender & App**: Content-Based Filtering (TF-IDF + chấm điểm đa thành phần), Streamlit gợi ý việc làm và phân tích thị trường.
 - [x] **Kỹ năng gần nhau** (PostgreSQL ~ MySQL, Vue ~ React) tính 0,5 điểm; đánh giá không dùng tiêu đề (notebook 05, mục 8.4).
+- [x] **Thử nghiệm CF trên dữ liệu mô phỏng**: ALS, ItemKNN, Hybrid (notebook 06). Còn lại: BPR, MF có đặc trưng nội dung (LightFM), đưa Hybrid vào app khi có log thật.
 - [ ] **Cải thiện CBF**: tập nhãn tay / log tương tác thật để đánh giá đáng tin hơn; hybrid với embedding ngữ nghĩa (cần sinh lại vector cho khớp dữ liệu); tinh chỉnh thành phần vị trí/hình thức (98,7% tin là Onsite). ~21% job IT không liệt kê kỹ năng là vì mô tả thật sự không nhắc công nghệ nào (BA, kinh doanh phần mềm, quản lý sản phẩm...), không bóc thêm được.
 - [ ] **Gold layer**: bảng tổng hợp xu hướng kỹ năng theo cấp bậc / thời gian.
