@@ -30,6 +30,7 @@ from src.data_cleaning.skill_canonical import (
     split_skill_match,
 )
 from src.data_cleaning.it_filter import is_it_job
+from src.data_cleaning.freshness import refresh_is_active
 from src.recommender.text_utils import normalize_tech_text, TOKEN_PATTERN
 
 DEFAULT_DATA_CANDIDATES = [
@@ -39,6 +40,17 @@ DEFAULT_DATA_CANDIDATES = [
     os.path.join(PROJECT_ROOT, "data", "cleaned", "jobs_clean.csv")
 ]
 DEFAULT_MODEL_DIR = os.path.join(PROJECT_ROOT, "data", "models")
+
+
+def resolve_data_path() -> Optional[str]:
+    """File dữ liệu sạch mà ứng dụng sẽ đọc: file đầu tiên tồn tại trong DEFAULT_DATA_CANDIDATES."""
+    return next((p for p in DEFAULT_DATA_CANDIDATES if os.path.exists(p)), None)
+
+
+def data_file_version() -> Tuple[Optional[str], float]:
+    """(đường dẫn, thời điểm sửa) của file dữ liệu sạch, dùng làm khóa cache: chạy lại notebook 02 ➔ khóa đổi."""
+    p = resolve_data_path()
+    return p, (os.path.getmtime(p) if p else 0.0)
 TOKENIZER_VERSION = 3  # tăng khi đổi cách tokenize / dựng content soup để buộc huấn luyện lại model cũ
 DEFAULT_WEIGHTS = {'skills': 0.30, 'text': 0.40, 'exp': 0.10, 'loc': 0.10, 'sal': 0.10}
 COMPONENTS = ['skills', 'text', 'exp', 'loc', 'sal']
@@ -360,17 +372,15 @@ class ContentBasedRecommender:
         print("Tải mô hình thành công!")
         return True
 
-    def load_or_train(self, data_path: Optional[str] = None, it_only: bool = True) -> "ContentBasedRecommender":
-        """Nạp dữ liệu sạch, tải mô hình có sẵn hoặc tự động huấn luyện nếu chưa có."""
-        resolved_path = None
-        if data_path and os.path.exists(data_path):
-            resolved_path = data_path
-        else:
-            for p in DEFAULT_DATA_CANDIDATES:
-                if os.path.exists(p):
-                    resolved_path = p
-                    break
-                    
+    def load_or_train(self, data_path: Optional[str] = None, it_only: bool = True,
+                      refresh_active: bool = True) -> "ContentBasedRecommender":
+        """
+        Nạp dữ liệu sạch, tải mô hình có sẵn hoặc tự động huấn luyện nếu chưa có.
+        refresh_active=True: tính lại is_active theo NGÀY HIỆN TẠI (cờ trong file được tính lúc làm sạch nên có thể đã cũ).
+        Đặt False để giữ nguyên cờ trong file, vd. khi đối chiếu kết quả với notebook 05.
+        """
+        resolved_path = data_path if (data_path and os.path.exists(data_path)) else resolve_data_path()
+
         if not resolved_path:
             raise FileNotFoundError(f"Không tìm thấy tập dữ liệu việc làm sạch tại bất kỳ đường dẫn nào: {DEFAULT_DATA_CANDIDATES}")
             
@@ -380,6 +390,12 @@ class ContentBasedRecommender:
             self.jobs_df = pd.read_csv(resolved_path)
             
         print(f"Đã nạp {len(self.jobs_df):,} công việc sạch từ: {resolved_path}")
+        self.data_path = resolved_path
+        if refresh_active:
+            before = int(self.jobs_df['is_active'].fillna(True).astype(bool).sum()) if 'is_active' in self.jobs_df else None
+            self.jobs_df = refresh_is_active(self.jobs_df)
+            if before is not None and before != int(self.jobs_df['is_active'].sum()):
+                print(f"Cập nhật hạn nộp theo ngày hôm nay: {before:,} ➔ {int(self.jobs_df['is_active'].sum()):,} tin còn hạn.")
 
         self.jobs_df = self.prepare_jobs_df(self.jobs_df)
         if it_only:

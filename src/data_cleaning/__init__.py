@@ -9,6 +9,7 @@ from src.data_cleaning.skill_canonical import (
     RELATED_SKILLS,
     split_skill_match,
 )
+from src.data_cleaning.freshness import refresh_is_active
 
 __all__ = [
     "CANONICAL_SKILL_MAP",
@@ -20,4 +21,5 @@ __all__ = [
     "extract_skills_and_tags",
     "RELATED_SKILLS",
     "split_skill_match",
+    "refresh_is_active",
 ]

@@ -18,20 +18,23 @@ from app.components.charts import (
     plot_histogram
 )
 
-@st.cache_data(ttl=3600)
+from src.data_cleaning.freshness import refresh_is_active
+from src.recommender.content_based import data_file_version
+
+
+@st.cache_data
+def _load_cleaned_jobs_cached(data_version: tuple) -> pd.DataFrame:
+    """Nạp dữ liệu sạch (cùng file với hệ gợi ý). Khóa cache = (file, thời điểm sửa, ngày hôm nay)."""
+    (path, _), _today = data_version
+    if not path:
+        return pd.DataFrame()
+    df = pd.read_parquet(path) if path.endswith(".parquet") else pd.read_csv(path)
+    return refresh_is_active(df)          # tin còn hạn tính theo ngày hôm nay
+
+
 def load_raw_cleaned_jobs() -> pd.DataFrame:
-    """Nạp tập dữ liệu sạch từ CSV hoặc Parquet với cơ chế fallback tự động."""
-    candidates = [
-        os.path.join(project_root, "data", "notebook", "content_base", "jobs_clean.csv"),
-        os.path.join(project_root, "data", "silver", "jobs_cleaned.parquet"),
-        os.path.join(project_root, "data", "silver", "jobs_cleaned.csv"),
-    ]
-    for p in candidates:
-        if os.path.exists(p):
-            if p.endswith(".parquet"):
-                return pd.read_parquet(p)
-            return pd.read_csv(p)
-    return pd.DataFrame()
+    """Chạy lại notebook 02 (file đổi) hoặc sang ngày mới thì tự nạp lại."""
+    return _load_cleaned_jobs_cached((data_file_version(), pd.Timestamp.now().date().isoformat()))
 
 
 def render_market_insights():
