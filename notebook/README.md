@@ -32,12 +32,15 @@ notebook/
 │   └── 01_cbf_engine_and_evaluation.ipynb       → Engine CBF + đánh giá + bảng ablation  ★
 │
 ├── 06_recommender_cf/
-│   └── 01_simulation_and_matrix_factorization.ipynb → Dữ liệu tương tác mô phỏng + Matrix Factorization (ALS) + Hybrid
+│   └── 01_simulation_and_matrix_factorization.ipynb → Dữ liệu tương tác mô phỏng + Matrix Factorization (ALS)
+│
+├── 07_hybrid/
+│   └── 01_hybrid_cbf_cf_for_app.ipynb           → Thiết kế & kiểm chứng Hybrid CBF + CF dùng trong Streamlit  ★
 │
 └── _archive/                                    # Thử nghiệm cũ (collaborative filtering, hybrid, bảng Silver)
 ```
 
-**Thứ tự khuyến nghị:** `02/01` ➔ `02/02` (sinh `jobs_clean.csv`) ➔ `04` ➔ `05` ➔ `06`.
+**Thứ tự khuyến nghị:** `02/01` ➔ `02/02` (sinh `jobs_clean.csv`) ➔ `04` ➔ `05` ➔ `06` ➔ `07`.
 
 ---
 
@@ -138,6 +141,22 @@ Dự án chưa có log tương tác thật, nên notebook 06 **sinh dữ liệu 
 
 ---
 
+## 🔗 Notebook 07 - Hybrid CBF + CF cho ứng dụng
+
+Dùng lại bộ dữ liệu mô phỏng của notebook 06 (`data/simulated/`) để quyết định cách đưa Hybrid vào Streamlit. Bản `.py` tương ứng: `src/recommender/collaborative.py` (ALS, nhật ký tương tác) và `src/recommender/hybrid.py`.
+
+| Câu hỏi | Kết luận (xem ô kiểm tra tự động ở mục 6) |
+| :--- | :--- |
+| Chọn công thức theo thước đo nào? | Theo **sở thích thật** (Oracle-P@10). Chọn theo NDCG của log sẽ ra công thức khác, vì log thiên vị hệ đang hiển thị tin |
+| Công thức | $0{,}5 \cdot z(	ext{CBF}) + 0{,}5 \cdot z(	ext{CF})$; tin mới (CF chưa biết) chỉ dùng CBF. Oracle-P@10 0,095 (CBF) ➔ 0,151 (Hybrid, người dùng mới) mà vẫn giữ được tin mới |
+| Trộn tuyến tính 0-100%? | Kém hơn: phải đánh đổi giữa độ chính xác và tin mới; CF chuẩn hóa min-max còn kém hơn nữa (điểm ALS lệch mạnh) |
+| Bật CF từ bao nhiêu lượt tương tác? | Từ 1 lượt (Hybrid đã hơn CBF ngay ở nhóm 1-2 tương tác) |
+| Người dùng mới | Fold-in (không huấn luyện lại) đạt ~84% so với huấn luyện lại đầy đủ; ở quy mô hiện tại ứng dụng huấn luyện lại ALS khi log đổi (~1 giây) |
+
+**Kịch bản demo Streamlit:** nhập hồ sơ ➔ Tìm kiếm (chế độ CBF) ➔ bấm **Quan tâm** / **Ứng tuyển** ở vài tin ➔ Tìm kiếm lại ➔ chế độ chuyển sang **Hybrid**, tin đã quan tâm không bị gợi ý lại, mỗi thẻ có thêm điểm CF.
+
+---
+
 ## 🚀 Hướng dẫn chạy
 
 1. **Kích hoạt môi trường ảo**
@@ -150,7 +169,7 @@ Dự án chưa có log tương tác thật, nên notebook 06 **sinh dữ liệu 
    - Notebook 05 **yêu cầu** các cột `job_tags` và `is_it` do notebook 02 mới sinh ra; thiếu sẽ báo lỗi rõ ràng ngay ở cell đầu.
    - Mục 8.1-8.4 của notebook 05 chạy khoảng 3 phút (gọi nhiều lần hàm gợi ý).
    - Notebook 06 chạy khoảng 1 phút và ghi dữ liệu mô phỏng ra `data/simulated/` (khoảng 37 MB).
-4. **Khi crawl thêm dữ liệu**: chạy `python scripts/refresh_pipeline.py` để làm mới Bronze rồi chạy lại 02 ➔ 04 ➔ 05 ➔ 06 và lưu output (khoảng 5 phút). Script dừng ở notebook lỗi đầu tiên và không ghi đè notebook đó. Số liệu trong các ô markdown là của ảnh chụp 05/11/2026; số liệu mới xem ở output.
+4. **Khi crawl thêm dữ liệu**: chạy `python scripts/refresh_pipeline.py` để làm mới Bronze rồi chạy lại 02/01 ➔ 02 ➔ 04 ➔ 05 ➔ 06 ➔ 07 và lưu output (khoảng 5 phút). Script dừng ở notebook lỗi đầu tiên và không ghi đè notebook đó. Số liệu trong các ô markdown là của ảnh chụp 05/11/2026; số liệu mới xem ở output.
 5. **Chạy ứng dụng Streamlit**
    ```powershell
    streamlit run app/Home.py
