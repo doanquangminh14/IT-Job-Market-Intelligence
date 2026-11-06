@@ -13,7 +13,7 @@ Hệ thống thu thập, làm sạch, phân tích dữ liệu thị trường vi
 | **`src/quality/`** | [📖 Data Quality](src/quality/README.md) | Rule engine phân luồng bản ghi `valid` / `invalid` / `quarantine`, sinh tầng Master Bronze. |
 | **`sql/`** | [📖 Thiết kế Silver (PostgreSQL)](sql/README.md) | ERD 9 bảng, schema Silver / Gold. |
 | **`notebook/`** | [📖 Notebook](notebook/README.md) | Quy trình làm sạch, NLP, EDA và xây dựng + đánh giá hệ gợi ý CBF. **Nơi nên đọc đầu tiên để hiểu logic.** |
-| **`tests/`** | [📖 Test Suite](tests/README.md) | Pytest (81 test), cơ chế Sandbox Output cô lập không làm bẩn dữ liệu raw. |
+| **`tests/`** | [📖 Test Suite](tests/README.md) | Pytest (89 test), cơ chế Sandbox Output cô lập không làm bẩn dữ liệu raw. |
 | **`reports/`** | [📋 Báo cáo Profiling](reports/profiling/latest_summary.md) | Tình trạng dữ liệu thô và lịch sử chỉ số chất lượng. |
 
 ---
@@ -28,8 +28,13 @@ flowchart LR
     C -.->|run_pipeline.py| P[(PostgreSQL Silver)]
     D --> E[Notebook 03-04<br/>NLP · EDA]
     D --> F[Notebook 05 / content_based.py<br/>Content-Based Recommender]
+    D --> S[Notebook 06<br/>tương tác mô phỏng + ALS]
+    S --> HY[Notebook 07 / hybrid.py<br/>Hybrid CBF + CF]
+    F --> HY
     E --> G[Streamlit: Phân tích thị trường]
-    F --> H[Streamlit: Gợi ý việc làm]
+    HY --> H[Streamlit: Gợi ý việc làm]
+    H -->|Quan tâm / Ứng tuyển| L[(data/interactions/<br/>log tương tác)]
+    L --> HY
 ```
 
 | Tầng | Nội dung | Trạng thái |
@@ -57,7 +62,11 @@ $$\text{Score} = 0{,}30\,S_{\text{skills}} + 0{,}40\,S_{\text{text}} + 0{,}10\,S
 
 **Kết quả đánh giá** (25 hồ sơ mẫu, 5 nhóm nghề, top-5): Precision@5 ≈ **0,84**, NDCG@5 ≈ **0,85** (công thức đầu tiên chỉ đạt ~0,51 / 0,52). Khi **bỏ tiêu đề khỏi truy vấn** (để truy vấn và nhãn không chung nguồn), kết quả vẫn đạt 0,83 / 0,82, tức engine tìm đúng nhóm nghề nhờ nội dung kỹ năng chứ không nhờ trùng chữ tiêu đề. Bảng ablation đầy đủ ở mục 8 của [notebook 05](notebook/05_recommender/01_cbf_engine_and_evaluation.ipynb).
 
-**Lọc cộng tác (thử nghiệm trên dữ liệu mô phỏng):** [notebook 06](notebook/06_recommender_cf/01_simulation_and_matrix_factorization.ipynb) sinh 3.000 người dùng và log hành vi (hiển thị, bấm, lưu, ứng tuyển) từ tin thật, rồi so sánh Matrix Factorization (ALS cho phản hồi ngầm) với CBF và Hybrid. Kết quả: ALS không gợi ý được tin mới, còn Hybrid CBF + ALS tốt nhất ở hầu hết các giả định. Chưa đưa vào ứng dụng vì chưa có log thật.
+### Hybrid CBF + CF (lọc cộng tác)
+
+- **[Notebook 06](notebook/06_recommender_cf/01_simulation_and_matrix_factorization.ipynb)** (nghiên cứu): dự án chưa có log hành vi thật, nên sinh 3.000 người dùng mô phỏng và log hiển thị / bấm / lưu / ứng tuyển từ tin thật, rồi so sánh Matrix Factorization (ALS cho phản hồi ngầm) với CBF. ALS học được sở thích "ẩn" nhưng **không gợi ý được tin mới**; kết hợp hai bên tốt hơn từng bên.
+- **[Notebook 07](notebook/07_hybrid/01_hybrid_cbf_cf_for_app.ipynb)** (thiết kế cho ứng dụng): chọn công thức kết hợp theo **sở thích thật** (Oracle-P@10) thay vì log (log thiên vị hệ đang hiển thị tin), với ràng buộc không làm chìm tin mới. Kết quả: $0{,}5 \cdot z(	ext{CBF}) + 0{,}5 \cdot z(	ext{CF})$, tin mới chỉ dùng CBF, bật CF từ 1 lượt tương tác.
+- **Trong Streamlit:** mỗi thẻ việc làm có nút **Quan tâm** / **Ứng tuyển**; lượt hiển thị và hành động được ghi vào `data/interactions/`. Khi người dùng đã có tương tác, danh sách được xếp theo Hybrid và hiện thêm **Điểm CF**; nếu chưa, dùng CBF như cũ. Có tùy chọn dùng dữ liệu mô phỏng của notebook 06 làm nền để trình diễn (ghi rõ là mô phỏng).
 
 > ⚠️ **Hạn chế:** nhãn "liên quan" được suy ra từ *tiêu đề* và chỉ có 25 hồ sơ, nên đây là thước đo gần đúng (proxy); chênh lệch nhỏ (~0,03) có thể chỉ là nhiễu. Chưa có dữ liệu click/ứng tuyển thật hay tập nhãn tay.
 
@@ -122,7 +131,7 @@ Lần đầu mở app, mô hình TF-IDF sẽ tự huấn luyện lại nếu d�
 
 ```powershell
 python main_crawl.py --source all --target 100     # 1. crawl thêm
-python scripts/refresh_pipeline.py                 # 2. Bronze ➔ notebook 02 ➔ 04 ➔ 05 ➔ 06 (khoảng 5 phút, lưu output vào notebook)
+python scripts/refresh_pipeline.py                 # 2. Bronze ➔ notebook 02/01 ➔ 02 ➔ 04 ➔ 05 ➔ 06 ➔ 07 (khoảng 5 phút, lưu output vào notebook)
 ```
 
 - Bronze gộp theo mã tin: tin crawl lại được **cập nhật bản mới nhất**, tin mới được thêm vào.
@@ -175,6 +184,8 @@ IT-Job-Market-Intelligence/
 │   │   └── it_filter.py          #   Gắn cờ tin thuộc ngành IT
 │   ├── recommender/
 │   │   ├── content_based.py      #   Engine CBF (tương đương notebook 05)
+│   │   ├── collaborative.py      #   ALS cho phản hồi ngầm + nhật ký tương tác (notebook 06, 07)
+│   │   ├── hybrid.py             #   Hybrid CBF + CF dùng trong Streamlit (notebook 07)
 │   │   └── text_utils.py         #   Tokenizer giữ C++/C#/.NET và tiếng Việt có dấu
 │   ├── pipelines/silver/         # Nạp PostgreSQL (extractor, transformers, loaders)
 │   ├── embeddings/               # Sinh vector ngữ nghĩa (SentenceTransformer, thử nghiệm)
@@ -196,6 +207,7 @@ IT-Job-Market-Intelligence/
 - [x] **Phase 3 - Silver**: Chuẩn hóa lương / kinh nghiệm / địa điểm, tách kỹ năng và thẻ ngành, khử trùng lặp nhiều lớp, pipeline nạp PostgreSQL.
 - [x] **Phase 4 - Recommender & App**: Content-Based Filtering (TF-IDF + chấm điểm đa thành phần), Streamlit gợi ý việc làm và phân tích thị trường.
 - [x] **Kỹ năng gần nhau** (PostgreSQL ~ MySQL, Vue ~ React) tính 0,5 điểm; đánh giá không dùng tiêu đề (notebook 05, mục 8.4).
-- [x] **Thử nghiệm CF trên dữ liệu mô phỏng**: ALS, ItemKNN, Hybrid (notebook 06). Còn lại: BPR, MF có đặc trưng nội dung (LightFM), đưa Hybrid vào app khi có log thật.
+- [x] **Hybrid CBF + CF trong ứng dụng**: ALS, ItemKNN (notebook 06), thiết kế & kiểm chứng (notebook 07), ghi log tương tác và xếp hạng Hybrid trong Streamlit.
+- [ ] **Khi có log thật**: đánh giá lại Hybrid trên log của `data/interactions/` (có hiệu chỉnh thiên lệch hiển thị); BPR; MF có đặc trưng nội dung (LightFM).
 - [ ] **Cải thiện CBF**: tập nhãn tay / log tương tác thật để đánh giá đáng tin hơn; hybrid với embedding ngữ nghĩa (cần sinh lại vector cho khớp dữ liệu); tinh chỉnh thành phần vị trí/hình thức (98,7% tin là Onsite). ~21% job IT không liệt kê kỹ năng là vì mô tả thật sự không nhắc công nghệ nào (BA, kinh doanh phần mềm, quản lý sản phẩm...), không bóc thêm được.
 - [ ] **Gold layer**: bảng tổng hợp xu hướng kỹ năng theo cấp bậc / thời gian.
