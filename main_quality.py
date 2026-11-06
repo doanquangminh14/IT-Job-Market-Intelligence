@@ -187,19 +187,12 @@ def main():
         print(f"  [Listings Master]: {l_file}")
         print(f"     -> Thêm mới: +{l_new:,} tin | Tổng tích lũy hiện tại: {l_total:,} tin")
 
-        # File 2: Details Valid Master
-        d_file, d_new, d_total = validator.save_master_details_valid(all_valid_details)
-        print(f"  [Details Valid Master]: {d_file}")
-        print(f"     -> Thêm mới: +{d_new:,} tin | Tổng tích lũy hiện tại: {d_total:,} tin")
-
-        # File 3 & 4 (nếu có Quarantine hoặc Invalid)
-        if all_quarantine_details:
-            q_file, q_new, q_total = validator.save_master_details_quarantine(all_quarantine_details)
-            print(f"  [Details Quarantine Master]: {q_file} (+{q_new:,} mới | tổng: {q_total:,})")
-
-        if all_invalid_details:
-            i_file, i_new, i_total = validator.save_master_details_invalid(all_invalid_details)
-            print(f"  [Details Invalid Master]: {i_file} (+{i_new:,} mới | tổng: {i_total:,})")
+        # File 2-4: Details Valid / Quarantine / Invalid, giữ nhất quán: mỗi tin chỉ ở đúng một file theo lần kiểm định mới nhất
+        saved = validator.save_master_details(all_valid_details, all_quarantine_details, all_invalid_details)
+        labels = {"valid": "Details Valid Master", "quarantine": "Details Quarantine Master", "invalid": "Details Invalid Master"}
+        for status, (f_path, n_new, n_total) in saved.items():
+            print(f"  [{labels[status]}]: {f_path}")
+            print(f"     -> Thay đổi: {n_new:+,} tin | Tổng tích lũy hiện tại: {n_total:,} tin")
 
     print("\n" + "=" * 80)
     print("TỔNG KẾT PHIÊN XỬ LÝ BRONZE")

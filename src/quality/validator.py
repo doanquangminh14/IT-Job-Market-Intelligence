@@ -129,12 +129,18 @@ class QualityValidator:
     # CƠ CHẾ NẠP TÍCH LŨY (UPSERT MASTER FILES) TẠI TẦNG BRONZE
     # ==========================================================================
 
-    def _upsert_json_file(self, new_records: List[Dict[str, Any]], target_file: str) -> Tuple[str, int, int]:
+    @staticmethod
+    def _record_key(r: Dict[str, Any]) -> str:
+        return f"{r.get('source', '')}_{r.get('source_job_id', '')}"
+
+    def _upsert_json_file(self, new_records: List[Dict[str, Any]], target_file: str,
+                          remove_keys: Optional[set] = None) -> Tuple[str, int, int]:
         """
         Nạp tích lũy và khử trùng lặp theo (source, source_job_id):
         - Nếu tin đã tồn tại -> cập nhật nội dung mới nhất.
         - Nếu tin mới -> bổ sung thêm vào.
-        
+        - Tin có khóa trong remove_keys -> gỡ khỏi file (vd. tin trước đây hợp lệ nay bị kiểm định lại thành cách ly).
+
         Returns:
             (target_file, new_added_count, total_count)
         """
@@ -154,6 +160,8 @@ class QualityValidator:
             except Exception as e:
                 print(f"[CANH BAO] Không thể đọc file master cũ {target_file}: {e}")
 
+        for k in (remove_keys or ()):
+            master_dict.pop(k, None)
         old_count = len(master_dict)
 
         # 2. Upsert dữ liệu mới vào
@@ -195,6 +203,39 @@ class QualityValidator:
         """Lưu tích lũy vào data/bronze/bronze_details_invalid.json."""
         target_file = os.path.join(self.bronze_base_dir, "bronze_details_invalid.json")
         return self._upsert_json_file(invalid_details, target_file)
+
+    def save_master_details(
+        self,
+        valid_details: List[Dict[str, Any]],
+        quarantine_details: List[Dict[str, Any]],
+        invalid_details: List[Dict[str, Any]],
+    ) -> Dict[str, Tuple[str, int, int]]:
+        """
+        Lưu tích lũy cả 3 file chi tiết và giữ chúng NHẤT QUÁN: mỗi tin chỉ nằm ở đúng một file, theo kết quả kiểm định
+        MỚI NHẤT (bản crawl muộn nhất). Nếu một tin trước đây hợp lệ nay bị kiểm định lại thành cách ly / lỗi (vd. do thêm
+        quy tắc mới), nó được gỡ khỏi file hợp lệ, thay vì nằm ở cả hai nơi và tiếp tục lọt vào dữ liệu sạch.
+        """
+        latest: Dict[str, Tuple[str, str]] = {}          # key -> (thời điểm crawl, trạng thái)
+        for status, recs in (("valid", valid_details), ("quarantine", quarantine_details), ("invalid", invalid_details)):
+            for r in recs:
+                k = self._record_key(r)
+                if k == "_":
+                    continue
+                t = str(r.get("crawled_at") or r.get("raw_date") or "")
+                if k not in latest or t >= latest[k][0]:
+                    latest[k] = (t, status)
+
+        files = {"valid": ("bronze_details_valid.json", valid_details),
+                 "quarantine": ("bronze_details_quarantine.json", quarantine_details),
+                 "invalid": ("bronze_details_invalid.json", invalid_details)}
+        out = {}
+        for status, (fname, recs) in files.items():
+            keep = [r for r in recs if self._record_key(r) == "_" or latest[self._record_key(r)][1] == status]
+            remove = {k for k, (_, s) in latest.items() if s != status}
+            target = os.path.join(self.bronze_base_dir, fname)
+            if keep or (remove and os.path.exists(target)):
+                out[status] = self._upsert_json_file(keep, target, remove_keys=remove)
+        return out
 
     # ==========================================================================
     # CÁC HÀM LƯU PHÂN CẤP CŨ (BACKWARD COMPATIBILITY CHO UNIT TESTS)

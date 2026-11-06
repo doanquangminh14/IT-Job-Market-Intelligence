@@ -214,3 +214,35 @@ def test_validator_master_accumulation(sample_valid_job, tmp_path):
     assert d_tot == 1
     assert os.path.exists(d_file)
 
+
+def _keys(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return {(r["source"], r["source_job_id"]) for r in json.load(f)}
+
+
+def test_master_details_reclassified_record_leaves_valid_file(sample_valid_job, tmp_path):
+    """Tin từng hợp lệ, nay bị kiểm định lại thành cách ly ➔ phải bị gỡ khỏi file hợp lệ (không nằm ở cả hai)."""
+    validator = QualityValidator(bronze_dir=str(tmp_path / "bronze"))
+    a = dict(sample_valid_job, source_job_id="A", crawled_at="2026-11-01T10:00:00")
+    b = dict(sample_valid_job, source_job_id="B", crawled_at="2026-11-01T10:00:00")
+    validator.save_master_details([a, b], [], [])
+    valid_file = os.path.join(str(tmp_path / "bronze"), "bronze_details_valid.json")
+    quarantine_file = os.path.join(str(tmp_path / "bronze"), "bronze_details_quarantine.json")
+    assert len(_keys(valid_file)) == 2
+
+    # Lần chạy sau: quy tắc mới xếp B vào cách ly
+    validator.save_master_details([a], [dict(b, dq_status="quarantine")], [])
+    assert _keys(valid_file) == {(a["source"], "A")}
+    assert _keys(quarantine_file) == {(b["source"], "B")}
+
+
+def test_master_details_latest_crawl_wins(sample_valid_job, tmp_path):
+    """Cùng một tin xuất hiện ở hai đợt crawl với kết quả khác nhau ➔ theo đợt crawl muộn nhất."""
+    validator = QualityValidator(bronze_dir=str(tmp_path / "bronze"))
+    old_bad = dict(sample_valid_job, source_job_id="C", crawled_at="2026-11-01T10:00:00")
+    new_ok = dict(sample_valid_job, source_job_id="C", crawled_at="2026-11-06T10:00:00")
+    validator.save_master_details([new_ok], [old_bad], [])
+    bronze = str(tmp_path / "bronze")
+    assert _keys(os.path.join(bronze, "bronze_details_valid.json")) == {(new_ok["source"], "C")}
+    assert not os.path.exists(os.path.join(bronze, "bronze_details_quarantine.json"))
+
