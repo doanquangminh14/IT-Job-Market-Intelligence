@@ -11,7 +11,10 @@ Thứ tự:
   3. notebook 02 : làm sạch + khử trùng lặp ➔ data/notebook/content_base/jobs_clean.csv và data/silver/ (GHI ĐÈ)
   4. notebook 04 : EDA
   5. notebook 05 : CBF + đánh giá (khoảng 3 phút)
-  6. notebook 06 : CF trên dữ liệu mô phỏng ➔ data/simulated/ (GHI ĐÈ)
+  6. notebook 06 (06_recommender_cf), 3 notebook chạy liền nhau:
+       01_simulation               : sinh dữ liệu tương tác mô phỏng ➔ data/simulated/ (GHI ĐÈ)
+       02_simulated_data_inspection: xem dữ liệu mô phỏng TRƯỚC khi làm CF (chỉ đọc)
+       03_matrix_factorization     : ALS + so sánh mô hình; ghi tham số ALS đã chọn vào data/simulated/config.json
   7. notebook 07 : thiết kế & kiểm chứng Hybrid CBF + CF cho ứng dụng (đọc data/simulated/)
 Dừng ngay ở bước lỗi đầu tiên; notebook lỗi KHÔNG bị ghi đè.
 Streamlit tự nạp lại dữ liệu mới (khóa cache theo thời điểm sửa file), không cần sửa gì; mô hình TF-IDF tự huấn luyện lại.
@@ -33,13 +36,14 @@ if sys.stdout.encoding != "utf-8":
         pass
 
 ROOT = Path(__file__).resolve().parents[1]
-NOTEBOOKS = {
-    "01": ROOT / "notebook" / "02_data_pipeline" / "01_data_quality_inspection.ipynb",
-    "02": ROOT / "notebook" / "02_data_pipeline" / "02_data_cleaning_and_deduplication.ipynb",
-    "04": ROOT / "notebook" / "04_eda" / "01_eda_job_market_insights.ipynb",
-    "05": ROOT / "notebook" / "05_recommender" / "01_cbf_engine_and_evaluation.ipynb",
-    "06": ROOT / "notebook" / "06_recommender_cf" / "01_simulation_and_matrix_factorization.ipynb",
-    "07": ROOT / "notebook" / "07_hybrid" / "01_hybrid_cbf_cf_for_app.ipynb",
+CF_DIR = ROOT / "notebook" / "06_recommender_cf"
+NOTEBOOKS = {   # mỗi bước có thể gồm nhiều notebook, chạy theo thứ tự liệt kê
+    "01": [ROOT / "notebook" / "02_data_pipeline" / "01_data_quality_inspection.ipynb"],
+    "02": [ROOT / "notebook" / "02_data_pipeline" / "02_data_cleaning_and_deduplication.ipynb"],
+    "04": [ROOT / "notebook" / "04_eda" / "01_eda_job_market_insights.ipynb"],
+    "05": [ROOT / "notebook" / "05_recommender" / "01_cbf_engine_and_evaluation.ipynb"],
+    "06": [CF_DIR / "01_simulation.ipynb", CF_DIR / "02_simulated_data_inspection.ipynb", CF_DIR / "03_matrix_factorization.ipynb"],
+    "07": [ROOT / "notebook" / "07_hybrid" / "01_hybrid_cbf_cf_for_app.ipynb"],
 }
 ANSI = re.compile(chr(27) + r"\[[0-9;]*m")
 
@@ -127,12 +131,12 @@ def main():
             sys.exit("Bước Bronze lỗi, dừng.")
 
     for key in (args.only or list(NOTEBOOKS)):
-        path = NOTEBOOKS[key]
-        print(f"[notebook {key}] {path.relative_to(ROOT)}", flush=True)
-        t0 = time.time()
-        if not run_notebook(path):
-            sys.exit(f"Dừng ở notebook {key}.")
-        print(f"  xong ({time.time() - t0:.0f}s)")
+        for path in NOTEBOOKS[key]:
+            print(f"[notebook {key}] {path.relative_to(ROOT)}", flush=True)
+            t0 = time.time()
+            if not run_notebook(path):
+                sys.exit(f"Dừng ở notebook {path.name}.")
+            print(f"  xong ({time.time() - t0:.0f}s)")
 
     csv = ROOT / "data" / "notebook" / "content_base" / "jobs_clean.csv"
     if csv.exists():

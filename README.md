@@ -64,7 +64,7 @@ $$\text{Score} = 0{,}30\,S_{\text{skills}} + 0{,}40\,S_{\text{text}} + 0{,}10\,S
 
 ### Hybrid CBF + CF (lọc cộng tác)
 
-- **[Notebook 06](notebook/06_recommender_cf/01_simulation_and_matrix_factorization.ipynb)** (nghiên cứu): dự án chưa có log hành vi thật, nên sinh 3.000 người dùng mô phỏng và log hiển thị / bấm / lưu / ứng tuyển từ tin thật, rồi so sánh Matrix Factorization (ALS cho phản hồi ngầm) với CBF. ALS học được sở thích "ẩn" nhưng **không gợi ý được tin mới**; kết hợp hai bên tốt hơn từng bên.
+- **Notebook 06** (nghiên cứu), 3 bước: [01 sinh dữ liệu mô phỏng](notebook/06_recommender_cf/01_simulation.ipynb) ➔ [02 xem dữ liệu mô phỏng](notebook/06_recommender_cf/02_simulated_data_inspection.ipynb) ➔ [03 Matrix Factorization](notebook/06_recommender_cf/03_matrix_factorization.ipynb). Dự án chưa có log hành vi thật, nên sinh 3.000 người dùng mô phỏng và log hiển thị / bấm / lưu / ứng tuyển từ tin thật, xem kỹ dữ liệu đó, rồi so sánh Matrix Factorization (ALS cho phản hồi ngầm) với CBF. ALS học được sở thích "ẩn" nhưng **không gợi ý được tin mới**; kết hợp hai bên tốt hơn từng bên.
 - **[Notebook 07](notebook/07_hybrid/01_hybrid_cbf_cf_for_app.ipynb)** (thiết kế cho ứng dụng): chọn công thức kết hợp theo **sở thích thật** (Oracle-P@10) thay vì log (log thiên vị hệ đang hiển thị tin), với ràng buộc không làm chìm tin mới. Kết quả: $0{,}5 \cdot z(	ext{CBF}) + 0{,}5 \cdot z(	ext{CF})$, tin mới chỉ dùng CBF, bật CF từ 1 lượt tương tác.
 - **Trong Streamlit:** mỗi thẻ việc làm có nút **Quan tâm** / **Ứng tuyển**; lượt hiển thị và hành động được ghi vào `data/interactions/`. Khi người dùng đã có tương tác, danh sách được xếp theo Hybrid và hiện thêm **Điểm CF**; nếu chưa, dùng CBF như cũ. Có tùy chọn dùng dữ liệu mô phỏng của notebook 06 làm nền để trình diễn (ghi rõ là mô phỏng).
 
@@ -166,7 +166,14 @@ IT-Job-Market-Intelligence/
 │   ├── Home.py                   #   Trang gợi ý việc làm (CBF)
 │   ├── pages/1_Phan_Tich_Thi_Truong.py   # Trang phân tích thị trường
 │   └── components/               #   Biểu đồ, chỉ số, giao diện
-├── configs/sources.yaml          # Endpoint, headers, rate-limit các sàn
+├── configs/
+│   ├── sources.yaml              # Endpoint, headers, rate-limit các sàn
+│   └── dictionaries/             # Từ điển dùng chung (notebook + app), sửa ở đây rồi chạy lại pipeline
+│       ├── skills.yaml           #   Kỹ năng: "Tên chuẩn: [các cách viết]", chia theo nhóm
+│       ├── skill_groups.yaml     #   Nhóm kỹ năng gần nhau (PostgreSQL ~ MySQL)
+│       ├── skill_rules.yaml      #   Khóa mơ hồ, mẫu thẻ rác
+│       ├── it_filter.yaml        #   Từ khóa nghề IT, kỹ năng lõi
+│       └── job_domains.yaml      #   Nhóm nghề của tin (Backend, Data/AI, Game/Đồ họa...) cho notebook 06
 ├── data/                         # (Ignored by Git) raw ➔ bronze ➔ silver, models/, embeddings/
 ├── notebook/                     # 01 crawl · 02 làm sạch · 03 NLP · 04 EDA · 05 recommender (xem notebook/README.md)
 ├── reports/profiling/            # Báo cáo chất lượng dữ liệu
@@ -206,7 +213,7 @@ IT-Job-Market-Intelligence/
 - [x] **Phase 2 - Profiling & Data Quality**: Báo cáo kiểm kê, nhận diện ngôn ngữ, rule engine `valid` / `invalid` / `quarantine`, Master Bronze.
 - [x] **Phase 3 - Silver**: Chuẩn hóa lương / kinh nghiệm / địa điểm, tách kỹ năng và thẻ ngành, khử trùng lặp nhiều lớp, pipeline nạp PostgreSQL.
 - [x] **Phase 4 - Recommender & App**: Content-Based Filtering (TF-IDF + chấm điểm đa thành phần), Streamlit gợi ý việc làm và phân tích thị trường.
-- [x] **Kỹ năng gần nhau** (PostgreSQL ~ MySQL, Vue ~ React) tính 0,5 điểm; đánh giá không dùng tiêu đề (notebook 05, mục 8.4).
+- [x] **Kỹ năng gần nhau** (PostgreSQL ~ MySQL, Vue ~ React) tính 0,5 điểm; đánh giá không dùng tiêu đề (notebook 05, mục 6.1).
 - [x] **Hybrid CBF + CF trong ứng dụng**: ALS, ItemKNN (notebook 06), thiết kế & kiểm chứng (notebook 07), ghi log tương tác và xếp hạng Hybrid trong Streamlit.
 - [ ] **Khi có log thật**: đánh giá lại Hybrid trên log của `data/interactions/` (có hiệu chỉnh thiên lệch hiển thị); BPR; MF có đặc trưng nội dung (LightFM).
 - [ ] **Cải thiện CBF**: tập nhãn tay / log tương tác thật để đánh giá đáng tin hơn; hybrid với embedding ngữ nghĩa (cần sinh lại vector cho khớp dữ liệu); tinh chỉnh thành phần vị trí/hình thức (98,7% tin là Onsite). ~21% job IT không liệt kê kỹ năng là vì mô tả thật sự không nhắc công nghệ nào (BA, kinh doanh phần mềm, quản lý sản phẩm...), không bóc thêm được.

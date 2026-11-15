@@ -32,7 +32,9 @@ notebook/
 │   └── 01_cbf_engine_and_evaluation.ipynb       → Engine CBF + đánh giá + bảng ablation  ★
 │
 ├── 06_recommender_cf/
-│   └── 01_simulation_and_matrix_factorization.ipynb → Dữ liệu tương tác mô phỏng + Matrix Factorization (ALS)
+│   ├── 01_simulation.ipynb                      → Sinh dữ liệu tương tác mô phỏng ➔ data/simulated/
+│   ├── 02_simulated_data_inspection.ipynb       → Xem dữ liệu mô phỏng TRƯỚC khi làm CF
+│   └── 03_matrix_factorization.ipynb            → Matrix Factorization (ALS) + so sánh mô hình
 │
 ├── 07_hybrid/
 │   └── 01_hybrid_cbf_cf_for_app.ipynb           → Thiết kế & kiểm chứng Hybrid CBF + CF dùng trong Streamlit  ★
@@ -116,7 +118,7 @@ Bỏ tiêu đề, điểm chỉ giảm nhẹ (0,84 ➔ 0,83), nên engine tìm �
 
 ## 🤝 Notebook 06 - Lọc cộng tác trên dữ liệu mô phỏng
 
-Dự án chưa có log tương tác thật, nên notebook 06 **sinh dữ liệu mô phỏng** từ 3.470 tin IT thật rồi so sánh CF với CBF. Bộ mô phỏng cũ (`_archive/collaborative_filtering/`) bị bỏ vì sinh tương tác chỉ từ khớp kỹ năng, đúng thứ CBF dùng, nên phép so sánh bị vòng tròn.
+Dự án chưa có log tương tác thật, nên notebook 06 **sinh dữ liệu mô phỏng** từ các tin IT thật (`01_simulation`), **xem kỹ dữ liệu đó** (`02_simulated_data_inspection`), rồi mới so sánh CF với CBF (`03_matrix_factorization`). Bộ mô phỏng cũ (`_archive/collaborative_filtering/`) bị bỏ vì sinh tương tác chỉ từ khớp kỹ năng, đúng thứ CBF dùng, nên phép so sánh bị vòng tròn.
 
 | Thành phần | Thiết kế |
 | :--- | :--- |

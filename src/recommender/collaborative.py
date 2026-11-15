@@ -22,9 +22,20 @@ SIMULATED_DIR = os.path.join(PROJECT_ROOT, "data", "simulated")
 
 # Độ mạnh của tín hiệu (giống notebook 06): bấm xem 1, lưu / quan tâm 3, ứng tuyển 5
 EVENT_WEIGHT = {"click": 1.0, "save": 3.0, "apply": 5.0}
-# Tham số ALS chọn trên validation ở notebook 06 (in lại ở notebook 07, mục 6)
+# Tham số ALS mặc định. Khi có data/simulated/config.json, dùng tham số notebook 06 (03_matrix_factorization) chọn trên validation
+# (xem tuned_als_params): chạy lại notebook 06 với dữ liệu mới thì app tự dùng tham số mới.
 ALS_PARAMS = {"k": 8, "reg": 0.1, "alpha_conf": 1.0}
 SIM_USER_PREFIX = "sim_"
+
+
+def tuned_als_params(sim_dir: Optional[str] = None) -> Dict:
+    """Tham số ALS notebook 06 ghi vào config.json ({} nếu chưa có)."""
+    try:
+        with open(os.path.join(sim_dir or SIMULATED_DIR, "config.json"), encoding="utf-8") as f:
+            p = json.load(f).get("als_params") or {}
+        return {k: (int(v) if k == "k" else float(v)) for k, v in p.items() if k in ALS_PARAMS}
+    except Exception:
+        return {}
 
 
 # ==============================================================================
@@ -129,7 +140,8 @@ class CFModel:
     """ALS huấn luyện trên log tương tác; cho điểm CF của một người dùng với danh sách tin bất kỳ (NaN = tin CF không biết)."""
 
     def __init__(self, params: Optional[Dict] = None):
-        self.params = dict(ALS_PARAMS, **(params or {}))
+        # Ưu tiên tham số notebook 06 vừa chọn trên validation (config.json), giống notebook 07
+        self.params = {**ALS_PARAMS, **tuned_als_params(), **(params or {})}
         self.user_index: Dict[str, int] = {}
         self.item_index: Dict[str, int] = {}
         self.X: Optional[np.ndarray] = None
