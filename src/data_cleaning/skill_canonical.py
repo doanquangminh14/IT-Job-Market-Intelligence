@@ -1,160 +1,11 @@
 import re
 from typing import Dict, List, Optional, Set, Tuple
 
-# Bảng quy chuẩn hiển thị cho các công nghệ IT & Data phổ biến (Canonical Mapping)
-CANONICAL_SKILL_MAP = {
-    # 1. Ngôn ngữ lập trình (Programming Languages)
-    'python': 'Python', 'py': 'Python', 'python3': 'Python',
-    'java': 'Java', 'java core': 'Java',
-    'javascript': 'JavaScript', 'js': 'JavaScript',
-    'typescript': 'TypeScript', 'ts': 'TypeScript',
-    'c++': 'C++', 'cpp': 'C++',
-    'c#': 'C#', 'csharp': 'C#',
-    'php': 'PHP',
-    'golang': 'Golang', 'go': 'Golang',
-    'ruby': 'Ruby',
-    'rust': 'Rust',
-    'scala': 'Scala',
-    'kotlin': 'Kotlin',
-    'swift': 'Swift',
-    'dart': 'Dart',
-    'r': 'R',
-    'bash': 'Bash', 'shell': 'Shell',
-    'powershell': 'PowerShell',
+from src.data_cleaning.dictionaries import alias_map, load_dictionary
 
-    # 2. Phân tích dữ liệu & BI (Data Analytics & BI)
-    'sql': 'SQL', 't-sql': 'T-SQL', 'pl/sql': 'PL/SQL',
-    'power bi': 'Power BI', 'powerbi': 'Power BI', 'pbi': 'Power BI',
-    'tableau': 'Tableau',
-    'excel': 'Excel', 'vba': 'VBA', 'macro': 'VBA',
-    'dax': 'DAX',
-    'power query': 'Power Query', 'powerquery': 'Power Query',
-    'looker': 'Looker', 'looker studio': 'Looker',
-    'metabase': 'Metabase',
-    'google data studio': 'Looker',
-    'qlik': 'Qlik', 'qliksense': 'Qlik', 'qlikview': 'Qlik',
-    'ssis': 'SSIS', 'ssrs': 'SSRS', 'ssas': 'SSAS',
-    'google analytics': 'Google Analytics', 'ga4': 'Google Analytics',
-    'a/b testing': 'A/B Testing', 'ab testing': 'A/B Testing',
-
-    # 3. Kỹ thuật dữ liệu & Big Data (Data Engineering & Big Data)
-    'etl': 'ETL', 'elt': 'ELT',
-    'data warehouse': 'Data Warehouse', 'dwh': 'Data Warehouse',
-    'data lake': 'Data Lake',
-    'data modeling': 'Data Modeling',
-    'data pipeline': 'Data Pipeline',
-    'bigquery': 'BigQuery',
-    'snowflake': 'Snowflake',
-    'spark': 'Apache Spark', 'pyspark': 'PySpark', 'apache spark': 'Apache Spark',
-    'hadoop': 'Hadoop', 'hive': 'Hive',
-    'airflow': 'Apache Airflow', 'apache airflow': 'Apache Airflow',
-    'dbt': 'dbt',
-    'kafka': 'Apache Kafka', 'apache kafka': 'Apache Kafka',
-    'spark streaming': 'Apache Spark',
-
-    # 4. Khoa học dữ liệu & Trí tuệ nhân tạo (Data Science & AI/ML)
-    'machine learning': 'Machine Learning', 'ml': 'Machine Learning',
-    'deep learning': 'Deep Learning', 'dl': 'Deep Learning',
-    'nlp': 'NLP', 'natural language processing': 'NLP',
-    'computer vision': 'Computer Vision', 'cv': 'Computer Vision',
-    'pandas': 'Pandas',
-    'numpy': 'NumPy',
-    'scikit-learn': 'Scikit-Learn', 'sklearn': 'Scikit-Learn',
-    'tensorflow': 'TensorFlow',
-    'pytorch': 'PyTorch',
-    'keras': 'Keras',
-    'generative ai': 'Generative AI', 'genai': 'Generative AI',
-    'llm': 'LLM',
-    'statistics': 'Statistics',
-
-    # 5. Backend Frameworks & Web
-    'spring boot': 'Spring Boot', 'springboot': 'Spring Boot', 'spring': 'Spring Boot',
-    'django': 'Django',
-    'fastapi': 'FastAPI',
-    'flask': 'Flask',
-    'node.js': 'Node.js', 'nodejs': 'Node.js', 'node': 'Node.js',
-    'express.js': 'Express.js', 'expressjs': 'Express.js', 'express': 'Express.js',
-    'nestjs': 'NestJS', 'nest.js': 'NestJS',
-    '.net': '.NET', 'dotnet': '.NET', '.net core': '.NET', 'asp.net': '.NET',
-    'laravel': 'Laravel',
-    'ruby on rails': 'Ruby on Rails', 'rails': 'Ruby on Rails',
-    'gin': 'Gin',
-    'graphql': 'GraphQL',
-    'rest api': 'REST API', 'restful': 'REST API', 'restful api': 'REST API',
-    'grpc': 'gRPC',
-    'microservices': 'Microservices', 'microservice': 'Microservices',
-
-    # 6. Frontend & Mobile Frameworks
-    'react': 'React', 'reactjs': 'React', 'react.js': 'React',
-    'react native': 'React Native', 'reactnative': 'React Native',
-    'vue': 'Vue', 'vuejs': 'Vue', 'vue.js': 'Vue',
-    'angular': 'Angular', 'angularjs': 'Angular',
-    'next.js': 'Next.js', 'nextjs': 'Next.js',
-    'nuxt.js': 'Nuxt.js', 'nuxtjs': 'Nuxt.js',
-    'svelte': 'Svelte',
-    'flutter': 'Flutter',
-    'android': 'Android',
-    'ios': 'iOS',
-    'html': 'HTML/CSS', 'html5': 'HTML/CSS',
-    'css': 'HTML/CSS', 'css3': 'HTML/CSS',
-    'tailwind': 'TailwindCSS', 'tailwindcss': 'TailwindCSS',
-    'bootstrap': 'Bootstrap',
-    'redux': 'Redux',
-
-    # 7. Cơ sở dữ liệu (Databases)
-    'postgresql': 'PostgreSQL', 'postgres': 'PostgreSQL', 'psql': 'PostgreSQL',
-    'mysql': 'MySQL',
-    'sql server': 'SQL Server', 'mssql': 'SQL Server',
-    'oracle': 'Oracle Database',
-    'mongodb': 'MongoDB', 'mongo': 'MongoDB',
-    'redis': 'Redis',
-    'elasticsearch': 'Elasticsearch', 'elastic': 'Elasticsearch',
-    'cassandra': 'Cassandra',
-    'dynamodb': 'DynamoDB',
-    'sqlite': 'SQLite',
-    'mariadb': 'MariaDB',
-    'firebase': 'Firebase',
-    'neo4j': 'Neo4j',
-
-    # 8. Cloud & DevOps
-    'aws': 'AWS', 'amazon web services': 'AWS',
-    'azure': 'Azure', 'microsoft azure': 'Azure',
-    'gcp': 'GCP', 'google cloud': 'GCP',
-    'docker': 'Docker',
-    'kubernetes': 'Kubernetes', 'k8s': 'Kubernetes',
-    'ci/cd': 'CI/CD', 'cicd': 'CI/CD',
-    'git': 'Git', 'github': 'Git', 'gitlab': 'Git',
-    'linux': 'Linux',
-    'terraform': 'Terraform',
-    'ansible': 'Ansible',
-    'jenkins': 'Jenkins',
-    'nginx': 'Nginx',
-    'prometheus': 'Prometheus',
-    'grafana': 'Grafana',
-    'rabbitmq': 'RabbitMQ',
-
-    # 9. Kiểm thử phần mềm (QA & Testing)
-    'manual testing': 'Manual Testing', 'manual test': 'Manual Testing',
-    'automation testing': 'Automation Testing', 'automation test': 'Automation Testing',
-    'selenium': 'Selenium',
-    'cypress': 'Cypress',
-    'playwright': 'Playwright',
-    'postman': 'Postman',
-    'jmeter': 'JMeter',
-    'unit test': 'Unit Testing', 'unit testing': 'Unit Testing',
-    'appium': 'Appium',
-
-    # 10. Quản lý, Thiết kế & Phương pháp luận (Tools & Methodologies)
-    'jira': 'Jira',
-    'confluence': 'Confluence',
-    'figma': 'Figma',
-    'photoshop': 'Photoshop',
-    'agile': 'Agile',
-    'scrum': 'Scrum',
-    'oop': 'OOP',
-    'system design': 'System Design',
-    'an ninh mạng': 'An Ninh Mạng', 'cybersecurity': 'An Ninh Mạng'
-}
+# Từ điển kỹ năng: configs/dictionaries/skills.yaml (dạng "Tên chuẩn: [các cách viết]", chia theo nhóm)
+_SKILLS = load_dictionary("skills")
+CANONICAL_SKILL_MAP = alias_map(_SKILLS["canonical"])      # cách viết ➔ tên chuẩn
 
 # Danh sách từ khóa rác, phúc lợi, nhân thân, ngành nghề cần loại trừ triệt để
 EXCLUDE_PATTERNS = [
@@ -227,34 +78,17 @@ def normalize_skill_name(skill_str: str) -> Optional[str]:
 # required_skills_raw của TopCV/VietnamWorks trộn lẫn kỹ năng công nghệ, thẻ ngành/chức danh/ngoại ngữ và rác
 # (phúc lợi, kinh nghiệm...). Kỹ năng ➔ `required_skills`, thẻ ➔ `job_tags`, rác ➔ loại bỏ.
 
-# 2. Khái niệm công nghệ hay gặp trong thẻ của sàn nhưng chưa có trong từ điển trên
-TECH_EXTRA = {
-    'data analysis': 'Data Analysis', 'data analytics': 'Data Analysis', 'phân tích dữ liệu': 'Data Analysis',
-    'data science': 'Data Science', 'big data': 'Big Data', 'business intelligence': 'Business Intelligence',
-    'data management': 'Data Management', 'data governance': 'Data Governance',
-    'cloud': 'Cloud', 'điện toán đám mây (cloud)': 'Cloud', 'devops': 'DevOps', 'api': 'API', 'api testing': 'API Testing',
-    'erp': 'ERP', 'sap': 'SAP', 'scada': 'SCADA', 'vmware': 'VMware', 'hosting': 'Hosting', 'server': 'Server',
-    'software testing': 'Software Testing', 'kiểm thử phần mềm': 'Software Testing', 'qa': 'QA',
-    'information security': 'An Ninh Mạng', 'it security': 'An Ninh Mạng', 'an toàn thông tin': 'An Ninh Mạng',
-    'network security': 'Network Security',
-    'lập trình nhúng': 'Embedded', 'embedded': 'Embedded', 'network': 'Networking', 'quản trị mạng': 'Networking',
-    'system administration': 'System Administration', 'quản trị hệ thống': 'System Administration',
-    'agile scrum': 'Agile', 'ux design': 'UX Design', 'ui': 'UI Design',
-    'ms sql': 'SQL Server', 'python programming': 'Python', 'java spring boot': 'Spring Boot',
-    'ci': 'CI/CD', 'cd': 'CI/CD', 'cd methodologies': 'CI/CD', 'ai': 'AI', 'blockchain': 'Blockchain',
-}
+# 2. Khái niệm hay gặp trong thẻ của sàn + công cụ game / 3D (phần "extra" của skills.yaml)
+TECH_EXTRA = alias_map(_SKILLS["extra"])
 TECH_LOOKUP = {**CANONICAL_SKILL_MAP, **TECH_EXTRA}
 
 # 3. Khóa quá mơ hồ khi quét VĂN BẢN TỰ DO (vd 'go' trong "go to market", 'cv' trong "gửi CV", 'ml' viết tắt)
 #    ➔ chỉ chấp nhận chúng khi xuất hiện như một THẺ rõ ràng, không quét từ mô tả.
-AMBIGUOUS_FREE_TEXT_KEYS = {'cv', 'go', 'r', 'ml', 'dl', 'py', 'ts', 'js', 'macro', 'gin', 'spring', 'express',
-                            'node', 'shell', 'elastic', 'ai', 'ui', 'ci', 'cd', 'api', 'qa', 'server', 'cloud', 'network', 'sap'}
+_RULES = load_dictionary("skill_rules")   # configs/dictionaries/skill_rules.yaml
+AMBIGUOUS_FREE_TEXT_KEYS = set(_RULES["ambiguous_free_text_keys"])
 
 # 4. Mẫu nhận diện thẻ RÁC (phúc lợi, kinh nghiệm, học vấn, nhân thân...)
-JUNK_PATTERN = re.compile(
-    r'bảo hiểm|thưởng|bonus|du lịch|team\s*building|khám sức khỏe|phụ cấp|xăng|tai nghe|cước|điện thoại|phương tiện|'
-    r'giờ hành chính|giọng|phát âm|diễn đạt|kinh nghiệm|trở lên|đại học|cao đẳng|trung cấp|tuổi|xem tất cả|'
-    r'toàn thời gian|bán thời gian|thực tập|signing', re.IGNORECASE)
+JUNK_PATTERN = re.compile("|".join(_RULES["junk_tag_patterns"]), re.IGNORECASE)
 
 # 5. Regex quét kỹ năng trong văn bản. Dùng lookaround thay cho \b để nhận đúng C++, C#, .NET, CI/CD
 TECH_PATTERNS = [
@@ -313,31 +147,10 @@ def normalize_user_skills(skills) -> List[str]:
     return [TECH_LOOKUP.get(str(s).strip().lower(), str(s).strip()) for s in (skills or []) if str(s).strip()]
 
 
-# Nhóm kỹ năng THAY THẾ ĐƯỢC cho nhau (đồng bộ với notebook 05, mục 5.1): biết một kỹ năng trong nhóm thì học
+# Nhóm kỹ năng THAY THẾ ĐƯỢC cho nhau (đồng bộ với notebook 05, mục 4.1): biết một kỹ năng trong nhóm thì học
 # kỹ năng còn lại nhanh. Viết tay (không dùng đồng xuất hiện) vì kỹ năng hay đi cùng nhau (Python + SQL)
 # chưa chắc thay thế được nhau. Tên phải là tên chuẩn của TECH_LOOKUP.
-SKILL_GROUPS = [
-    ["React", "Next.js", "React Native"], ["Vue", "Nuxt.js"], ["React", "Vue", "Angular", "Svelte"],
-    ["JavaScript", "TypeScript"], ["Node.js", "Express.js", "NestJS"],
-    ["Java", "Spring Boot", "Kotlin"], ["Python", "Django", "FastAPI", "Flask"], ["PHP", "Laravel"],
-    ["C#", ".NET"], ["Ruby", "Ruby on Rails"], ["Golang", "Gin"],
-    ["Flutter", "Dart", "React Native"], ["Android", "Kotlin"], ["iOS", "Swift"],
-    ["SQL", "PostgreSQL", "MySQL", "SQL Server", "Oracle Database", "MariaDB", "SQLite", "T-SQL", "PL/SQL"],
-    ["MongoDB", "Cassandra", "DynamoDB", "Firebase"], ["Redis", "Elasticsearch"],
-    ["AWS", "Azure", "GCP", "Cloud"], ["Docker", "Kubernetes"], ["CI/CD", "Jenkins", "DevOps"],
-    ["Terraform", "Ansible"], ["Prometheus", "Grafana"], ["Apache Kafka", "RabbitMQ"],
-    ["Power BI", "Tableau", "Looker", "Qlik", "Metabase", "Business Intelligence"],
-    ["Apache Spark", "PySpark", "Hadoop", "Big Data"],
-    ["ETL", "ELT", "Data Pipeline", "Apache Airflow", "SSIS", "Data Warehouse"],
-    ["PyTorch", "TensorFlow", "Keras", "Deep Learning"],
-    ["Machine Learning", "Deep Learning", "AI", "NLP", "Computer Vision", "LLM", "Generative AI", "Data Science"],
-    ["Data Analysis", "Data Science", "Statistics", "Pandas"],
-    ["Selenium", "Cypress", "Playwright", "Appium", "Automation Testing"],
-    ["Manual Testing", "Software Testing", "QA", "API Testing"], ["Postman", "API Testing", "JMeter"],
-    ["Linux", "Bash", "Shell", "System Administration"], ["An Ninh Mạng", "Network Security"],
-    ["Networking", "Network Security", "System Administration"],
-    ["Agile", "Scrum"], ["Jira", "Confluence"],
-]
+SKILL_GROUPS = [list(g) for g in load_dictionary("skill_groups")["groups"]]   # configs/dictionaries/skill_groups.yaml
 RELATED_SKILLS: Dict[str, Set[str]] = {}
 for _group in SKILL_GROUPS:
     for _a in _group:

@@ -1,0 +1,38 @@
+# =====================================================================================
+# QUY TẮC TÁCH KỸ NĂNG / THẺ (notebook 02, Bước 4)
+# =====================================================================================
+
+# Cách viết quá MƠ HỒ khi quét văn bản tự do ('go' trong "go to market", 'cv' trong "gửi CV"...):
+# chỉ nhận khi xuất hiện như một THẺ kỹ năng rõ ràng của sàn, không quét trong mô tả công việc.
+ambiguous_free_text_keys: [ai, api, cd, ci, cloud, cv, dl, elastic, express, gin, go, js, macro, ml, network, node, py, qa, r, sap, server, shell, spring, ts, ui]
+
+# Thẻ RÁC trong ô kỹ năng của sàn (phúc lợi, kinh nghiệm, học vấn...): thẻ chứa một trong các mẫu này bị bỏ.
+# Mỗi dòng là một mẫu regex (\s* = có hoặc không có khoảng trắng).
+junk_tag_patterns:
+  - 'bảo hiểm'
+  - 'thưởng'
+  - 'bonus'
+  - 'du lịch'
+  - 'team\s*building'
+  - 'khám sức khỏe'
+  - 'phụ cấp'
+  - 'xăng'
+  - 'tai nghe'
+  - 'cước'
+  - 'điện thoại'
+  - 'phương tiện'
+  - 'giờ hành chính'
+  - 'giọng'
+  - 'phát âm'
+  - 'diễn đạt'
+  - 'kinh nghiệm'
+  - 'trở lên'
+  - 'đại học'
+  - 'cao đẳng'
+  - 'trung cấp'
+  - 'tuổi'
+  - 'xem tất cả'
+  - 'toàn thời gian'
+  - 'bán thời gian'
+  - 'thực tập'
+  - 'signing'

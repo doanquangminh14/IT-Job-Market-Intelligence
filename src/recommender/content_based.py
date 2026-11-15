@@ -54,7 +54,7 @@ def data_file_version() -> Tuple[Optional[str], float]:
 TOKENIZER_VERSION = 3  # tăng khi đổi cách tokenize / dựng content soup để buộc huấn luyện lại model cũ
 DEFAULT_WEIGHTS = {'skills': 0.30, 'text': 0.40, 'exp': 0.10, 'loc': 0.10, 'sal': 0.10}
 COMPONENTS = ['skills', 'text', 'exp', 'loc', 'sal']
-RELATED_SKILL_CREDIT = 0.5  # một kỹ năng gần nhau (PostgreSQL ~ MySQL) = nửa kỹ năng khớp (notebook 05, mục 8.4)
+RELATED_SKILL_CREDIT = 0.5  # một kỹ năng gần nhau (PostgreSQL ~ MySQL) = nửa kỹ năng khớp (notebook 05, mục 6.1)
 
 
 # ==============================================================================
@@ -64,7 +64,6 @@ RELATED_SKILL_CREDIT = 0.5  # một kỹ năng gần nhau (PostgreSQL ~ MySQL) =
 def compute_skill_score(
     user_skills: List[str],
     job_required_skills: List[str],
-    job_preferred_skills: Optional[List[str]] = None,
     mode: str = 'v3',
     related_credit: float = RELATED_SKILL_CREDIT
 ) -> Optional[float]:
@@ -73,7 +72,7 @@ def compute_skill_score(
       - 'v1' (cũ)  : coverage = số kỹ năng khớp / số kỹ năng job yêu cầu  (job yêu cầu 1 kỹ năng bạn có => 100%)
       - 'v2'       : coverage x m/(m+1) với m = số kỹ năng khớp (khớp càng nhiều, bằng chứng càng đáng tin)
       - 'v3' (mới) : như v2 nhưng m = khớp chính xác + related_credit x số kỹ năng gần nhau (PostgreSQL ~ MySQL)
-    (preferred_skills đã được loại bỏ do dữ liệu thực tế bị rỗng >99%).
+    Chỉ dùng kỹ năng BẮT BUỘC: dữ liệu không có kỹ năng ưu tiên (xem notebook 02).
     """
     req_set = set(s.lower() for s in job_required_skills if s and s.lower() != 'nan') if job_required_skills else set()
     if not req_set:

@@ -119,7 +119,6 @@ def test_recommender_pipeline(tmp_path):
             'title': 'Senior Python Developer',
             'description_clean': 'Lập trình Python backend phát triển ứng dụng phần mềm',
             'required_skills': 'Python, SQL, Docker',
-            'preferred_skills': 'AWS',
             'experience_min': 2.0,
             'experience_max': 5.0,
             'city': 'Hà Nội',
@@ -136,7 +135,6 @@ def test_recommender_pipeline(tmp_path):
             'title': 'Junior Python Backend Developer',
             'description_clean': 'Lập trình Python backend và cơ sở dữ liệu cho phần mềm',
             'required_skills': 'Python, SQL',
-            'preferred_skills': 'Git',
             'experience_min': 1.0,
             'experience_max': 2.0,
             'city': 'Hà Nội',
@@ -153,7 +151,6 @@ def test_recommender_pipeline(tmp_path):
             'title': 'Java Backend Developer',
             'description_clean': 'Lập trình phát triển phần mềm hệ thống backend doanh nghiệp',
             'required_skills': 'Java, Spring Boot',
-            'preferred_skills': 'MySQL',
             'experience_min': 3.0,
             'experience_max': 5.0,
             'city': 'Hồ Chí Minh',
@@ -190,7 +187,7 @@ def test_recommender_pipeline(tmp_path):
 
 
 def _mock_jobs():
-    base = dict(preferred_skills='', experience_min=1.0, experience_max=3.0, city='Hà Nội', work_mode='Onsite',
+    base = dict(experience_min=1.0, experience_max=3.0, city='Hà Nội', work_mode='Onsite',
                 salary_min=None, salary_max=None, is_active=True, job_url='', company_name='X', company_logo_url='')
     return pd.DataFrame([
         dict(base, job_id='a', title='C++ Embedded Engineer', required_skills='C++, Linux', job_tags='Nhúng',

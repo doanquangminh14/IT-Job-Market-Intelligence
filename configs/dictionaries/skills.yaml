@@ -1,0 +1,233 @@
+# =====================================================================================
+# TỪ ĐIỂN KỸ NĂNG CÔNG NGHỆ
+# Dùng chung cho notebook 02 (tách kỹ năng), notebook 05 (CBF) và ứng dụng Streamlit.
+#
+# Cách đọc:   Tên chuẩn: [các cách viết có thể gặp trong tin tuyển dụng / CV]
+#   - Cách viết ghi CHỮ THƯỜNG; khi so khớp, văn bản cũng được hạ chữ thường.
+#   - Ví dụ  Kubernetes: [kubernetes, k8s]  ➔ gặp 'K8s' trong tin thì ghi nhận kỹ năng 'Kubernetes'.
+#
+# Thêm kỹ năng: thêm một dòng vào nhóm phù hợp, rồi chạy
+#   python scripts/refresh_pipeline.py --skip-quality
+# =====================================================================================
+
+# Từ điển chính (các kỹ năng công nghệ phổ biến)
+canonical:
+
+  # --- Ngôn ngữ lập trình (Programming Languages)
+  "Ngôn ngữ lập trình (Programming Languages)":
+    Python: [python, py, python3]
+    Java: [java, java core]
+    JavaScript: [javascript, js]
+    TypeScript: [typescript, ts]
+    C++: [c++, cpp]
+    "C#": ["c#", csharp]
+    PHP: [php]
+    Golang: [golang, go]
+    Ruby: [ruby]
+    Rust: [rust]
+    Scala: [scala]
+    Kotlin: [kotlin]
+    Swift: [swift]
+    Dart: [dart]
+    R: [r]
+    Bash: [bash]
+    Shell: [shell]
+    PowerShell: [powershell]
+
+  # --- Phân tích dữ liệu & BI (Data Analytics & BI)
+  "Phân tích dữ liệu & BI (Data Analytics & BI)":
+    SQL: [sql]
+    T-SQL: [t-sql]
+    PL/SQL: [pl/sql]
+    Power BI: [power bi, powerbi, pbi]
+    Tableau: [tableau]
+    Excel: [excel]
+    VBA: [vba, macro]
+    DAX: [dax]
+    Power Query: [power query, powerquery]
+    Looker: [looker, looker studio, google data studio]
+    Metabase: [metabase]
+    Qlik: [qlik, qliksense, qlikview]
+    SSIS: [ssis]
+    SSRS: [ssrs]
+    SSAS: [ssas]
+    Google Analytics: [google analytics, ga4]
+    A/B Testing: [a/b testing, ab testing]
+
+  # --- Kỹ thuật dữ liệu & Big Data (Data Engineering & Big Data)
+  "Kỹ thuật dữ liệu & Big Data (Data Engineering & Big Data)":
+    ETL: [etl]
+    ELT: [elt]
+    Data Warehouse: [data warehouse, dwh]
+    Data Lake: [data lake]
+    Data Modeling: [data modeling]
+    Data Pipeline: [data pipeline]
+    BigQuery: [bigquery]
+    Snowflake: [snowflake]
+    Apache Spark: [spark, apache spark, spark streaming]
+    PySpark: [pyspark]
+    Hadoop: [hadoop]
+    Hive: [hive]
+    Apache Airflow: [airflow, apache airflow]
+    dbt: [dbt]
+    Apache Kafka: [kafka, apache kafka]
+
+  # --- Khoa học dữ liệu & Trí tuệ nhân tạo (Data Science & AI/ML)
+  "Khoa học dữ liệu & Trí tuệ nhân tạo (Data Science & AI/ML)":
+    Machine Learning: [machine learning, ml]
+    Deep Learning: [deep learning, dl]
+    NLP: [nlp, natural language processing]
+    Computer Vision: [computer vision, cv]
+    Pandas: [pandas]
+    NumPy: [numpy]
+    Scikit-Learn: [scikit-learn, sklearn]
+    TensorFlow: [tensorflow]
+    PyTorch: [pytorch]
+    Keras: [keras]
+    Generative AI: [generative ai, genai]
+    LLM: [llm]
+    Statistics: [statistics]
+
+  # --- Backend Frameworks & Web
+  "Backend Frameworks & Web":
+    Spring Boot: [spring boot, springboot, spring]
+    Django: [django]
+    FastAPI: [fastapi]
+    Flask: [flask]
+    Node.js: [node.js, nodejs, node]
+    Express.js: [express.js, expressjs, express]
+    NestJS: [nestjs, nest.js]
+    ".NET": [".net", dotnet, ".net core", asp.net]
+    Laravel: [laravel]
+    Ruby on Rails: [ruby on rails, rails]
+    Gin: [gin]
+    GraphQL: [graphql]
+    REST API: [rest api, restful, restful api]
+    gRPC: [grpc]
+    Microservices: [microservices, microservice]
+
+  # --- Frontend & Mobile Frameworks
+  "Frontend & Mobile Frameworks":
+    React: [react, reactjs, react.js]
+    React Native: [react native, reactnative]
+    Vue: [vue, vuejs, vue.js]
+    Angular: [angular, angularjs]
+    Next.js: [next.js, nextjs]
+    Nuxt.js: [nuxt.js, nuxtjs]
+    Svelte: [svelte]
+    Flutter: [flutter]
+    Android: [android]
+    iOS: [ios]
+    HTML/CSS: [html, html5, css, css3]
+    TailwindCSS: [tailwind, tailwindcss]
+    Bootstrap: [bootstrap]
+    Redux: [redux]
+
+  # --- Cơ sở dữ liệu (Databases)
+  "Cơ sở dữ liệu (Databases)":
+    PostgreSQL: [postgresql, postgres, psql]
+    MySQL: [mysql]
+    SQL Server: [sql server, mssql]
+    Oracle Database: [oracle]
+    MongoDB: [mongodb, mongo]
+    Redis: [redis]
+    Elasticsearch: [elasticsearch, elastic]
+    Cassandra: [cassandra]
+    DynamoDB: [dynamodb]
+    SQLite: [sqlite]
+    MariaDB: [mariadb]
+    Firebase: [firebase]
+    Neo4j: [neo4j]
+
+  # --- Cloud & DevOps
+  "Cloud & DevOps":
+    AWS: [aws, amazon web services]
+    Azure: [azure, microsoft azure]
+    GCP: [gcp, google cloud]
+    Docker: [docker]
+    Kubernetes: [kubernetes, k8s]
+    CI/CD: [ci/cd, cicd]
+    Git: [git, github, gitlab]
+    Linux: [linux]
+    Terraform: [terraform]
+    Ansible: [ansible]
+    Jenkins: [jenkins]
+    Nginx: [nginx]
+    Prometheus: [prometheus]
+    Grafana: [grafana]
+    RabbitMQ: [rabbitmq]
+
+  # --- Kiểm thử phần mềm (QA & Testing)
+  "Kiểm thử phần mềm (QA & Testing)":
+    Manual Testing: [manual testing, manual test]
+    Automation Testing: [automation testing, automation test]
+    Selenium: [selenium]
+    Cypress: [cypress]
+    Playwright: [playwright]
+    Postman: [postman]
+    JMeter: [jmeter]
+    Unit Testing: [unit test, unit testing]
+    Appium: [appium]
+
+  # --- Quản lý, Thiết kế & Phương pháp luận (Tools & Methodologies)
+  "Quản lý, Thiết kế & Phương pháp luận (Tools & Methodologies)":
+    Jira: [jira]
+    Confluence: [confluence]
+    Figma: [figma]
+    Photoshop: [photoshop]
+    Agile: [agile]
+    Scrum: [scrum]
+    OOP: [oop]
+    System Design: [system design]
+    An Ninh Mạng: [an ninh mạng, cybersecurity]
+
+# Từ điển bổ sung: khái niệm hay gặp trong thẻ của sàn (Data Analysis, Cloud, ERP...) và công cụ game / 3D
+extra:
+
+  # --- Khái niệm hay gặp trong thẻ của sàn
+  Khái niệm hay gặp trong thẻ của sàn:
+    Data Analysis: [data analysis, data analytics, phân tích dữ liệu]
+    Data Science: [data science]
+    Big Data: [big data]
+    Business Intelligence: [business intelligence]
+    Data Management: [data management]
+    Data Governance: [data governance]
+    Cloud: [cloud, "điện toán đám mây (cloud)"]
+    DevOps: [devops]
+    API: [api]
+    API Testing: [api testing]
+    ERP: [erp]
+    SAP: [sap]
+    SCADA: [scada]
+    VMware: [vmware]
+    Hosting: [hosting]
+    Server: [server]
+    Software Testing: [software testing, kiểm thử phần mềm]
+    QA: [qa]
+    An Ninh Mạng: [information security, it security, an toàn thông tin]
+    Network Security: [network security]
+    Embedded: [lập trình nhúng, embedded]
+    Networking: [network, quản trị mạng]
+    System Administration: [system administration, quản trị hệ thống]
+    Agile: [agile scrum]
+    UX Design: [ux design]
+    UI Design: [ui]
+    SQL Server: [ms sql]
+    Python: [python programming]
+    Spring Boot: [java spring boot]
+    CI/CD: [ci, cd, cd methodologies]
+    AI: [ai]
+    Blockchain: [blockchain]
+
+  # --- Game & đồ họa số
+  "Game & đồ họa số":
+    Game Design: [game design, thiết kế game]
+    Unity: [unity, unity3d]
+    Unreal Engine: [unreal engine, unreal]
+    Blender: [blender]
+    Maya: [maya, autodesk maya]
+    3ds Max: [3ds max, 3dsmax]
+    ZBrush: [zbrush]
+    Substance Painter: [substance painter]
+    Spine: [spine, spine 2d]
+    After Effects: [after effects]

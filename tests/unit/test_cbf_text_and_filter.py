@@ -29,3 +29,14 @@ def test_it_filter():
     assert is_it_job("Chuyên viên", "Python, SQL")
     assert not is_it_job("Nhân viên thiết kế đồ họa", "Photoshop, Illustrator")
     assert not is_it_job("Nhân viên kinh doanh", float("nan"))
+
+
+def test_it_filter_game_and_digital_art():
+    # Phạm vi mở rộng: game & đồ họa kỹ thuật số
+    for title in ["Game Designer Intern", "2D Animator", "3D Rigger", "Unreal Engine Artist",
+                  "2D Game Artist - Junior", "3D Character Modeler", "Nhân Viên Thiết Kế Game ( Fresher)"]:
+        assert is_it_job(title, ""), title
+    # Vẫn không phải IT: đồ họa in ấn, thiết kế sự kiện/nội thất 3D, vận hành/kinh doanh game
+    for title in ["Graphic Designer", "Nhân Viên Thiết Kế 3D (Event & Activation)",
+                  "Chuyên Viên Thiết Kế Nội Thất 3D", "Nhân Viên Vận Hành Game"]:
+        assert not is_it_job(title, ""), title

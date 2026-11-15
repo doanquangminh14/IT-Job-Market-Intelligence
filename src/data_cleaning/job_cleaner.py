@@ -15,9 +15,7 @@ from typing import Dict, Any, List, Optional, Tuple
 import pandas as pd
 
 from src.data_cleaning.skill_canonical import (
-    CANONICAL_SKILL_MAP,
     EXCLUDE_PATTERNS,
-    normalize_skill_name,
     extract_skills_from_text,
     extract_skills_and_tags
 )
@@ -79,27 +77,8 @@ class JobCleaner:
         """
         return extract_skills_and_tags(row)
 
-    @staticmethod
-    def extract_preferred_skills(row: pd.Series) -> List[str]:
-        """Trích xuất kỹ năng ưu tiên (nice-to-have)."""
-        raw_pref = row.get('preferred_skills_raw')
-        if raw_pref and pd.notnull(raw_pref) and str(raw_pref).strip():
-            skills = [normalize_skill_name(s) for s in str(raw_pref).split(',') if s.strip()]
-            return [s for s in skills if s]
-        
-        desc = str(row.get('description_clean', '')).lower()
-        pref_section = ""
-        m = re.search(r'(?:ưu tiên|điểm cộng|nice to have|plus|yêu cầu khác)[\s:]*([^\.\n]+)', desc)
-        if m:
-            pref_section = m.group(1)
-            
-        found_skills = []
-        req_skills_lower = [k.lower() for k in (row.get('required_skills') or [])]
-        for key_tech, canonical_name in CANONICAL_SKILL_MAP.items():
-            if re.search(r'\b' + re.escape(key_tech) + r'\b', pref_section):
-                if canonical_name.lower() not in req_skills_lower and canonical_name not in found_skills:
-                    found_skills.append(canonical_name)
-        return found_skills
+    # Không tạo cột preferred_skills (kỹ năng ưu tiên): cả 3 sàn không có trường này, trích từ mô tả chỉ được ~0,6% tin
+    # và sai nhiều (vd. "Java" lấy nhầm từ "JavaScript"), nên đã bỏ (đồng bộ với notebook 02).
 
     @staticmethod
     def parse_experience_range(exp_str: Any) -> Tuple[Optional[float], Optional[float]]:
@@ -245,7 +224,6 @@ class JobCleaner:
         skill_tag = jobs.apply(self.extract_and_normalize_skills, axis=1)
         jobs['required_skills'] = skill_tag.apply(lambda x: x[0])
         jobs['job_tags'] = skill_tag.apply(lambda x: x[1])
-        jobs['preferred_skills'] = jobs.apply(self.extract_preferred_skills, axis=1)
         
         # 4. Experience
         exp_res = jobs['experience_raw'].apply(self.parse_experience_range)
@@ -279,7 +257,7 @@ class JobCleaner:
         jobs['is_it'] = jobs.apply(lambda r: is_it_job(r['title'], r['required_skills']), axis=1)
 
         final_columns = [
-            'job_id', 'company_name', 'title', 'description_clean', 'required_skills', 'preferred_skills', 'job_tags',
+            'job_id', 'company_name', 'title', 'description_clean', 'required_skills', 'job_tags',
             'experience_min', 'experience_max', 'location', 'city', 'salary_min', 'salary_max',
             'employment_type', 'work_mode', 'deadline', 'is_active', 'is_it', 'job_url', 'company_logo_url'
         ]
@@ -297,7 +275,6 @@ class JobCleaner:
         # Format list to comma-separated string for CSV export
         df_export = df_clean.copy()
         df_export['required_skills'] = df_export['required_skills'].apply(lambda x: ', '.join(x) if isinstance(x, list) else '')
-        df_export['preferred_skills'] = df_export['preferred_skills'].apply(lambda x: ', '.join(x) if isinstance(x, list) else '')
         df_export['job_tags'] = df_export['job_tags'].apply(lambda x: ', '.join(x) if isinstance(x, list) else '')
         
         os.makedirs(os.path.dirname(os.path.abspath(output_csv_path)), exist_ok=True)
