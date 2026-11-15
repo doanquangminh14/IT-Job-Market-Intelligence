@@ -11,6 +11,12 @@ def apply_custom_theme():
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     }
 
+    /* Trả lại font icon cho Streamlit (nếu không, icon hiện thành chữ thô như "_arrow_right") */
+    [data-testid="stIconMaterial"], [data-testid="stExpanderIcon"],
+    span.material-symbols-rounded, span[class*="material-symbols"], span[class*="MaterialSymbol"] {
+        font-family: 'Material Symbols Rounded' !important;
+    }
+
     /* Tối ưu hóa layout nền */
     .stApp {
         background-color: #f8fafc;

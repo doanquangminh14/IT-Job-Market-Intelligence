@@ -17,7 +17,7 @@ from src.recommender.content_based import ContentBasedRecommender, data_file_ver
 from src.recommender.collaborative import (CFModel, InteractionLog, build_training_events,
                                            simulated_data_available)
 from src.recommender.hybrid import HybridRecommender
-from src.data_cleaning.skill_canonical import CANONICAL_SKILL_MAP, extract_skills_from_text
+from src.data_cleaning.skill_canonical import TECH_LOOKUP, extract_skills_from_text
 from app.components.market_insights import render_market_insights
 
 # 1. Cấu hình trang Streamlit
@@ -34,6 +34,13 @@ custom_css = """
 
 html, body, [class*="css"], .stMarkdown, p, span, label, input, button {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+/* Trả lại font icon cho Streamlit: quy tắc trên ép mọi <span> sang Inter, làm icon (mũi tên của expander...)
+   hiện thành chữ thô như "_arrow_right". Đặt SAU quy tắc trên để được ưu tiên. */
+[data-testid="stIconMaterial"], [data-testid="stExpanderIcon"],
+span.material-symbols-rounded, span[class*="material-symbols"], span[class*="MaterialSymbol"] {
+    font-family: 'Material Symbols Rounded' !important;
 }
 
 /* Tùy biến Tab navigation */
@@ -376,16 +383,16 @@ def get_hybrid(use_simulated: bool) -> HybridRecommender:
     cf = load_cf_model(interaction_log.version(), use_simulated)
     return HybridRecommender(recommender, interaction_log, use_simulated, cf_model=cf)
 jobs_df = recommender.jobs_df
-all_skills_list = sorted(list(set(CANONICAL_SKILL_MAP.values())))
+all_skills_list = sorted(list(set(TECH_LOOKUP.values())))
 
 # 4. Header Section
 st.markdown(
     f"""
     <div class="header-box">
-        <span class="header-tag">CONTENT-BASED FILTERING SYSTEM</span>
+        <span class="header-tag">HỆ GỢI Ý HYBRID · CBF + CF</span>
         <h1 class="header-title">Hệ Thống Gợi Ý Việc Làm Theo Nhu Cầu</h1>
         <p class="header-subtitle">
-            Phân tích mức độ tương đồng giữa hồ sơ năng lực của ứng viên và yêu cầu tuyển dụng từ {len(jobs_df):,} vị trí việc làm IT đã được làm sạch và chuẩn hóa.
+            Gợi ý từ {len(jobs_df):,} tin tuyển dụng IT: khớp nội dung hồ sơ của bạn (CBF), và khi bạn đã bấm Quan tâm / Ứng tuyển thì kết hợp thêm hành vi của những người dùng giống bạn (CF).
         </p>
     </div>
     """,
@@ -522,7 +529,9 @@ with tab_recommender:
     st.write("")
 
     # 6. Xử lý logic và hiển thị danh sách kết quả (Lưu vào session_state để không bị reset khi đổi chế độ xem)
-    should_run_search = btn_search or ("df_results" not in st.session_state)
+    # force_search: bấm "Cập nhật gợi ý theo sở thích" ngay phía trên danh sách kết quả (không phải cuộn lên nút Tìm kiếm)
+    user_triggered = bool(btn_search) or st.session_state.pop("force_search", False)
+    should_run_search = user_triggered or ("df_results" not in st.session_state)
 
     if should_run_search:
         salary_filter = min_salary if min_salary > 0 else None
@@ -543,7 +552,8 @@ with tab_recommender:
                 preferred_work_modes=preferred_work_modes,
                 min_salary=salary_filter,
             )
-            if not df_results.empty:   # lưu lượt hiển thị (vị trí + chế độ) để sau này đánh giá được trên log thật
+            # Lưu lượt hiển thị (vị trí + chế độ) để sau này đánh giá được trên log thật; KHÔNG ghi lần tự tìm khi mở trang
+            if user_triggered and not df_results.empty:
                 interaction_log.log_impressions(user_id, df_results["job_id"], source="recommend", mode=rec_info["mode"])
 
             # Lưu kết quả và thông tin vào session_state
@@ -559,7 +569,7 @@ with tab_recommender:
             st.session_state["summary_preferred_work_modes"] = preferred_work_modes
             st.session_state["summary_min_salary"] = min_salary
 
-    # Hiển thị kết quả từ session_state (bảo toàn khi người dùng bấm đổi radio view_mode)
+    # Hiển thị kết quả từ session_state (bảo toàn qua các lần rerun, vd. khi bấm Quan tâm / Ứng tuyển)
     if "df_results" in st.session_state and st.session_state["df_results"] is not None:
         df_results = st.session_state["df_results"]
         detected_skills = st.session_state.get("detected_skills", [])
@@ -569,213 +579,200 @@ with tab_recommender:
         sum_city = st.session_state.get("summary_preferred_city", preferred_city)
         sum_modes = st.session_state.get("summary_preferred_work_modes", preferred_work_modes)
         sum_salary = st.session_state.get("summary_min_salary", min_salary)
-
-        # Hộp tổng quan hồ sơ ứng viên đang được ghi nhận
-        cv_skill_tags = " ".join([f"<span class='skill-tag-cv'>{s}</span>" for s in detected_skills]) if detected_skills else "<span style='color:#94a3b8; font-size:0.8rem;'>Không trích xuất được từ văn bản</span>"
-        extra_skill_tags = " ".join([f"<span class='skill-tag-extra'>{s}</span>" for s in skills]) if skills else "<span style='color:#94a3b8; font-size:0.8rem;'>Không chọn kỹ năng bổ sung</span>"
-        salary_text = f"Tối thiểu {sum_salary:,.0f} VNĐ/tháng" if sum_salary > 0 else "Bao gồm cả mức lương Thỏa thuận"
-        modes_text = ", ".join(sum_modes) if sum_modes else "Tất cả"
-
-        profile_box_html = f"""
-        <div class="candidate-profile-box">
-            <div class="candidate-profile-title">Hồ Sơ Năng Lực Ứng Viên Đang Được Ghi Nhận</div>
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:10px; margin-bottom:12px; font-size:0.83rem;">
-                <div><span style="color:#64748b;">Vị trí mục tiêu:</span> <strong style="color:#0f172a;">{sum_title}</strong></div>
-                <div><span style="color:#64748b;">Kinh nghiệm:</span> <strong style="color:#0f172a;">{sum_exp} năm</strong></div>
-                <div><span style="color:#64748b;">Khu vực ưu tiên:</span> <strong style="color:#0f172a;">{sum_city}</strong></div>
-                <div><span style="color:#64748b;">Hình thức:</span> <strong style="color:#0f172a;">{modes_text}</strong></div>
-                <div><span style="color:#64748b;">Kỳ vọng lương:</span> <strong style="color:#0f172a;">{salary_text}</strong></div>
-                <div><span style="color:#64748b;">Tổng kỹ năng sở hữu:</span> <strong style="color:#0f172a;">{len(all_candidate_skills)} kỹ năng</strong></div>
-            </div>
-            <div style="font-size:0.8rem; padding-top:10px; border-top:1px dashed #e2e8f0;">
-                <div style="margin-bottom:6px;">
-                    <span style="font-weight:600; color:#1e40af; display:inline-block; min-width:210px;">Kỹ năng trích xuất từ CV:</span>
-                    {cv_skill_tags}
-                </div>
-                <div>
-                    <span style="font-weight:600; color:#6b21a8; display:inline-block; min-width:210px;">Kỹ năng chọn bổ sung:</span>
-                    {extra_skill_tags}
-                </div>
-            </div>
-        </div>
-        """
-        st.markdown(profile_box_html, unsafe_allow_html=True)
-
-        # Chế độ gợi ý đã dùng: CBF thuần hay Hybrid CBF + CF
         rec_info = st.session_state.get("rec_info", {})
-        if rec_info:
-            if rec_info.get("mode") == "Hybrid":
-                st.success(f"**Chế độ: Hybrid CBF + CF.** {rec_info.get('reason', '')} "
-                           f"Danh sách được xếp theo Hybrid; 'Độ phù hợp' là điểm nội dung (CBF), 'Điểm CF' là mức quan tâm "
-                           f"của những người dùng có hành vi giống bạn.")
-            else:
-                st.info(f"**Chế độ: CBF (dựa trên nội dung hồ sơ).** {rec_info.get('reason', '')}")
+        rec_mode = rec_info.get("mode", "CBF")
+        fb_user = st.session_state.get("rec_user_id", user_id)
+        n_feedback = len(interaction_log.user_job_ids(fb_user))
+
+        # A. Thanh trạng thái: hồ sơ đang dùng + hệ thống đang ở bước nào (CBF ➔ phản hồi ➔ Hybrid)
+        salary_text = f"từ {sum_salary / 1e6:,.0f} triệu" if sum_salary > 0 else "mọi mức lương"
+        modes_text = ", ".join(sum_modes) if sum_modes else "mọi hình thức"
+        profile_line = (f"<strong>{sum_title or 'Chưa nhập vị trí'}</strong> · {sum_exp:g} năm kinh nghiệm · {sum_city} · "
+                        f"{modes_text} · {salary_text} · {len(all_candidate_skills)} kỹ năng")
+
+        def step_html(num, title, desc, state):
+            # state: 'done' (đã qua), 'active' (đang dùng), 'todo' (chưa tới)
+            style = {"active": "background:#eff6ff; border:2px solid #2563eb; color:#0f172a;",
+                     "done": "background:#f0fdf4; border:1px solid #86efac; color:#14532d;",
+                     "todo": "background:#f8fafc; border:1px dashed #cbd5e1; color:#94a3b8;"}[state]
+            tag = {"active": "ĐANG DÙNG", "done": "ĐÃ CÓ", "todo": "CHƯA"}[state]
+            return (f'<div style="flex:1; min-width:180px; border-radius:10px; padding:10px 14px; {style}">'
+                    f'<div style="font-size:0.7rem; font-weight:700; letter-spacing:0.05em; margin-bottom:2px;">BƯỚC {num} · {tag}</div>'
+                    f'<div style="font-weight:700; font-size:0.92rem;">{title}</div>'
+                    f'<div style="font-size:0.78rem; margin-top:2px;">{desc}</div></div>')
+
+        arrow = '<div style="align-self:center; color:#94a3b8; font-weight:700;">➔</div>'
+        steps = (
+            step_html(1, "Gợi ý theo hồ sơ (CBF)", "Kỹ năng, CV, kinh nghiệm, địa điểm, lương",
+                      "active" if rec_mode == "CBF" else "done")
+            + arrow
+            + step_html(2, f"Bạn đã quan tâm {n_feedback} tin", "Bấm Quan tâm / Ứng tuyển dưới mỗi tin",
+                        "done" if n_feedback else "todo")
+            + arrow
+            + step_html(3, "Hybrid CBF + CF", "Thêm hành vi của người dùng giống bạn (ALS)",
+                        "active" if rec_mode == "Hybrid" else "todo")
+        )
+        st.markdown(
+            f'<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; margin-bottom:12px;">'
+            f'<div style="font-size:0.85rem; color:#334155; margin-bottom:10px;">Hồ sơ đang dùng: {profile_line}</div>'
+            f'<div style="display:flex; gap:8px; flex-wrap:wrap;">{steps}</div></div>',
+            unsafe_allow_html=True
+        )
+        with st.expander("Chi tiết hồ sơ và chế độ gợi ý"):
+            st.markdown(f"**Kỹ năng trích xuất từ CV:** {', '.join(detected_skills) if detected_skills else 'không có'}")
+            st.markdown(f"**Kỹ năng chọn thêm:** {', '.join(skills) if skills else 'không có'}")
+            if rec_info:
+                st.markdown(f"**Chế độ {rec_mode}:** {rec_info.get('reason', '')}")
             if st.session_state.get("use_simulated"):
-                st.caption(f"Dữ liệu CF đang gồm tương tác MÔ PHỎNG của notebook 06 làm nền (demo): "
+                st.caption(f"Dữ liệu CF gồm tương tác MÔ PHỎNG của notebook 06 làm nền (demo): "
                            f"{rec_info.get('cf_users', 0):,} người dùng, {rec_info.get('cf_items', 0):,} tin.")
-            if st.session_state.get("pending_feedback"):
-                st.caption("Bạn vừa ghi nhận thêm tương tác: bấm **Tìm Kiếm** lại để cập nhật gợi ý theo sở thích mới.")
+
+        # C. Vừa bấm Quan tâm / Ứng tuyển ➔ cập nhật gợi ý ngay tại chỗ, không phải cuộn lên đầu trang
+        if st.session_state.get("pending_feedback"):
+            col_msg, col_btn_update = st.columns([2.2, 1])
+            with col_msg:
+                st.success(f"Đã ghi nhận {n_feedback} tin bạn quan tâm. Cập nhật để hệ thống kết hợp thêm hành vi "
+                           f"của những người dùng giống bạn (Hybrid).")
+            with col_btn_update:
+                st.button("Cập nhật gợi ý theo sở thích", type="primary", use_container_width=True,
+                          on_click=lambda: st.session_state.update(force_search=True), key="btn_update_recs")
 
         if df_results.empty:
             st.info("Không tìm thấy công việc nào thỏa mãn toàn bộ tiêu chí lọc. Bạn có thể thử giảm số năm kinh nghiệm hoặc đặt mức lương tối thiểu về 0 để mở rộng kết quả.")
         else:
-            # Thanh tiêu đề và chuyển đổi chế độ xem kết quả có key để bảo toàn trạng thái
-            col_results_title, col_view_toggle = st.columns([1.6, 1.4])
-            with col_results_title:
-                st.markdown(f'<p style="font-size:1.1rem; font-weight:700; color:#0f172a; margin:6px 0 0 0;">Danh Sách Đề Xuất Phù Hợp ({len(df_results)} vị trí)</p>', unsafe_allow_html=True)
-            with col_view_toggle:
-                view_mode = st.radio(
-                    "Chế độ hiển thị:",
-                    options=["Thẻ việc làm chi tiết", "Bảng so sánh tổng quan", "Xem cả hai"],
-                    key="results_view_mode",
-                    horizontal=True,
-                    label_visibility="collapsed"
+            has_cf = "Điểm CF (%)" in df_results.columns
+            order_text = ("xếp theo Hybrid: kết hợp khớp hồ sơ và hành vi người dùng giống bạn" if has_cf
+                          else "xếp theo mức độ khớp hồ sơ (CBF)")
+            st.markdown(f'<p style="font-size:1.1rem; font-weight:700; color:#0f172a; margin:10px 0 2px 0;">'
+                        f'Danh sách đề xuất ({len(df_results)} vị trí)</p>'
+                        f'<p style="font-size:0.8rem; color:#64748b; margin:0 0 10px 0;">Thứ tự {order_text}.</p>',
+                        unsafe_allow_html=True)
+
+            def bar_html(label, value, color, note=""):
+                if value is None or pd.isna(value):
+                    return (f'<div style="display:flex; align-items:center; gap:10px; margin:3px 0; font-size:0.8rem;">'
+                            f'<span style="min-width:190px; color:#475569;">{label}</span>'
+                            f'<span style="color:#94a3b8;">{note or "chưa có dữ liệu"}</span></div>')
+                v = max(0.0, min(100.0, float(value)))
+                return (f'<div style="display:flex; align-items:center; gap:10px; margin:3px 0; font-size:0.8rem;">'
+                        f'<span style="min-width:190px; color:#475569;">{label}</span>'
+                        f'<div style="flex:1; max-width:260px; height:9px; background:#e2e8f0; border-radius:5px; overflow:hidden;">'
+                        f'<div style="width:{v:.0f}%; height:100%; background:{color};"></div></div>'
+                        f'<strong style="min-width:48px; color:#0f172a;">{v:.0f}%</strong></div>')
+
+            def skill_list(value, skip=("Đầy đủ", "Khớp theo vị trí/mô tả")):
+                return [s.strip() for s in str(value or "").split(",") if s.strip() and s.strip() not in skip]
+
+            # B. Thẻ việc làm: hạng ➔ thông tin ➔ vì sao được gợi ý ➔ kỹ năng ➔ phản hồi + chi tiết (thu gọn)
+            for idx, row in df_results.iterrows():
+                rank = int(row.get("Hạng", idx + 1))
+                company_name = str(row["Công ty"])
+                quoted_company = urllib.parse.quote(company_name)
+                fallback_logo = f"https://ui-avatars.com/api/?name={quoted_company}&background=f1f5f9&color=2563eb&bold=true&size=128"
+                raw_logo = str(row.get("company_logo_url", "") or "").strip()
+                if "cdn-new.topcv.vn/unsafe/" in raw_logo:
+                    raw_logo = re.sub(r'^https?://cdn-new\.topcv\.vn/unsafe/(https?://)', r'\1', raw_logo).strip()
+                logo_src = raw_logo if (raw_logo and raw_logo.startswith("http")) else fallback_logo
+                logo_html = f'<img src="{logo_src}" alt="{company_name}" class="company-logo" referrerpolicy="no-referrer" onerror="this.onerror=null; this.src=\'{fallback_logo}\';" />'
+
+                job_url = str(row.get("job_url", "") or "").strip()
+                if job_url.startswith("http"):
+                    title_html = f'<a href="{job_url}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8; text-decoration:none; font-size:1.08rem; font-weight:700;">{row["Tiêu đề"]}</a>'
+                    link_html = f'<a href="{job_url}" target="_blank" rel="noopener noreferrer" class="apply-btn" style="display:inline-block;">Xem tin gốc</a>'
+                else:
+                    title_html = f'<span style="font-size:1.08rem; font-weight:700; color:#0f172a;">{row["Tiêu đề"]}</span>'
+                    link_html = ''
+
+                meta = " · ".join(str(x) for x in (row["Thành phố"], row["Hình thức"], row["Mức lương"],
+                                                    f'Yêu cầu: {row["Kinh nghiệm yêu cầu"]}'))
+                bars = bar_html("Khớp hồ sơ (CBF)", row["Tổng điểm (%)"], "#2563eb")
+                if has_cf:
+                    bars += bar_html("Người dùng giống bạn (CF)", row.get("Điểm CF (%)"), "#7c3aed",
+                                     note="tin mới, chưa ai tương tác: chỉ dùng điểm hồ sơ")
+
+                matched, related, missing = (skill_list(row.get("Kỹ năng đã có (Điểm mạnh)")),
+                                             skill_list(row.get("Kỹ năng gần nhau")),
+                                             skill_list(row.get("Kỹ năng còn thiếu (Gap)")))
+                skill_parts = []
+                if matched:
+                    skill_parts.append('<span style="font-weight:600; color:#15803d;">Đã có:</span> '
+                                       + " ".join(f"<span class='skill-tag-matched'>{s}</span>" for s in matched))
+                if related:
+                    skill_parts.append('<span style="font-weight:600; color:#1d4ed8;">Gần với:</span> '
+                                       + " ".join(f"<span class='skill-tag-related'>{s}</span>" for s in related))
+                if missing:
+                    skill_parts.append('<span style="font-weight:600; color:#b45309;">Còn thiếu:</span> '
+                                       + " ".join(f"<span class='skill-tag-missing'>{s}</span>" for s in missing[:5]))
+                elif matched or related:
+                    skill_parts.append('<span style="font-weight:600; color:#059669;">Đáp ứng đủ kỹ năng tin yêu cầu</span>')
+                skills_html = ('<div style="margin-top:10px; font-size:0.8rem; line-height:2;">'
+                               + ' <span style="color:#cbd5e1;">|</span> '.join(skill_parts) + '</div>') if skill_parts else (
+                    '<div style="margin-top:10px; font-size:0.8rem; color:#94a3b8;">Tin không ghi kỹ năng cụ thể: gợi ý dựa trên tiêu đề và mô tả</div>')
+
+                card_html = (
+                    f'<div class="job-item">'
+                    f'<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px;">'
+                    f'<div style="display:flex; align-items:flex-start; gap:12px; flex:1;">'
+                    f'<div style="min-width:42px; height:42px; border-radius:10px; background:#0f172a; color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;">#{rank}</div>'
+                    f'{logo_html}'
+                    f'<div>{title_html}<p class="job-company">{company_name}</p>'
+                    f'<div style="font-size:0.8rem; color:#64748b;">{meta}</div></div>'
+                    f'</div>'
+                    f'<div>{link_html}</div>'
+                    f'</div>'
+                    f'<div style="margin-top:12px; padding:10px 14px; background:#f8fafc; border-radius:8px;">'
+                    f'<div style="font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">VÌ SAO ĐƯỢC GỢI Ý</div>'
+                    f'{bars}</div>'
+                    f'{skills_html}'
+                    f'</div>'
                 )
+                st.markdown(card_html, unsafe_allow_html=True)
 
-            st.write("")
-
-            # 1. Bảng so sánh tổng hợp
-            if view_mode in ["Bảng so sánh tổng quan", "Xem cả hai"]:
-                display_cols = [
-                    'Tiêu đề', 'Công ty', 'Tổng điểm (%)', 'Lời giải thích',
-                    'Điểm CF (%)', 'Độ phủ kỹ năng (%)', 'Kỹ năng đã có (Điểm mạnh)', 'Kỹ năng gần nhau', 'Kỹ năng còn thiếu (Gap)',
-                    'Kinh nghiệm yêu cầu', 'Thành phố', 'Hình thức', 'Mức lương'
-                ]
-                display_cols = [c for c in display_cols if c in df_results.columns]
-                if 'job_url' in df_results.columns:
-                    display_cols.append('job_url')
-
-                st.dataframe(
-                    df_results[display_cols],
-                    column_config={
-                        "job_url": st.column_config.LinkColumn(
-                            "Trang Tuyển Dụng",
-                            help="Bấm để mở trang tin tuyển dụng gốc",
-                            display_text="Xem tin gốc"
-                        ),
-                        "Kỹ năng đã có (Điểm mạnh)": st.column_config.TextColumn(
-                            "Kỹ năng đáp ứng (Khớp vị trí)",
-                            help="Các kỹ năng bạn sở hữu trùng khớp với yêu cầu vị trí này"
-                        ),
-                        "Kỹ năng gần nhau": st.column_config.TextColumn(
-                            "Kỹ năng gần với kỹ năng bạn có",
-                            help="Kỹ năng vị trí yêu cầu mà bạn chưa có, nhưng bạn có kỹ năng cùng nhóm (vd. PostgreSQL ~ MySQL), tính 0,5 điểm"
-                        ),
-                        "Kỹ năng còn thiếu (Gap)": st.column_config.TextColumn(
-                            "Kỹ năng vị trí yêu cầu còn thiếu",
-                            help="Kỹ năng vị trí này yêu cầu mà bạn chưa có"
-                        ),
-                        "Tổng điểm (%)": st.column_config.NumberColumn("Độ phù hợp (%)", format="%.1f%%"),
-                    },
-                    use_container_width=True,
-                    hide_index=True
-                )
+                # Phản hồi ➔ log tương tác ➔ dữ liệu cho CF (Quan tâm = lưu, trọng số 3; Ứng tuyển = 5) + chi tiết điểm thu gọn
+                fb_job = str(row.get("job_id", ""))
+                fb_done = st.session_state.setdefault("feedback_done", {})
+                fb_cols = st.columns([1, 1, 3.2])
+                for fb_col, fb_event, fb_label, fb_done_label in ((fb_cols[0], "save", "Quan tâm", "Đã quan tâm"),
+                                                                   (fb_cols[1], "apply", "Ứng tuyển", "Đã ứng tuyển")):
+                    fb_key = f"fb_{fb_event}_{fb_user}_{fb_job}"
+                    with fb_col:
+                        if st.button(fb_done_label if fb_key in fb_done else fb_label, key=fb_key,
+                                     disabled=fb_key in fb_done, use_container_width=True):
+                            interaction_log.log_event(fb_user, fb_job, fb_event, position=int(idx), source=rec_mode)
+                            fb_done[fb_key] = True
+                            st.session_state["pending_feedback"] = True
+                            st.toast(f"Đã ghi nhận '{fb_label}' cho tin: {row['Tiêu đề']}")
+                            st.rerun()
+                with fb_cols[2]:
+                    with st.expander("Chi tiết điểm"):
+                        skill_score = row.get("Điểm kỹ năng (%)")
+                        st.markdown(
+                            f"- Kỹ năng: **{'không có dữ liệu' if pd.isna(skill_score) else f'{skill_score}%'}** "
+                            f"(khớp {row.get('Độ phủ kỹ năng (%)', '')})\n"
+                            f"- Văn bản (TF-IDF): **{row.get('Điểm văn bản (%)', 0)}%**\n"
+                            f"- Kinh nghiệm: **{row.get('Điểm kinh nghiệm (%)', 0)}%**\n"
+                            f"- Địa điểm / hình thức: **{row.get('Điểm vị trí/hình thức (%)', 0)}%**\n\n"
+                            f"Điểm hồ sơ (CBF) = 0,30 kỹ năng + 0,40 văn bản + 0,10 kinh nghiệm + 0,10 địa điểm + 0,10 lương "
+                            f"(thành phần thiếu dữ liệu được bỏ và chia lại trọng số)."
+                        )
+                        st.caption(f"Lý do: {row.get('Lời giải thích', '')}")
                 st.write("")
 
-            # 2. Thẻ chi tiết từng công việc
-            if view_mode in ["Thẻ việc làm chi tiết", "Xem cả hai"]:
-                for idx, row in df_results.iterrows():
-                    matched_list = [s.strip() for s in str(row["Kỹ năng đã có (Điểm mạnh)"]).split(',') if s.strip()]
-                    missing_list = [s.strip() for s in str(row["Kỹ năng còn thiếu (Gap)"]).split(',') if s.strip() and s.strip() != 'Đầy đủ']
-
-                    matched_html = " ".join([f"<span class='skill-tag-matched'>{s}</span>" for s in matched_list]) if matched_list else "<span style='color:#94a3b8; font-size:0.8rem;'>Phù hợp theo vị trí công việc</span>"
-                    missing_html = " ".join([f"<span class='skill-tag-missing'>{s}</span>" for s in missing_list[:5]]) if missing_list else "<span style='color:#059669; font-size:0.8rem; font-weight:600;'>Đáp ứng đầy đủ kỹ năng cốt lõi</span>"
-                    related_list = [s.strip() for s in str(row.get("Kỹ năng gần nhau", "") or "").split(',') if s.strip()]
-                    related_html = (
-                        f'<div style="margin-bottom:6px;"><span style="font-size:0.8rem; font-weight:600; color:#1d4ed8; display:inline-block; min-width:220px;">Gần với kỹ năng bạn có:</span> '
-                        + " ".join(f"<span class='skill-tag-related'>{s}</span>" for s in related_list) + '</div>'
-                    ) if related_list else ''
-
-                    company_name = str(row["Công ty"])
-                    quoted_company = urllib.parse.quote(company_name)
-                    fallback_logo = f"https://ui-avatars.com/api/?name={quoted_company}&background=f1f5f9&color=2563eb&bold=true&size=128"
-
-                    raw_logo = str(row.get("company_logo_url", "") or "").strip()
-                    if "cdn-new.topcv.vn/unsafe/" in raw_logo:
-                        raw_logo = re.sub(r'^https?://cdn-new\.topcv\.vn/unsafe/(https?://)', r'\1', raw_logo).strip()
-
-                    logo_src = raw_logo if (raw_logo and raw_logo.startswith("http")) else fallback_logo
-                    logo_html = f'<img src="{logo_src}" alt="{company_name}" class="company-logo" referrerpolicy="no-referrer" onerror="this.onerror=null; this.src=\'{fallback_logo}\';" />'
-
-                    job_url = str(row.get("job_url", "") or "").strip()
-                    if job_url and job_url.startswith("http"):
-                        title_html = f'<a href="{job_url}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8; text-decoration:underline; font-size:1.15rem; font-weight:700; cursor:pointer;" title="Bấm để mở trang ứng tuyển gốc">{row["Tiêu đề"]}</a>'
-                        btn_html = f'<a href="{job_url}" target="_blank" rel="noopener noreferrer" class="apply-btn" style="cursor:pointer; display:inline-block;">Xem tin tuyển dụng gốc</a>'
-                    else:
-                        title_html = f'<span style="font-size:1.15rem; font-weight:700; color:#0f172a;">{row["Tiêu đề"]}</span>'
-                        btn_html = ''
-
-                    rationale_text = str(row.get("Lời giải thích", "")).strip()
-                    rationale_html = (
-                        f'<div style="margin:10px 0; padding:10px 14px; background:#f8fafc; border-left:3px solid #2563eb; border-radius:4px; font-size:0.83rem; color:#334155; line-height:1.5;">'
-                        f'<strong>Lý do gợi ý:</strong> {rationale_text}'
-                        f'</div>'
-                    ) if rationale_text else ''
-
-                    skill_score_val = row.get("Điểm kỹ năng (%)")
-                    skill_score_text = "không có dữ liệu" if pd.isna(skill_score_val) else f"{skill_score_val}%"
-
-                    score_breakdown_html = (
-                        f'<div style="display:flex; gap:12px; flex-wrap:wrap; margin:8px 0; padding:6px 12px; background:#f8fafc; border-radius:6px; border:1px solid #f1f5f9; font-size:0.77rem; color:#64748b;">'
-                        f'<span>Kỹ năng: <strong style="color:#0f172a;">{skill_score_text}</strong></span> &bull; '
-                        f'<span>Nội dung: <strong style="color:#0f172a;">{row.get("Điểm văn bản (%)", 0)}%</strong></span> &bull; '
-                        f'<span>Kinh nghiệm: <strong style="color:#0f172a;">{row.get("Điểm kinh nghiệm (%)", 0)}%</strong></span> &bull; '
-                        f'<span>Vị trí / Hình thức: <strong style="color:#0f172a;">{row.get("Điểm vị trí/hình thức (%)", 0)}%</strong></span>'
-                        + (f' &bull; <span>Hành vi người dùng tương tự (CF): <strong style="color:#1d4ed8;">'
-                           f'{"tin mới, chưa có dữ liệu" if pd.isna(row.get("Điểm CF (%)")) else str(row.get("Điểm CF (%)")) + "%"}</strong></span>'
-                           if "Điểm CF (%)" in row.index else '')
-                        + f'</div>'
-                    )
-
-                    card_html = (
-                        f'<div class="job-item">'
-                        f'<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">'
-                        f'<div style="display:flex; align-items:flex-start; gap:14px; flex:1;">'
-                        f'{logo_html}'
-                        f'<div>{title_html}<p class="job-company">{company_name}</p></div>'
-                        f'</div>'
-                        f'<div style="text-align:right; min-width:160px;">'
-                        f'<span class="score-badge">Độ phù hợp: {row["Tổng điểm (%)"]}%</span>'
-                        f'<div style="font-size:0.75rem; color:#64748b; margin-top:4px;">Độ phủ kỹ năng: <strong>{row["Độ phủ kỹ năng (%)"]}</strong></div>'
-                        f'</div>'
-                        f'</div>'
-                        f'{score_breakdown_html}'
-                        f'{rationale_html}'
-                        f'<div style="margin:10px 0 8px 0;">'
-                        f'<span class="meta-tag">Lương: <strong>{row["Mức lương"]}</strong></span>'
-                        f'<span class="meta-tag">Khu vực: <strong>{row["Thành phố"]}</strong></span>'
-                        f'<span class="meta-tag">Yêu cầu: <strong>{row["Kinh nghiệm yêu cầu"]}</strong></span>'
-                        f'<span class="meta-tag">Hình thức: <strong>{row["Hình thức"]}</strong></span>'
-                        f'</div>'
-                        f'<div style="margin-top:12px; padding-top:12px; border-top:1px dashed #e2e8f0; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">'
-                        f'<div style="flex:1; min-width:280px;">'
-                        f'<div style="margin-bottom:6px;"><span style="font-size:0.8rem; font-weight:600; color:#15803d; display:inline-block; min-width:220px;">Kỹ năng bạn đáp ứng (Khớp vị trí):</span> {matched_html}</div>'
-                        f'{related_html}'
-                        f'<div><span style="font-size:0.8rem; font-weight:600; color:#b45309; display:inline-block; min-width:220px;">Kỹ năng vị trí yêu cầu còn thiếu:</span> {missing_html}</div>'
-                        f'</div>'
-                        f'<div>{btn_html}</div>'
-                        f'</div>'
-                        f'</div>'
-                    )
-                    st.markdown(card_html, unsafe_allow_html=True)
-
-                    # Phản hồi của người dùng ➔ log tương tác ➔ dữ liệu cho CF (Quan tâm = lưu, trọng số 3; Ứng tuyển = 5)
-                    fb_job = str(row.get("job_id", ""))
-                    fb_user = st.session_state.get("rec_user_id", user_id)
-                    fb_done = st.session_state.setdefault("feedback_done", {})
-                    fb_cols = st.columns([1, 1, 4])
-                    for fb_col, fb_event, fb_label, fb_done_label in ((fb_cols[0], "save", "Quan tâm", "Đã quan tâm"),
-                                                                       (fb_cols[1], "apply", "Ứng tuyển", "Đã ứng tuyển")):
-                        fb_key = f"fb_{fb_event}_{fb_user}_{fb_job}"
-                        with fb_col:
-                            if st.button(fb_done_label if fb_key in fb_done else fb_label, key=fb_key,
-                                         disabled=fb_key in fb_done, use_container_width=True):
-                                interaction_log.log_event(fb_user, fb_job, fb_event, position=int(idx),
-                                                          source=st.session_state.get("rec_info", {}).get("mode", ""))
-                                fb_done[fb_key] = True
-                                st.session_state["pending_feedback"] = True
-                                st.toast(f"Đã ghi nhận '{fb_label}' cho tin: {row['Tiêu đề']}")
-                                st.rerun()
+            # D. Bảng tóm tắt (tùy chọn, thu gọn mặc định)
+            with st.expander("Xem dạng bảng"):
+                table = pd.DataFrame({
+                    "Hạng": df_results.get("Hạng", pd.Series(range(1, len(df_results) + 1))),
+                    "Tiêu đề": df_results["Tiêu đề"],
+                    "Công ty": df_results["Công ty"],
+                    "Khớp hồ sơ (CBF %)": df_results["Tổng điểm (%)"],
+                })
+                if has_cf:
+                    table["Người giống bạn (CF %)"] = df_results["Điểm CF (%)"]
+                table["Kỹ năng còn thiếu"] = df_results["Kỹ năng còn thiếu (Gap)"]
+                if "job_url" in df_results.columns:
+                    table["Tin gốc"] = df_results["job_url"]
+                st.dataframe(table, hide_index=True, use_container_width=True,
+                             column_config={"Tin gốc": st.column_config.LinkColumn("Tin gốc", display_text="Mở")})
 
 with tab_market:
     render_market_insights()
