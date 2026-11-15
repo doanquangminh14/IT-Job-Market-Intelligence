@@ -1,5 +1,5 @@
 # =====================================================================================
-# XÁC ĐỊNH TIN THUỘC NGÀNH IT (cột is_it, notebook 02 Bước 12b)
+# XÁC ĐỊNH TIN THUỘC NGÀNH IT (cột is_it, notebook 02 Bước 11b)
 # Tin là IT nếu TIÊU ĐỀ khớp một từ khóa dưới đây, HOẶC có >= 2 kỹ năng trong core_it_skills.
 # Từ khóa là mẫu regex, không phân biệt hoa thường; \b = ranh giới từ (vd. '\bqa\b' không khớp 'qatar').
 # =====================================================================================

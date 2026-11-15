@@ -21,7 +21,7 @@ def test_common_formats(raw, expected):
 
 
 def test_month_suffix_is_not_million():
-    """Lỗi cũ: chữ M trong 'MONTH' bị hiểu là triệu ➔ 1,4×10^13."""
+    """Chữ M trong 'MONTH' không được hiểu là triệu (nếu không sẽ ra 1,4×10^13)."""
     assert parse_salary_vnd("14000000 - 18000000 MONTH") == (14 * M, 18 * M)
 
 

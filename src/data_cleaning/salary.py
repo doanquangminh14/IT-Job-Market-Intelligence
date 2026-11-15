@@ -1,4 +1,4 @@
-"""Chuẩn hóa mức lương về VNĐ/THÁNG (đồng bộ với notebook 02, Bước 8)."""
+"""Chuẩn hóa mức lương về VNĐ/THÁNG (đồng bộ với notebook 02, Bước 7)."""
 import re
 from typing import Any, Optional, Tuple
 

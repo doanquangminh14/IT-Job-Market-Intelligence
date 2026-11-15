@@ -77,9 +77,6 @@ class JobCleaner:
         """
         return extract_skills_and_tags(row)
 
-    # Không tạo cột preferred_skills (kỹ năng ưu tiên): cả 3 sàn không có trường này, trích từ mô tả chỉ được ~0,6% tin
-    # và sai nhiều (vd. "Java" lấy nhầm từ "JavaScript"), nên đã bỏ (đồng bộ với notebook 02).
-
     @staticmethod
     def parse_experience_range(exp_str: Any) -> Tuple[Optional[float], Optional[float]]:
         """Phân tích số năm kinh nghiệm tối thiểu và tối đa."""

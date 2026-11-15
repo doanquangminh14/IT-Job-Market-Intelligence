@@ -60,7 +60,7 @@ $$\text{Score} = 0{,}30\,S_{\text{skills}} + 0{,}40\,S_{\text{text}} + 0{,}10\,S
 - **Co giãn trọng số**: thành phần thiếu dữ liệu (lương thỏa thuận, job không liệt kê kỹ năng) bị loại và các trọng số còn lại được chuẩn hóa về tổng 1.
 - **Dữ liệu đầu vào**: kỹ năng công nghệ (`required_skills`) được **tách khỏi thẻ ngành/chức danh** (`job_tags`) và rác (phúc lợi, học vấn); chỉ giữ tin thuộc ngành IT (`is_it`).
 
-**Kết quả đánh giá** (25 hồ sơ mẫu, 5 nhóm nghề, top-5): Precision@5 ≈ **0,84**, NDCG@5 ≈ **0,85** (công thức đầu tiên chỉ đạt ~0,51 / 0,52). Khi **bỏ tiêu đề khỏi truy vấn** (để truy vấn và nhãn không chung nguồn), kết quả vẫn đạt 0,83 / 0,82, tức engine tìm đúng nhóm nghề nhờ nội dung kỹ năng chứ không nhờ trùng chữ tiêu đề. Bảng ablation đầy đủ ở mục 8 của [notebook 05](notebook/05_recommender/01_cbf_engine_and_evaluation.ipynb).
+**Kết quả đánh giá** (25 hồ sơ mẫu, 5 nhóm nghề, top-5): Precision@5 ≈ **0,82**, NDCG@5 ≈ **0,83**. Khi **bỏ tiêu đề khỏi truy vấn** (để truy vấn và nhãn không chung nguồn), kết quả vẫn đạt 0,78 / 0,80, tức engine tìm đúng nhóm nghề nhờ nội dung kỹ năng chứ không nhờ trùng chữ tiêu đề. Bảng kết quả chính ở mục 6.2 của [notebook 05](notebook/05_recommender/01_cbf_engine_and_evaluation.ipynb).
 
 ### Hybrid CBF + CF (lọc cộng tác)
 

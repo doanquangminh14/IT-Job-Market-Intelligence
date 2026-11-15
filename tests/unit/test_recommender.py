@@ -14,34 +14,28 @@ from src.data_cleaning.skill_canonical import SKILL_GROUPS, TECH_LOOKUP, split_s
 def test_compute_skill_score():
     user_skills = ["Python", "SQL", "Redis"]
     req_skills = ["Python", "Redis", "Kubernetes"]
-    # coverage 2/3, hệ số tin cậy m/(m+1) = 2/3  ->  0.444 (Kubernetes không gần kỹ năng nào của hồ sơ)
+    # độ phủ 2/3, hệ số tin cậy m/(m+1) = 2/3  ->  0.444 (Kubernetes không gần kỹ năng nào của hồ sơ)
     assert compute_skill_score(user_skills, req_skills) == 0.444
-    assert compute_skill_score(user_skills, req_skills, mode='v2') == 0.444
-    # công thức cũ (v1) chỉ lấy coverage
-    assert compute_skill_score(user_skills, req_skills, mode='v1') == 0.667
 
-    # Khớp toàn bộ 3 kỹ năng: coverage 1.0 x 3/4
+    # Khớp toàn bộ 3 kỹ năng: độ phủ 1.0 x 3/4
     assert compute_skill_score(["SQL", "Power BI", "Excel"], ["SQL", "Power BI", "Excel"]) == 0.75
 
-    # Job chỉ yêu cầu 1 kỹ năng và bạn có nó: KHÔNG còn đạt 100% (lỗi của công thức cũ)
+    # Tin chỉ yêu cầu 1 kỹ năng và bạn có nó: chưa đạt 100% (1 kỹ năng là bằng chứng yếu)
     assert compute_skill_score(["Python"], ["Python"]) == 0.5
-    assert compute_skill_score(["Python"], ["Python"], mode='v1') == 1.0
 
-    # Job không liệt kê kỹ năng: không có dữ liệu (None), thay vì 0.5 giả
+    # Tin không liệt kê kỹ năng: không có dữ liệu (None) ➔ thành phần bị bỏ khi cộng điểm
     assert compute_skill_score(["SQL"], []) is None
-    assert compute_skill_score(["SQL"], [], mode='v1') == 0.5
 
 
 def test_related_skills_get_partial_credit():
     # PostgreSQL ~ MySQL, Vue ~ React: mỗi kỹ năng gần nhau tính 0,5 ➔ m = 1, coverage 1/3, x 1/2
     user, req = ["PostgreSQL", "Vue"], ["MySQL", "React", "Docker"]
     assert split_skill_match(user, req) == ([], ["MySQL", "React"], ["Docker"])
-    assert compute_skill_score(user, req, mode='v2') == 0.0
     assert compute_skill_score(user, req) == 0.167
     # khớp chính xác vẫn được ưu tiên hơn khớp gần
     assert compute_skill_score(["MySQL"], ["MySQL", "Docker"]) > compute_skill_score(["PostgreSQL"], ["MySQL", "Docker"]) > 0
-    # tắt điểm gần nhau thì v3 == v2
-    assert compute_skill_score(user, req, related_credit=0) == compute_skill_score(user, req, mode='v2')
+    # không tính kỹ năng gần nhau thì hồ sơ này (không khớp chính xác kỹ năng nào) được 0
+    assert compute_skill_score(user, req, related_credit=0) == 0.0
     # kỹ năng đồng xuất hiện nhưng KHÔNG thay thế được nhau thì không được tính
     assert split_skill_match(["Python"], ["SQL"]) == ([], [], ["SQL"])
 

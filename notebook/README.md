@@ -48,16 +48,17 @@ notebook/
 
 ## 🧹 Notebook 02 - Làm sạch: những điểm đáng chú ý
 
-Đầu vào: `data/bronze/bronze_details_valid.json` (5.491 bản ghi). Đầu ra: `jobs_clean.csv` (5.111 bản ghi × 20 cột, ảnh chụp 05/11/2026).
+Đầu vào: `data/bronze/bronze_details_valid.json` (5.631 bản ghi). Đầu ra: `jobs_clean.csv` (5.234 bản ghi × 19 cột). Từ điển kỹ năng và từ khóa nghề IT nằm trong `configs/dictionaries/` (dùng chung với ứng dụng).
 
 | Bước | Nội dung | Điểm cần nhớ |
 | :--- | :--- | :--- |
-| 4 | Kỹ năng | `required_skills_raw` của sàn **trộn lẫn** kỹ năng, thẻ ngành và rác. Tách thành `required_skills` (chỉ kỹ năng công nghệ), `job_tags` (ngành/chức danh/ngoại ngữ) và loại bỏ rác (phúc lợi, học vấn). Không tách thì thẻ `It - Phần Mềm` (~31% tin) trở thành "kỹ năng" phổ biến nhất. |
-| 7 | Thành phố | Bỏ dấu trước khi so khớp (nhận cả `hanoi`, `ha noi`), dùng ranh giới từ, địa chỉ nhiều thành phố lấy thành phố xuất hiện đầu tiên. |
-| 8 | Lương | Quy đổi về **VNĐ/tháng**. Sửa các lỗi từng làm lương sai: chữ `M` trong `MONTH` (TopDev) bị hiểu là "triệu" ➔ 10¹³ VNĐ; lương **năm** (`/năm`, VietnamWorks) chưa chia 12; số trần của TopCV (`500 - 2000`) thực chất là USD; giá trị ngoài [1 triệu, 300 triệu]/tháng bị loại. Khoảng lương ghi trong tiêu đề chỉ dùng khi chuỗi gốc không có số. |
-| 12 | Khử trùng lặp | 3 lớp: trùng chính xác, biến thể tên công ty (`MBBANK` ↔ `NGÂN HÀNG TMCP QUÂN ĐỘI – MBBANK`), đăng lại. Lớp 3 **bắt buộc** kèm điều kiện tiêu đề, thành phố, kinh nghiệm vì nhiều tin cùng công ty chia sẻ phần giới thiệu/phúc lợi giống hệt nhau. Loại 380 bản ghi. |
-| 12b | Cờ `is_it` | Dữ liệu có cả việc thiết kế đồ họa, kinh doanh, kế toán. Gắn cờ thay vì xóa để mỗi bước sau tự chọn. 3.470/5.111 tin là IT. |
-| 13 | Xuất file | `data/notebook/content_base/jobs_clean.csv` (cho notebook), `data/silver/jobs_cleaned.{csv,parquet}` (cho Streamlit). **Ghi đè** file cũ. |
+| 3 | Mô tả | Gỡ thẻ HTML, thực thể HTML, ký hiệu đầu dòng, khoảng trắng và dòng trống thừa; có bảng số tin còn lỗi trước / sau và ví dụ hai cột. |
+| 4 | Kỹ năng | `required_skills_raw` của sàn **trộn lẫn** kỹ năng, thẻ ngành và rác. Tách thành `required_skills` (chỉ kỹ năng công nghệ, theo `skills.yaml`), `job_tags` (ngành/chức danh/ngoại ngữ) và loại bỏ rác (phúc lợi, học vấn); bổ sung kỹ năng quét trong mô tả. |
+| 6 | Thành phố | Bỏ dấu trước khi so khớp (nhận cả `hanoi`, `ha noi`), dùng ranh giới từ, địa chỉ nhiều thành phố lấy thành phố xuất hiện đầu tiên. |
+| 7 | Lương | Quy đổi về **VNĐ/tháng**: đơn vị "triệu" chỉ nhận khi đi liền sau con số (`15tr`, `15-20M`; chữ `M` trong `MONTH` không tính), lương **năm** chia 12, số không ghi đơn vị 100-20.000 là USD, giá trị ngoài [1 triệu, 300 triệu]/tháng bị loại. Khoảng lương ghi trong tiêu đề chỉ dùng khi chuỗi gốc không có số. |
+| 11 | Khử trùng lặp | 3 lớp: trùng chính xác, biến thể tên công ty (`MBBANK` ↔ `NGÂN HÀNG TMCP QUÂN ĐỘI – MBBANK`), đăng lại. Lớp 3 **bắt buộc** kèm điều kiện tiêu đề, thành phố, kinh nghiệm vì nhiều tin cùng công ty chia sẻ phần giới thiệu/phúc lợi giống hệt nhau. Loại 397 bản ghi. |
+| 11b | Cờ `is_it` | Tiêu đề khớp từ khóa nghề IT (gồm cả game / đồ họa số: Game Designer, Animator, 3D Artist...) hoặc có ≥ 2 kỹ năng lõi. Gắn cờ thay vì xóa để mỗi bước sau tự chọn. 3.675/5.234 tin là IT. |
+| 12 | Xuất file | `data/notebook/content_base/jobs_clean.csv` (cho notebook), `data/silver/jobs_cleaned.{csv,parquet}` (cho Streamlit). **Ghi đè** file cũ. |
 
 ---
 
@@ -65,7 +66,7 @@ notebook/
 
 ```mermaid
 flowchart TD
-    A["jobs_clean.csv (5.111 tin)"] --> B["Lọc is_it ➔ 3.470 tin IT"]
+    A["jobs_clean.csv (5.234 tin)"] --> B["Lọc is_it ➔ 3.675 tin IT"]
     B --> C["Content Soup = Title x3 + Skills x4 + Tags x1 + Description"]
     C --> D["TF-IDF (tokenizer giữ C++/C#/.NET/CI-CD, tiếng Việt có dấu)"]
     H["Hồ sơ: chức danh, kỹ năng, CV, kinh nghiệm, thành phố, hình thức, lương"] --> I["Chuẩn hóa kỹ năng (ReactJS ➔ React) + bóc kỹ năng từ CV"]
@@ -77,40 +78,29 @@ flowchart TD
 ```
 
 ### Các mục trong notebook
-1. Nạp dữ liệu, lọc ngành IT. 2. Khảo sát chất lượng. 3. Chuẩn hóa kỹ năng, dựng content soup. 4. TF-IDF và tokenizer (có bảng so sánh tokenizer cũ/mới). 5. Bộ chấm điểm. 6. Case studies. 7. Chẩn đoán phân bố điểm. 8. Đánh giá: ba bảng ablation (8.1-8.3) và đánh giá không dùng tiêu đề (8.4).
+**Phần chính:** 1. Nạp dữ liệu, lọc ngành IT. 2. Chuẩn hóa kỹ năng, dựng content soup. 3. TF-IDF (tokenizer giữ `C++`, `C#`, `.NET`, `CI/CD` và chữ tiếng Việt có dấu). 4. Bộ chấm điểm (4.1 điểm thành phần, 4.2 lời giải thích, 4.3 ba bước chấm điểm, 4.4 báo cáo 1:1). 5. Case studies. 6. Đánh giá (6.1 không dùng tiêu đề, 6.2 bảng kết quả chính).
+**Phụ lục:** A. Khảo sát dữ liệu. B. Phân bố điểm. C. Quét trọng số kỹ năng : văn bản.
 
-### Các lỗi đã tìm ra và sửa (chi tiết ở mục 4 và 5 của notebook)
-| Lỗi | Hậu quả | Cách sửa |
-| :--- | :--- | :--- |
-| `token_pattern` cũ không giữ được `C++`/`C#` (cùng thành `c`) và **xóa sạch chữ tiếng Việt có dấu** | Vector văn bản mất thông tin | Tiền xử lý `C++`➔`cpp`, `C#`➔`csharp`...; dùng `\w\w+` |
-| Điểm kỹ năng = tỷ lệ kỹ năng job yêu cầu mà bạn có ➔ job chỉ yêu cầu 1 kỹ năng đạt ngay 100% | Job lệch nghề vẫn thắng job đúng nghề (Precision@5 chỉ 0,48) | Nhân hệ số tin cậy $m/(m+1)$; loại thành phần khi job không có kỹ năng |
-| Cosine thô hiếm khi vượt 0,5 nên trọng số văn bản bị các thành phần thang 0-1 lấn át | Văn bản gần như không ảnh hưởng thứ hạng | Chuẩn hóa theo truy vấn (job giống nhất = 1,0) |
-| Kỹ năng chỉ khớp khi trùng tên chính xác | Biết PostgreSQL vẫn bị tính là thiếu MySQL, biết Vue bị tính là thiếu React | Nhóm kỹ năng thay thế được (viết tay, `SKILL_GROUPS`); kỹ năng gần nhau tính 0,5 và hiện riêng trong Skill Gap |
+### Cách tính điểm (chi tiết ở mục 4 của notebook)
+| Thành phần | Cách tính |
+| :--- | :--- |
+| Văn bản (40%) | Cosine TF-IDF giữa hồ sơ và content soup, **chia cho cosine lớn nhất** của truy vấn (tin giống nhất = 1,0) |
+| Kỹ năng (30%) | Độ phủ × hệ số tin cậy $m/(m+1)$, với $m$ = số kỹ năng khớp + 0,5 × số kỹ năng **gần nhau** (cùng nhóm thay thế được trong `skill_groups.yaml`: PostgreSQL ~ MySQL, Vue ~ React) |
+| Kinh nghiệm, vị trí / hình thức, lương (10% mỗi phần) | So trực tiếp với cột của tin |
+| Thiếu dữ liệu | Thành phần bị bỏ, trọng số còn lại co giãn về tổng 1 |
 
 ### Kết quả đánh giá (25 hồ sơ mẫu, 5 nhóm nghề, top-5)
 
-| Công thức | P@5 | NDCG@5 |
+| Cấu hình | P@5 | NDCG@5 |
 | :--- | :--- | :--- |
-| Ban đầu (trọng số kỹ năng : văn bản = 0,40 : 0,30) | 0,51 | 0,52 |
-| + chuẩn hóa điểm văn bản (vẫn 0,40 : 0,30) | 0,67 | 0,69 |
-| + hệ số tin cậy kỹ năng (vẫn 0,40 : 0,30) | 0,78 | 0,79 |
-| + đổi trọng số sang 0,30 : 0,40 | 0,82 | 0,82 |
-| + kỹ năng gần nhau tính 0,5 (**đang dùng**) | **0,84** | **0,85** |
-| Tham chiếu: chỉ dùng văn bản | 0,87 | 0,85 |
+| Toàn pipeline (truy vấn có tiêu đề) | **0,82** | **0,83** |
+| Toàn pipeline, **bỏ tiêu đề** khỏi truy vấn (mục 6.1) | 0,78 | 0,80 |
+| Bỏ tiêu đề, chỉ điểm văn bản | 0,80 | 0,82 |
+| Bỏ tiêu đề, chỉ điểm kỹ năng | 0,62 | 0,62 |
 
-*Bảng ablation 8.2 trong notebook chạy hoàn toàn ở trọng số đang dùng (0,30 : 0,40), nên dòng "V0. Công thức cũ" ở đó là 0,63 / 0,63 chứ không phải 0,51: cùng một công thức cũ nhưng đo ở trọng số mới. Các số có thể lệch ±0,01 khi dữ liệu được làm mới.*
+Nhãn "liên quan" lấy từ tiêu đề tin, nên mục 6.1 bỏ tiêu đề khỏi truy vấn để truy vấn và nhãn không còn chung nguồn. Điểm chỉ giảm nhẹ, nên engine tìm đúng nhóm nghề nhờ nội dung kỹ năng chứ không nhờ trùng chữ tiêu đề. Mức 0,5 cho kỹ năng gần nhau được chọn bằng cách quét 0-1 ở chế độ không tiêu đề (mục 6.1). Bảng **6.2** trong notebook tự tính lại các số này mỗi lần chạy.
 
-**Đánh giá không dùng tiêu đề (mục 8.4).** Bảng trên có thiên lệch: truy vấn chứa tiêu đề hồ sơ, mà nhãn cũng lấy từ tiêu đề job. Mục 8.4 bỏ tiêu đề khỏi truy vấn (chỉ còn kỹ năng, kinh nghiệm, thành phố) để truy vấn và nhãn không còn chung nguồn:
-
-| Cấu hình (không tiêu đề) | P@5 | NDCG@5 |
-| :--- | :--- | :--- |
-| Toàn pipeline, kỹ năng khớp chính xác (V2) | 0,80 | 0,80 |
-| Toàn pipeline, có kỹ năng gần nhau (V3, **đang dùng**) | **0,83** | **0,82** |
-| Chỉ điểm kỹ năng V2 ➔ V3 | 0,63 ➔ 0,70 | 0,61 ➔ 0,69 |
-
-Bỏ tiêu đề, điểm chỉ giảm nhẹ (0,84 ➔ 0,83), nên engine tìm đúng nhóm nghề nhờ nội dung kỹ năng chứ không nhờ trùng chữ tiêu đề. Kỹ năng gần nhau cải thiện ở mọi cấu hình và ở cả hai nửa hồ sơ. Mức 0,5 tốt nhất khi chỉ dùng điểm kỹ năng; mức 1,0 (coi như khớp chính xác) lại tệ hơn cả khi tắt.
-
-> ⚠️ **Đọc kết quả cho đúng:** nhãn "liên quan" suy ra từ **tiêu đề** và chỉ có 25 hồ sơ, nên đây là thước đo gần đúng; chênh lệch ~0,03 có thể chỉ là nhiễu. Cải thiện nhất quán gồm **tokenizer mới**, **công thức chấm điểm** và **kỹ năng gần nhau** (thấy rõ ở chế độ chỉ kỹ năng, cả hai nửa hồ sơ). Việc tách kỹ năng/thẻ và lọc IT được giữ vì lý do thiết kế, chưa chứng minh được bằng số liệu. Mục 8.3 quét trọng số cũng chịu thiên lệch truy vấn chứa tiêu đề, nên không nên hiểu "`w_skills = 0` tốt nhất" là nên bỏ điểm kỹ năng.
+> ⚠️ **Đọc kết quả cho đúng:** nhãn "liên quan" suy ra từ **tiêu đề** và chỉ có 25 hồ sơ, nên đây là thước đo gần đúng; chênh lệch ~0,03 có thể chỉ là nhiễu. Phụ lục C quét trọng số cũng chịu thiên lệch truy vấn chứa tiêu đề, nên không nên hiểu "`w_skills = 0` tốt nhất" là nên bỏ điểm kỹ năng.
 >
 > ~21% tin IT không có kỹ năng **không phải do thiếu bước bóc tách**: notebook 02 đã quét cả mô tả; các tin này là BA, kinh doanh phần mềm, quản lý sản phẩm... mà mô tả không nhắc công nghệ nào.
 
@@ -118,7 +108,7 @@ Bỏ tiêu đề, điểm chỉ giảm nhẹ (0,84 ➔ 0,83), nên engine tìm �
 
 ## 🤝 Notebook 06 - Lọc cộng tác trên dữ liệu mô phỏng
 
-Dự án chưa có log tương tác thật, nên notebook 06 **sinh dữ liệu mô phỏng** từ các tin IT thật (`01_simulation`), **xem kỹ dữ liệu đó** (`02_simulated_data_inspection`), rồi mới so sánh CF với CBF (`03_matrix_factorization`). Bộ mô phỏng cũ (`_archive/collaborative_filtering/`) bị bỏ vì sinh tương tác chỉ từ khớp kỹ năng, đúng thứ CBF dùng, nên phép so sánh bị vòng tròn.
+Dự án chưa có log tương tác thật, nên notebook 06 **sinh dữ liệu mô phỏng** từ các tin IT thật (`01_simulation`), **xem kỹ dữ liệu đó** (`02_simulated_data_inspection`), rồi mới so sánh CF với CBF (`03_matrix_factorization`). Sở thích thật của người dùng mô phỏng gồm cả phần **nội dung** (CBF thấy được) lẫn phần **ẩn** (loại công ty, thương hiệu), để phép so sánh CF với CBF công bằng.
 
 | Thành phần | Thiết kế |
 | :--- | :--- |

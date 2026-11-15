@@ -64,24 +64,20 @@ RELATED_SKILL_CREDIT = 0.5  # một kỹ năng gần nhau (PostgreSQL ~ MySQL) =
 def compute_skill_score(
     user_skills: List[str],
     job_required_skills: List[str],
-    mode: str = 'v3',
     related_credit: float = RELATED_SKILL_CREDIT
 ) -> Optional[float]:
     """
-    S_skills: mức khớp kỹ năng bắt buộc [0, 1]; trả về None nếu job không liệt kê kỹ năng nào (mode v2, v3).
-      - 'v1' (cũ)  : coverage = số kỹ năng khớp / số kỹ năng job yêu cầu  (job yêu cầu 1 kỹ năng bạn có => 100%)
-      - 'v2'       : coverage x m/(m+1) với m = số kỹ năng khớp (khớp càng nhiều, bằng chứng càng đáng tin)
-      - 'v3' (mới) : như v2 nhưng m = khớp chính xác + related_credit x số kỹ năng gần nhau (PostgreSQL ~ MySQL)
-    Chỉ dùng kỹ năng BẮT BUỘC: dữ liệu không có kỹ năng ưu tiên (xem notebook 02).
+    S_skills [0, 1] = độ phủ × m/(m+1), với m = số kỹ năng khớp chính xác + related_credit × số kỹ năng gần nhau
+    (PostgreSQL ~ MySQL). Hệ số m/(m+1): khớp càng nhiều kỹ năng thì bằng chứng càng chắc.
+    Trả về None nếu tin không ghi kỹ năng nào (thành phần bị bỏ, trọng số còn lại co giãn).
+    Chỉ dùng kỹ năng BẮT BUỘC của tin.
     """
     req_set = set(s.lower() for s in job_required_skills if s and s.lower() != 'nan') if job_required_skills else set()
     if not req_set:
-        return None if mode in ('v2', 'v3') else 0.5
+        return None
     matched, related, _ = split_skill_match(user_skills, list(req_set))
-    m = len(matched) + (related_credit * len(related) if mode == 'v3' else 0)
+    m = len(matched) + related_credit * len(related)
     coverage = m / len(req_set)
-    if mode == 'v1':
-        return round(coverage, 3)
     return round(coverage * m / (m + 1), 3)
 
 
@@ -237,7 +233,7 @@ def format_salary_display(s_min: Optional[float], s_max: Optional[float]) -> str
 
 class ContentBasedRecommender:
     """
-    Hệ thống gợi ý việc làm dựa trên nội dung (Content-Based Filtering V3), đồng bộ với notebook 05:
+    Hệ thống gợi ý việc làm dựa trên nội dung (Content-Based Filtering), đồng bộ với notebook 05:
     - Weighted TF-IDF: Chức danh x3, Kỹ năng x4, Thẻ ngành x1, Mô tả x1; tokenizer giữ C++/C#/.NET/CI-CD và tiếng Việt có dấu.
     - Điểm tổng hợp = 0.30*Skills + 0.40*Text + 0.10*Exp + 0.10*Loc + 0.10*Salary, trong đó:
         * Skills có hệ số tin cậy m/(m+1) và bị loại (co giãn trọng số) khi job không liệt kê kỹ năng;
@@ -457,14 +453,11 @@ class ContentBasedRecommender:
         user_exp: float = 1.0,
         preferred_city: str = "Tất cả",
         preferred_work_modes: Optional[Union[str, List[str]]] = None,
-        min_salary: Optional[float] = None,
-        skill_mode: str = 'v3',
-        normalize_text: bool = True
+        min_salary: Optional[float] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Bước 1: tính 5 điểm thành phần cho TẤT CẢ job. Trả về None nếu hồ sơ rỗng, ngược lại dict gồm:
         user_skills, raw_sim (cosine thô), comps (DataFrame 5 cột, NaN = thiếu dữ liệu), active (mask tin còn hạn).
-        skill_mode='v1'/'v2' và normalize_text=False tái hiện các công thức CŨ (dùng cho ablation).
         """
         if self.jobs_df is None or self.tfidf_matrix is None:
             raise ValueError("Chưa nạp dữ liệu hoặc mô hình.")
@@ -475,11 +468,11 @@ class ContentBasedRecommender:
         raw_sim = cosine_similarity(self.tfidf_vectorizer.transform([profile_soup]), self.tfidf_matrix).flatten()
         # Chuẩn hóa theo truy vấn: job giống nhất đạt 1.0 (cosine thô hiếm khi vượt 0.5 nên sẽ bị các thành phần khác lấn át)
         peak = raw_sim.max()
-        text_scores = raw_sim / peak if (normalize_text and peak > 0) else raw_sim
+        text_scores = raw_sim / peak if peak > 0 else raw_sim
 
         rows = []
         for idx, row in enumerate(self.jobs_df.itertuples(index=False)):
-            s_skill = compute_skill_score(user_skills, row.req_list, mode=skill_mode)
+            s_skill = compute_skill_score(user_skills, row.req_list)
             rows.append((
                 np.nan if s_skill is None else s_skill,
                 float(text_scores[idx]),
@@ -517,16 +510,14 @@ class ContentBasedRecommender:
         preferred_work_modes: Optional[Union[str, List[str]]] = None,
         min_salary: Optional[float] = None,
         top_n: int = 10,
-        weights: Optional[Dict[str, float]] = None,
-        skill_mode: str = 'v3',
-        normalize_text: bool = True
+        weights: Optional[Dict[str, float]] = None
     ) -> pd.DataFrame:
         """
         Gợi ý việc làm: Kỹ năng + Văn bản + Kinh nghiệm + Vị trí/Hình thức + Lương, kèm lời giải thích và Skill Gap.
         Lời giải thích chỉ được sinh cho top_n job tốt nhất.
         """
         scored = self.score_all(target_title, cv_text, skills, user_exp, preferred_city, preferred_work_modes,
-                                min_salary, weights, skill_mode, normalize_text)
+                                min_salary, weights)
         if scored is None:
             return pd.DataFrame()
         sc, total = scored
@@ -536,11 +527,10 @@ class ContentBasedRecommender:
     def score_all(self, target_title: str = "", cv_text: str = "", skills: Optional[List[str]] = None,
                   user_exp: float = 1.0, preferred_city: str = "Tất cả",
                   preferred_work_modes: Optional[Union[str, List[str]]] = None, min_salary: Optional[float] = None,
-                  weights: Optional[Dict[str, float]] = None, skill_mode: str = 'v3',
-                  normalize_text: bool = True) -> Optional[Tuple[Dict[str, Any], np.ndarray]]:
+                  weights: Optional[Dict[str, float]] = None) -> Optional[Tuple[Dict[str, Any], np.ndarray]]:
         """Điểm CBF tổng hợp cho MỌI tin (tin hết hạn = -1). Trả về (score_components, total) hoặc None nếu hồ sơ rỗng."""
         sc = self.score_components(target_title, cv_text, skills, user_exp, preferred_city,
-                                   preferred_work_modes, min_salary, skill_mode, normalize_text)
+                                   preferred_work_modes, min_salary)
         if sc is None:
             return None
         return sc, np.where(sc['active'], self.combine_scores(sc['comps'], weights), -1.0)
