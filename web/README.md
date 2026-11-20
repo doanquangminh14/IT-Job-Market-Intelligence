@@ -23,7 +23,6 @@ web/
 ├── templates/         # base.html, partials/, và thư mục theo từng app
 ├── static/            # css/main.css, js/main.js, js/analytics.js
 ├── tests/             # test Django (23 test)
-├── .env.example
 └── manage.py
 ```
 
@@ -38,7 +37,8 @@ pip install -r requirements/web.txt   # chỉ website; hoặc requirements.txt �
 pip install -e .                     # để import src.* từ web/
 
 cd web
-copy .env.example .env            # điền DB_PASSWORD, DJANGO_SECRET_KEY
+# Cấu hình nằm trong .env ở GỐC repo (dùng chung với pipeline): copy ..\.env.example ..\.env
+# rồi điền DB_PASSWORD, DJANGO_SECRET_KEY; website dùng database WEB_DB_NAME (mặc định it_jobs_web)
 # Tạo database rỗng trong PostgreSQL:  CREATE DATABASE it_jobs_web;
 python manage.py migrate
 python manage.py import_jobs      # nạp ../data/notebook/content_base/jobs_clean.csv
@@ -46,7 +46,7 @@ python manage.py createsuperuser  # tài khoản vào /admin
 python manage.py runserver        # http://127.0.0.1:8000
 ```
 
-Không có PostgreSQL? Đặt `DB_ENGINE=sqlite` trong `.env` để chạy thử bằng SQLite.
+Không có PostgreSQL? Đặt `WEB_DB_ENGINE=sqlite` trong `.env` để chạy thử bằng SQLite.
 
 Trong VS Code: chọn interpreter `.venv`, rồi chạy cấu hình **Django: runserver (web/)** trong tab Run and Debug.
 

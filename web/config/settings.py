@@ -1,7 +1,7 @@
 """
 Cấu hình Django cho website IT Job Market Intelligence.
 
-Mọi giá trị nhạy cảm / thay đổi theo môi trường đọc từ file web/.env (xem web/.env.example).
+Mọi giá trị nhạy cảm / thay đổi theo môi trường đọc từ file .env ở gốc repo (dùng chung với pipeline, xem .env.example).
 """
 import os
 from pathlib import Path
@@ -13,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Thư mục gốc của repo (chứa data/, src/), dùng để tìm file dữ liệu sạch khi import
 REPO_ROOT = BASE_DIR.parent
 
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(REPO_ROOT / ".env")
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -74,8 +74,9 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-# Database: PostgreSQL (mặc định). Đặt DB_ENGINE=sqlite để chạy nhanh không cần PostgreSQL.
-if os.getenv("DB_ENGINE", "postgresql").lower() == "sqlite":
+# Database: PostgreSQL (mặc định), database riêng WEB_DB_NAME; DB_USER/DB_PASSWORD/DB_HOST/DB_PORT dùng chung với pipeline.
+# Đặt WEB_DB_ENGINE=sqlite để chạy nhanh không cần PostgreSQL.
+if os.getenv("WEB_DB_ENGINE", "postgresql").lower() == "sqlite":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -86,7 +87,7 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DB_NAME", "it_jobs_web"),
+            "NAME": os.getenv("WEB_DB_NAME", "it_jobs_web"),
             "USER": os.getenv("DB_USER", "postgres"),
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "localhost"),
