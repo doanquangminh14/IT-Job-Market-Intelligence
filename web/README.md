@@ -23,6 +23,8 @@ web/
 ├── templates/         # base.html, partials/, và thư mục theo từng app
 ├── static/            # css/main.css, js/main.js, js/analytics.js
 ├── tests/             # test Django (23 test)
+├── Dockerfile         # image website (build từ gốc repo), gunicorn + whitenoise
+├── docker-entrypoint.sh  # migrate rồi chạy gunicorn
 └── manage.py
 ```
 
@@ -49,6 +51,23 @@ python manage.py runserver        # http://127.0.0.1:8000
 Không có PostgreSQL? Đặt `WEB_DB_ENGINE=sqlite` trong `.env` để chạy thử bằng SQLite.
 
 Trong VS Code: chọn interpreter `.venv`, rồi chạy cấu hình **Django: runserver (web/)** trong tab Run and Debug.
+
+## Chạy bằng Docker
+
+Không cần cài Python hay PostgreSQL trên máy, chỉ cần Docker Desktop. `docker-compose.yml` ở gốc repo dựng 2 container: `web` (Django + gunicorn, cổng 8000) và `db` (PostgreSQL 16 riêng, dữ liệu lưu ở volume `pgdata`).
+
+```powershell
+# từ thư mục gốc repo; cần file .env (copy .env.example .env, điền DB_PASSWORD, DJANGO_SECRET_KEY)
+docker compose up -d --build                              # http://localhost:8000
+docker compose exec web python manage.py import_jobs      # nạp ./data (gắn vào container ở chế độ chỉ đọc)
+docker compose exec web python manage.py createsuperuser
+docker compose logs -f web                                # xem log
+docker compose down                                       # dừng (giữ dữ liệu); thêm -v để xóa cả database
+```
+
+- Container chạy với `DJANGO_DEBUG=False`; file static do whitenoise phục vụ (đã nén gzip). Muốn bật debug: đặt `DJANGO_DEBUG_DOCKER=True` trong `.env`.
+- Database trong Docker **tách biệt** với PostgreSQL trên máy (không mở cổng ra ngoài), nên cần chạy `import_jobs` một lần.
+- Đưa lên server có tên miền: thêm tên miền vào `DJANGO_ALLOWED_HOSTS` và `DJANGO_CSRF_TRUSTED_ORIGINS`; nếu đứng sau reverse proxy HTTPS thì đặt `DJANGO_SECURE_SSL=True` (bật redirect HTTPS và cookie secure).
 
 ## Cập nhật dữ liệu
 
@@ -86,4 +105,4 @@ Test tạo database tạm `test_it_jobs_web` (user PostgreSQL cần quyền CREA
 
 - App `recommender`: gọi `src.recommender` (CBF / Hybrid) với dữ liệu từ `Profile` để gợi ý việc làm.
 - Ghi nhận tương tác (xem, lưu, ứng tuyển) vào DB làm dữ liệu cho Collaborative Filtering. `SavedJob` đã là một tín hiệu.
-- Docker (`Dockerfile` + `docker-compose` với PostgreSQL), gunicorn + whitenoise, CI chạy test trên GitHub Actions.
+- CI chạy test trên GitHub Actions, tự build image Docker.

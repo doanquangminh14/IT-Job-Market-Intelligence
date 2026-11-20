@@ -81,6 +81,8 @@ fsspec==2026.9.0
     # via
     #   huggingface-hub
     #   torch
+gunicorn==27.0.1
+    # via -r requirements/web.in
 h11==0.16.0
     # via
     #   httpcore
@@ -384,6 +386,8 @@ websockets==17.2
     # via streamlit
 wheel==0.48.0
     # via pip-tools
+whitenoise==6.12.0
+    # via -r requirements/web.in
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip

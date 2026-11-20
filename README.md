@@ -173,10 +173,18 @@ python -m src.cli pipeline --source all --target 100        # cào ➔ kiểm đ
 python -m src.cli pipeline --skip-crawl                     # bỏ qua cào, chỉ kiểm định và nạp
 ```
 
-### 8. Kiểm thử tự động
+### 8. Website Django (local hoặc Docker)
 
 ```powershell
-pytest tests -v        # 56 test, chạy offline
+cd web; python manage.py runserver          # chạy bằng .venv, xem web/README.md
+docker compose up -d --build                 # hoặc chạy bằng Docker (web + PostgreSQL), http://localhost:8000
+```
+
+### 9. Kiểm thử tự động
+
+```powershell
+pytest                                       # 90 test của src/, chạy offline
+cd web; python manage.py test tests          # 23 test của website (cần PostgreSQL)
 ```
 
 ---
@@ -222,7 +230,8 @@ IT-Job-Market-Intelligence/
 │   ├── embeddings/               # Sinh vector ngữ nghĩa (SentenceTransformer, thử nghiệm)
 │   └── schemas/                  # Pydantic schema JobListingRaw / JobDetailRaw
 ├── tests/                        # Pytest (unit + integration)
-├── web/                          # Website Django (xem web/README.md)
+├── web/                          # Website Django + Dockerfile (xem web/README.md)
+├── docker-compose.yml            # Chạy website + PostgreSQL bằng Docker
 ├── pyproject.toml                # Đóng gói src/, lệnh itjobs, cấu hình pytest
 ├── requirements/                 # *.in khai báo theo nhóm (base · pipeline · web · dev); web.txt = khóa riêng cho website
 ├── requirements.in               # Khai báo môi trường đầy đủ

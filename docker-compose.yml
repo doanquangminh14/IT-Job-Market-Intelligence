@@ -1,0 +1,48 @@
+# Website Django + PostgreSQL riêng cho website.
+#   docker compose up -d --build                             # http://localhost:8000
+#   docker compose exec web python manage.py import_jobs     # nạp data/notebook/content_base/jobs_clean.csv
+#   docker compose exec web python manage.py createsuperuser
+# Biến môi trường đọc từ .env ở gốc repo (DB_USER, DB_PASSWORD, WEB_DB_NAME, DJANGO_SECRET_KEY...).
+# Các giá trị bên dưới ghi đè .env cho môi trường container.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${WEB_DB_NAME:-it_jobs_web}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Cần đặt DB_PASSWORD trong .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Không mở cổng ra máy host để khỏi đụng PostgreSQL đang chạy sẵn ở 5432.
+    # Cần kết nối từ máy host thì thêm:  ports: ["5433:5432"]
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      WEB_DB_ENGINE: postgresql
+      DJANGO_DEBUG: ${DJANGO_DEBUG_DOCKER:-False}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Dữ liệu sạch do pipeline sinh ra, chỉ đọc (dùng cho lệnh import_jobs)
+      - ./data:/app/data:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

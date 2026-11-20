@@ -1,0 +1,23 @@
+# Chỉ gửi vào Docker những gì image website cần (requirements/, src/, configs/, web/)
+.git
+.gitignore
+.venv*
+**/__pycache__
+**/*.pyc
+.pytest_cache
+*.egg-info
+.env
+*.env
+.vscode
+data
+notebook
+reports
+logs
+scratch
+app
+tests
+sql
+scripts
+web/staticfiles
+web/media
+web/db.sqlite3

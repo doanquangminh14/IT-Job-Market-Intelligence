@@ -1,3 +1,5 @@
 # Website Django (web/). Gom base.in de website goi duoc src/recommender.
 -r base.in
 Django>=5.2,<6.0
+gunicorn>=23.0       # WSGI server khi chay that (Docker / Linux)
+whitenoise>=6.7      # phuc vu file static khi DEBUG=False
