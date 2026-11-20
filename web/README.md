@@ -33,8 +33,8 @@ Dùng chung `.venv` ở gốc repo (để website gọi được `src/recommende
 ```powershell
 # từ thư mục gốc repo
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements/web.txt   # chỉ website; hoặc requirements.txt để cài tất cả
-pip install -e .                     # để import src.* từ web/
+pip install -r requirements/web.txt   # chỉ website (phiên bản đã khóa); hoặc requirements.txt để cài tất cả
+pip install --no-deps -e .           # để import src.* từ web/
 
 cd web
 # Cấu hình nằm trong .env ở GỐC repo (dùng chung với pipeline): copy ..\.env.example ..\.env

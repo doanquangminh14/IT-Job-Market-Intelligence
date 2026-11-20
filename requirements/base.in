@@ -1,0 +1,12 @@
+# Loi dung chung: xu ly du lieu, cau hinh, PostgreSQL, he goi y
+# (src/data_cleaning, src/recommender, src/pipelines). Website cung can phan nay.
+pandas>=2.0
+numpy>=1.24
+scipy>=1.11
+scikit-learn>=1.3
+joblib>=1.3
+pyarrow>=14.0        # pandas doc/ghi data/silver/*.parquet
+pydantic>=2.0
+pyyaml>=6.0
+python-dotenv>=1.0
+psycopg2-binary>=2.9

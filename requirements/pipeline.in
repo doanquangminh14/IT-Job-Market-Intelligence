@@ -1,0 +1,17 @@
+# Thu thap du lieu, embedding, notebook va Streamlit (nang: sentence-transformers keo theo torch)
+-r base.in
+
+# Crawl
+beautifulsoup4>=4.12
+curl_cffi>=0.7
+
+# Embedding (src/embeddings, notebook 03)
+sentence-transformers>=2.2
+tqdm>=4.66
+
+# Notebook, bieu do, Streamlit (app/)
+ipykernel>=6.29      # kernel cho notebook; jupyter_client dung trong scripts/refresh_pipeline.py
+matplotlib>=3.8
+seaborn>=0.13
+plotly>=5.18
+streamlit>=1.30

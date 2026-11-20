@@ -1,0 +1,5 @@
+# Kiem thu, dinh dang ma, quan ly phien ban thu vien
+pytest>=7.4
+black>=23.10
+flake8>=6.1
+pip-tools>=7.4

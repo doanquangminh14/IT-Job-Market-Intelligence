@@ -1,0 +1,5 @@
+# Moi truong phat trien day du = pipeline + website + dev.
+# Sua file .in roi chay lai pip-compile (xem README, muc "Quan ly thu vien"); KHONG sua tay file .txt.
+-r requirements/pipeline.in
+-r requirements/web.in
+-r requirements/dev.in

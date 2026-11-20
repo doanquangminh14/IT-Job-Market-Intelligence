@@ -78,10 +78,31 @@ $$\text{Score} = 0{,}30\,S_{\text{skills}} + 0{,}40\,S_{\text{text}} + 0{,}10\,S
 ### 1. Cài đặt môi trường
 
 ```powershell
-python -m venv .venv
+python -m venv .venv                 # Python 3.11
 .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt      # phiên bản đã khóa: ai cài cũng ra cùng môi trường
+pip install --no-deps -e .           # cài thư viện src/ dạng editable: import src.* được từ mọi nơi (web/, scripts/, notebook)
+```
+
+#### Quản lý thư viện (pip-tools)
+
+Khai báo thư viện trong các file `.in`; file `.txt` là bản **khóa phiên bản** do `pip-compile` sinh ra, không sửa tay.
+
+| File khai báo | File khóa | Dùng cho |
+| :--- | :--- | :--- |
+| `requirements.in` (= pipeline + web + dev) | `requirements.txt` | Môi trường phát triển đầy đủ |
+| `requirements/web.in` | `requirements/web.txt` | Chỉ website (Docker / server), không có torch |
+| `requirements/base.in`, `pipeline.in`, `dev.in` | (gộp vào `requirements.txt`) | Nhóm thư viện theo mục đích |
+
+Thêm / nâng cấp thư viện:
+
+```powershell
+# 1. sửa file .in tương ứng, rồi khóa lại (website khóa theo cùng phiên bản với môi trường đầy đủ)
+pip-compile --strip-extras --no-emit-index-url -o requirements.txt requirements.in
+pip-compile --strip-extras --no-emit-index-url -c requirements.txt -o requirements/web.txt requirements/web.in
+# nâng cấp một gói: thêm --upgrade-package <tên> vào lệnh đầu
+# 2. đồng bộ .venv theo file khóa
 pip install -r requirements.txt
-pip install -e .            # cài thư viện src/ dạng editable: import src.* được từ mọi nơi (web/, scripts/, notebook)
 ```
 
 ### 2. Thu thập dữ liệu (`python -m src.cli crawl`)
@@ -203,8 +224,9 @@ IT-Job-Market-Intelligence/
 ├── tests/                        # Pytest (unit + integration)
 ├── web/                          # Website Django (xem web/README.md)
 ├── pyproject.toml                # Đóng gói src/, lệnh itjobs, cấu hình pytest
-├── requirements/                 # base · pipeline · web · dev (cài riêng phần cần dùng)
-└── requirements.txt              # Cài tất cả
+├── requirements/                 # *.in khai báo theo nhóm (base · pipeline · web · dev); web.txt = khóa riêng cho website
+├── requirements.in               # Khai báo môi trường đầy đủ
+└── requirements.txt              # Khóa phiên bản môi trường đầy đủ (pip-compile sinh ra)
 ```
 
 > **Quy ước:** logic được viết và kiểm chứng trong notebook trước, sau đó đồng bộ sang `src/`. Khi sửa một bên, hãy cập nhật bên còn lại.

@@ -1,4 +1,0 @@
-# Kiem thu & dinh dang ma
-pytest>=7.4.0
-black>=23.10.0
-flake8>=6.1.0
