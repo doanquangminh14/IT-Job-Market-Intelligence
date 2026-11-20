@@ -1,10 +1,8 @@
 import os
 import sys
 
-# Đảm bảo đường dẫn gốc dự án luôn nằm trong sys.path
+# Gốc repo (chứa data/). Import src.* nhờ `pip install -e .`, không cần sửa sys.path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
 
 if sys.stdout.encoding != "utf-8":
     try:

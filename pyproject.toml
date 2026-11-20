@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "it-job-market-intelligence"
+version = "0.1.0"
+description = "Thu thập, làm sạch, phân tích thị trường việc làm IT Việt Nam và gợi ý việc làm."
+readme = "README.md"
+requires-python = ">=3.11"
+# Thư viện phụ thuộc khai báo trong requirements/ (tách theo pipeline / web / dev)
+
+[tool.setuptools.packages.find]
+# Chỉ đóng gói thư viện lõi src/. Cài dạng editable (pip install -e .) để đường dẫn tới data/ vẫn trỏ về repo.
+include = ["src", "src.*"]
+
+[tool.pytest.ini_options]
+# Test của src/. Test website Django chạy riêng: cd web && python manage.py test tests
+testpaths = ["tests"]

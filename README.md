@@ -81,6 +81,7 @@ $$\text{Score} = 0{,}30\,S_{\text{skills}} + 0{,}40\,S_{\text{text}} + 0{,}10\,S
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+pip install -e .            # cài thư viện src/ dạng editable: import src.* được từ mọi nơi (web/, scripts/, notebook)
 ```
 
 ### 2. Thu thập dữ liệu (`main_crawl.py`)
