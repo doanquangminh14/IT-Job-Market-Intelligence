@@ -1,26 +1,14 @@
+"""Lệnh `python -m src.cli pipeline`: cào ➔ kiểm định Bronze ➔ nạp Silver PostgreSQL (end-to-end)."""
 import argparse
-import os
-import sys
 import time
 from datetime import datetime
 from typing import Dict, Any, List
-
-if sys.stdout.encoding != "utf-8":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
-
-PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
 
 from src.crawlers.topdev import TopDevCrawler
 from src.crawlers.vietnamworks import VietnamWorksCrawler
 from src.crawlers.topcv import TopCVCrawler
 from src.quality.validator import QualityValidator
-from main_quality import load_raw_listings, load_raw_details
+from src.quality.raw_loader import load_raw_listings, load_raw_details
 from src.pipelines.silver.db import get_db_connection
 from src.pipelines.silver.extractor import load_bronze_data
 from src.pipelines.silver.runner import (
@@ -52,8 +40,9 @@ def get_current_db_job_stats() -> Dict[str, int]:
     return stats
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(
+        prog="python -m src.cli pipeline",
         description="IT Job Market Intelligence - Bo Dieu Phoi Toan Dien (End-to-End Pipeline Runner)"
     )
     parser.add_argument(
@@ -86,7 +75,7 @@ def main():
         help="Ngay can kiem dinh Bronze YYYY-MM-DD (mac dinh: toan bo lich su)"
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     pipeline_start_time = time.time()
     today_str = datetime.now().strftime("%Y-%m-%d")

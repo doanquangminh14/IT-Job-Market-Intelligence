@@ -52,23 +52,23 @@ src/crawlers/
 
 ## 3. Hướng Dẫn Sử Dụng & Lệnh Chạy (CLI)
 
-Bộ crawler được điều phối thông qua CLI [`main_crawl.py`](../../main_crawl.py) ở thư mục gốc:
+Bộ crawler được điều phối thông qua lệnh [`python -m src.cli crawl`](../cli/crawl.py):
 
 ```powershell
 # 1. Cào cả 3 nguồn (mỗi nguồn 100 jobs thành công - Mặc định)
-python main_crawl.py --source all --target 100
+python -m src.cli crawl --source all --target 100
 
 # 2. Cào riêng từng nguồn cụ thể
-python main_crawl.py --source topcv --target 50
-python main_crawl.py --source topdev --target 50
-python main_crawl.py --source vietnamworks --target 50
+python -m src.cli crawl --source topcv --target 50
+python -m src.cli crawl --source topdev --target 50
+python -m src.cli crawl --source vietnamworks --target 50
 
 # 3. Chế độ cào bù các job bị lỗi (Retry Failed)
-python main_crawl.py --source topcv --retry-failed
-python main_crawl.py --source all --retry-failed
+python -m src.cli crawl --source topcv --retry-failed
+python -m src.cli crawl --source all --retry-failed
 
 # 4. Chế độ Test Sandbox (không ghi vào data/raw/)
-python main_crawl.py --source topcv --target 2 --output-dir tests/test_output
+python -m src.cli crawl --source topcv --target 2 --output-dir tests/test_output
 ```
 
 ---
@@ -81,4 +81,4 @@ python main_crawl.py --source topcv --target 2 --output-dir tests/test_output
    - `parser.py`: Viết các hàm parse HTML của trang ITViec.
    - `crawler.py`: Kế thừa lớp `BaseCrawler` từ `src.crawlers.base`, cài đặt phương thức `run(target_success_count)`.
    - `__init__.py`: Export `ITViecCrawler`.
-3. Đăng ký crawler mới vào [`src/crawlers/__init__.py`](__init__.py) và `crawler_map` trong [`main_crawl.py`](../../main_crawl.py).
+3. Đăng ký crawler mới vào [`src/crawlers/__init__.py`](__init__.py) và `crawler_map` trong [`src/cli/crawl.py`](../cli/crawl.py).

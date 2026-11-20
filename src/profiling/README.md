@@ -52,23 +52,23 @@ reports/profiling/
 
 ## 4. Hướng Dẫn Sử Dụng & Lệnh Chạy (CLI)
 
-Bộ profiling được thực thi thông qua CLI [`main_profile.py`](../../main_profile.py) ở thư mục gốc:
+Bộ profiling được thực thi thông qua lệnh [`python -m src.cli profile`](../cli/profile.py):
 
 ```powershell
 # 1. Kiểm kê toàn bộ kho dữ liệu từ ngày đầu đến nay (Mặc định)
-python main_profile.py
+python -m src.cli profile
 
 # 2. Tự động kiểm kê ngày cào mới nhất có trong data/raw/
-python main_profile.py --latest
+python -m src.cli profile --latest
 
 # 3. Kiểm kê riêng một ngày cụ thể
-python main_profile.py --date 2026-10-11
+python -m src.cli profile --date 2026-10-11
 
 # 4. Chỉ kiểm kê riêng một nguồn cụ thể
-python main_profile.py --source topcv
-python main_profile.py --source topdev
-python main_profile.py --source vietnamworks
+python -m src.cli profile --source topcv
+python -m src.cli profile --source topdev
+python -m src.cli profile --source vietnamworks
 
 # 5. Chỉ định thư mục lưu báo cáo tùy chọn
-python main_profile.py --report-dir reports/custom_dir
+python -m src.cli profile --report-dir reports/custom_dir
 ```

@@ -73,26 +73,26 @@ Khi cào thêm dữ liệu ngày mới, hệ thống tự động **Upsert** (c�
 
 ---
 
-## 4. Cách Sử Dụng CLI (`main_quality.py`)
+## 4. Cách Sử Dụng CLI (`python -m src.cli quality`)
 
 Chạy kiểm định và xem thống kê phân luồng (Dry-Run, không ghi đè dữ liệu):
 ```bash
-python main_quality.py
+python -m src.cli quality
 ```
 
 Kiểm định và lưu nạp tích lũy vào 2 file Master Bronze:
 ```bash
-python main_quality.py --save-bronze
+python -m src.cli quality --save-bronze
 ```
 
 Chỉ kiểm định ngày cào mới nhất:
 ```bash
-python main_quality.py --latest
+python -m src.cli quality --latest
 ```
 
 Chỉ kiểm định một sàn cụ thể:
 ```bash
-python main_quality.py --source topcv
+python -m src.cli quality --source topcv
 ```
 
 ---

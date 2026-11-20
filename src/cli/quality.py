@@ -1,100 +1,13 @@
+"""Lệnh `python -m src.cli quality`: kiểm định chất lượng data/raw và gộp tích lũy vào Master Bronze (data/bronze/)."""
 import argparse
-import json
-import os
-import sys
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-if sys.stdout.encoding != "utf-8":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
-
+from src.quality.raw_loader import get_latest_date, load_raw_details, load_raw_listings
 from src.quality.validator import QualityValidator
 
-PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
-
-
-def load_raw_listings(source: str, target_date: Optional[str] = None) -> List[Dict[str, Any]]:
-    """
-    Đọc tất cả các file listing JSON trong data/raw/{source}/listings/[target_date]/
-    Gắn thêm metadata: raw_file_name và raw_date.
-    """
-    records: List[Dict[str, Any]] = []
-    listings_root = os.path.join(PROJECT_ROOT, "data", "raw", source, "listings")
-    if not os.path.exists(listings_root):
-        return records
-
-    date_folders = [target_date] if target_date else sorted(os.listdir(listings_root))
-
-    for date_folder in date_folders:
-        folder_path = os.path.join(listings_root, date_folder)
-        if not os.path.isdir(folder_path):
-            continue
-        for fname in sorted(os.listdir(folder_path)):
-            if fname.endswith(".json"):
-                fpath = os.path.join(folder_path, fname)
-                try:
-                    with open(fpath, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        if isinstance(data, list):
-                            for item in data:
-                                item["raw_file_name"] = fname
-                                item["raw_date"] = date_folder
-                                records.append(item)
-                except Exception as e:
-                    print(f"[CANH BAO] Không thể đọc listing file {fpath}: {e}")
-    return records
-
-
-def load_raw_details(source: str, target_date: Optional[str] = None) -> List[Dict[str, Any]]:
-    """
-    Đọc tất cả các file detail JSON trong data/raw/{source}/details/[target_date]/
-    Gắn thêm metadata: raw_file_name và raw_date.
-    """
-    records: List[Dict[str, Any]] = []
-    details_root = os.path.join(PROJECT_ROOT, "data", "raw", source, "details")
-    if not os.path.exists(details_root):
-        return records
-
-    date_folders = [target_date] if target_date else sorted(os.listdir(details_root))
-
-    for date_folder in date_folders:
-        folder_path = os.path.join(details_root, date_folder)
-        if not os.path.isdir(folder_path):
-            continue
-        for fname in sorted(os.listdir(folder_path)):
-            if fname.endswith(".json"):
-                fpath = os.path.join(folder_path, fname)
-                try:
-                    with open(fpath, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        if isinstance(data, list):
-                            for item in data:
-                                item["raw_file_name"] = fname
-                                item["raw_date"] = date_folder
-                                records.append(item)
-                except Exception as e:
-                    print(f"[CANH BAO] Không thể đọc detail file {fpath}: {e}")
-    return records
-
-
-def get_latest_date() -> Optional[str]:
-    """Tìm ngày mới nhất có dữ liệu trong data/raw/"""
-    found_dates = set()
-    for s in ["topcv", "topdev", "vietnamworks"]:
-        for sub in ["details", "listings"]:
-            d_path = os.path.join(PROJECT_ROOT, "data", "raw", s, sub)
-            if os.path.exists(d_path):
-                for d in os.listdir(d_path):
-                    if os.path.isdir(os.path.join(d_path, d)):
-                        found_dates.add(d)
-    return max(found_dates) if found_dates else None
-
-
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(
+        prog="python -m src.cli quality",
         description="IT Job Market Intelligence - Kiểm Định & Hợp Nhất Master Tích Lũy Vào Tầng Bronze"
     )
     parser.add_argument(
@@ -121,7 +34,7 @@ def main():
         help="Sàn tuyển dụng cần kiểm định (mặc định: all)",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     target_date = args.date
     if args.latest:
@@ -204,7 +117,7 @@ def main():
     print(f"  • RÁC/LỖI (Invalid)     : {len(all_invalid_details):,} tin")
     if not args.save_bronze:
         print("\n[GOI Y]: Chạy lệnh dưới đây để thực hiện lưu thật vào Bronze:")
-        print("   python main_quality.py --save-bronze")
+        print("   python -m src.cli quality --save-bronze")
     print("=" * 80 + "\n")
 
 

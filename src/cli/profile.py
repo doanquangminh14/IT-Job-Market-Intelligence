@@ -1,18 +1,13 @@
+"""Lệnh `python -m src.cli profile`: kiểm kê và đo chất lượng dữ liệu thô, xuất báo cáo vào reports/profiling/."""
 import argparse
 import sys
-from datetime import datetime
-
-if sys.stdout.encoding != 'utf-8':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except Exception:
-        pass
 
 from src.profiling import DataProfiler, ReportGenerator
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(
+        prog="python -m src.cli profile",
         description="IT Job Market Intelligence - Bộ Kiểm Kê & Profiling Chất Lượng Dữ Liệu Thô (Raw Data)"
     )
     parser.add_argument(
@@ -46,7 +41,7 @@ def main():
         help="Đường dẫn thư mục lưu báo cáo (mặc định: reports/profiling)"
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     profiler = DataProfiler(raw_dir=args.raw_dir)
     available_dates = profiler.get_available_dates()

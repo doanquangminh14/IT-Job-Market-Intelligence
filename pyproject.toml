@@ -10,6 +10,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 # Thư viện phụ thuộc khai báo trong requirements/ (tách theo pipeline / web / dev)
 
+[project.scripts]
+itjobs = "src.cli.__main__:main"   # itjobs crawl | quality | profile | pipeline
+
 [tool.setuptools.packages.find]
 # Chỉ đóng gói thư viện lõi src/. Cài dạng editable (pip install -e .) để đường dẫn tới data/ vẫn trỏ về repo.
 include = ["src", "src.*"]

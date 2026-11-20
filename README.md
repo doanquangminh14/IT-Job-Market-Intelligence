@@ -24,9 +24,9 @@ Hệ thống thu thập, làm sạch, phân tích dữ liệu thị trường vi
 ```mermaid
 flowchart LR
     A[TopCV / TopDev / VietnamWorks] -->|curl_cffi| B[(data/raw/<br/>JSON thô theo ngày)]
-    B -->|main_quality.py| C[(data/bronze/<br/>valid · quarantine)]
+    B -->|cli quality| C[(data/bronze/<br/>valid · quarantine)]
     C -->|Notebook 02 / job_cleaner.py| D[(data/silver/ + jobs_clean.csv<br/>sạch · khử trùng lặp)]
-    C -.->|run_pipeline.py| P[(PostgreSQL Silver)]
+    C -.->|cli pipeline| P[(PostgreSQL Silver)]
     D --> E[Notebook 03-04<br/>NLP · EDA]
     D --> F[Notebook 05 / content_based.py<br/>Content-Based Recommender]
     D --> S[Notebook 06<br/>tương tác mô phỏng + ALS]
@@ -84,26 +84,26 @@ pip install -r requirements.txt
 pip install -e .            # cài thư viện src/ dạng editable: import src.* được từ mọi nơi (web/, scripts/, notebook)
 ```
 
-### 2. Thu thập dữ liệu (`main_crawl.py`)
+### 2. Thu thập dữ liệu (`python -m src.cli crawl`)
 
 ```powershell
-python main_crawl.py --source all --target 100        # cả 3 nguồn, mỗi nguồn 100 tin thành công
-python main_crawl.py --source topcv --target 50       # riêng một nguồn
-python main_crawl.py --source all --retry-failed      # cào bù các tin lỗi trước đó
+python -m src.cli crawl --source all --target 100        # cả 3 nguồn, mỗi nguồn 100 tin thành công
+python -m src.cli crawl --source topcv --target 50       # riêng một nguồn
+python -m src.cli crawl --source all --retry-failed      # cào bù các tin lỗi trước đó
 ```
 
-### 3. Kiểm định chất lượng ➔ Master Bronze (`main_quality.py`)
+### 3. Kiểm định chất lượng ➔ Master Bronze (`python -m src.cli quality`)
 
 ```powershell
-python main_quality.py --save-bronze                  # kiểm định toàn bộ lịch sử và lưu 3 file Master Bronze
-python main_quality.py --latest                       # chỉ ngày cào mới nhất
+python -m src.cli quality --save-bronze                  # kiểm định toàn bộ lịch sử và lưu 3 file Master Bronze
+python -m src.cli quality --latest                       # chỉ ngày cào mới nhất
 ```
 
-### 4. Profiling kho dữ liệu (`main_profile.py`)
+### 4. Profiling kho dữ liệu (`python -m src.cli profile`)
 
 ```powershell
-python main_profile.py                                # toàn bộ kho
-python main_profile.py --latest                       # chỉ ngày mới nhất
+python -m src.cli profile                                # toàn bộ kho
+python -m src.cli profile --latest                       # chỉ ngày mới nhất
 ```
 
 ### 5. Làm sạch dữ liệu (tạo `jobs_clean.csv`)
@@ -132,7 +132,7 @@ Lần đầu mở app, mô hình TF-IDF sẽ tự huấn luyện lại nếu d�
 ### 🔄 Cập nhật khi crawl thêm dữ liệu
 
 ```powershell
-python main_crawl.py --source all --target 100     # 1. crawl thêm
+python -m src.cli crawl --source all --target 100     # 1. crawl thêm
 python scripts/refresh_pipeline.py                 # 2. Bronze ➔ notebook 02/01 ➔ 02 ➔ 04 ➔ 05 ➔ 06 ➔ 07 (khoảng 5 phút, lưu output vào notebook)
 ```
 
@@ -148,8 +148,8 @@ python scripts/refresh_pipeline.py                 # 2. Bronze ➔ notebook 02/0
 ```powershell
 copy .env.example .env      # điền thông tin PostgreSQL
 python scripts/init_silver_db.py
-python run_pipeline.py --source all --target 100        # cào ➔ kiểm định Bronze ➔ nạp Silver
-python run_pipeline.py --skip-crawl                     # bỏ qua cào, chỉ kiểm định và nạp
+python -m src.cli pipeline --source all --target 100        # cào ➔ kiểm định Bronze ➔ nạp Silver
+python -m src.cli pipeline --skip-crawl                     # bỏ qua cào, chỉ kiểm định và nạp
 ```
 
 ### 8. Kiểm thử tự động
@@ -179,12 +179,13 @@ IT-Job-Market-Intelligence/
 ├── data/                         # (Ignored by Git) raw ➔ bronze ➔ silver, models/, embeddings/
 ├── notebook/                     # 01 crawl · 02 làm sạch · 03 NLP · 04 EDA · 05 recommender (xem notebook/README.md)
 ├── reports/profiling/            # Báo cáo chất lượng dữ liệu
-├── scripts/                      # Khởi tạo DB Silver, sửa lương TopCV, công cụ kiểm tra
+├── scripts/                      # Chạy lại pipeline + notebook, khởi tạo DB Silver, sửa lương TopCV
 ├── sql/                          # Schema Silver / Gold + tài liệu ERD
-├── src/
+├── src/                          # Thư viện lõi, cài bằng `pip install -e .`
+│   ├── cli/                      # Lệnh: python -m src.cli crawl | quality | profile | pipeline
 │   ├── crawlers/                 # TopCV, TopDev, VietnamWorks
 │   ├── profiling/                # Kiểm kê và đo lường chất lượng
-│   ├── quality/                  # Rule engine valid / invalid / quarantine
+│   ├── quality/                  # Rule engine valid / invalid / quarantine, đọc data/raw (raw_loader.py)
 │   ├── data_cleaning/            # Làm sạch Bronze ➔ Silver
 │   │   ├── job_cleaner.py        #   Pipeline làm sạch (tương đương notebook 02)
 │   │   ├── skill_canonical.py    #   Từ điển kỹ năng, tách kỹ năng / thẻ ngành
@@ -200,7 +201,8 @@ IT-Job-Market-Intelligence/
 │   ├── embeddings/               # Sinh vector ngữ nghĩa (SentenceTransformer, thử nghiệm)
 │   └── schemas/                  # Pydantic schema JobListingRaw / JobDetailRaw
 ├── tests/                        # Pytest (unit + integration)
-├── main_crawl.py · main_quality.py · main_profile.py · run_pipeline.py   # CLI
+├── web/                          # Website Django (xem web/README.md)
+├── pyproject.toml                # Đóng gói src/, lệnh itjobs, cấu hình pytest
 └── requirements.txt
 ```
 

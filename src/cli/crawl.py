@@ -1,20 +1,15 @@
+"""Lệnh `python -m src.cli crawl`: cào tin tuyển dụng từ TopCV, TopDev, VietnamWorks vào data/raw/."""
 import argparse
-import sys
 from datetime import datetime
-
-if sys.stdout.encoding != 'utf-8':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except Exception:
-        pass
 
 from src.crawlers.topdev import TopDevCrawler
 from src.crawlers.vietnamworks import VietnamWorksCrawler
 from src.crawlers.topcv import TopCVCrawler
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(
+        prog="python -m src.cli crawl",
         description="IT Job Market Intelligence - Bộ điều phối cào dữ liệu đa nền tảng"
     )
     parser.add_argument(
@@ -47,7 +42,7 @@ def main():
         default=None,
         help="Thư mục lưu trữ dữ liệu raw tùy chọn (mặc định: data/raw/<source>)"
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     crawler_map = {
         "topdev": ("TopDev", TopDevCrawler),
