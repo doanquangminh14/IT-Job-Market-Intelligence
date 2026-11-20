@@ -1,0 +1,22 @@
+# Thu thap du lieu, NLP / embedding, notebook va Streamlit (nang: co torch)
+-r base.txt
+
+# Crawl / HTTP
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+httpx>=0.25.0
+curl_cffi>=0.7.0
+
+# NLP & embedding
+spacy>=3.7.0
+sentence-transformers>=2.2.0
+torch>=2.0.0
+nltk>=3.8.1
+huggingface_hub>=0.23
+
+# Notebook, bieu do, Streamlit (app/)
+streamlit>=1.30.0
+plotly>=5.18.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+nbformat>=5.0.0

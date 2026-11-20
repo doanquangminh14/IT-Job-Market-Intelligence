@@ -203,7 +203,8 @@ IT-Job-Market-Intelligence/
 ├── tests/                        # Pytest (unit + integration)
 ├── web/                          # Website Django (xem web/README.md)
 ├── pyproject.toml                # Đóng gói src/, lệnh itjobs, cấu hình pytest
-└── requirements.txt
+├── requirements/                 # base · pipeline · web · dev (cài riêng phần cần dùng)
+└── requirements.txt              # Cài tất cả
 ```
 
 > **Quy ước:** logic được viết và kiểm chứng trong notebook trước, sau đó đồng bộ sang `src/`. Khi sửa một bên, hãy cập nhật bên còn lại.

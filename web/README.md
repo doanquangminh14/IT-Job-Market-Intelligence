@@ -23,19 +23,19 @@ web/
 ├── templates/         # base.html, partials/, và thư mục theo từng app
 ├── static/            # css/main.css, js/main.js, js/analytics.js
 ├── tests/             # test Django (23 test)
-├── requirements.txt
 ├── .env.example
 └── manage.py
 ```
 
 ## Chạy lần đầu
 
-Dùng chung `.venv` ở gốc repo (để sau này website gọi được `src/recommender`).
+Dùng chung `.venv` ở gốc repo (để website gọi được `src/recommender`).
 
 ```powershell
 # từ thư mục gốc repo
 .\.venv\Scripts\Activate.ps1
-pip install -r web/requirements.txt
+pip install -r requirements/web.txt   # chỉ website; hoặc requirements.txt để cài tất cả
+pip install -e .                     # để import src.* từ web/
 
 cd web
 copy .env.example .env            # điền DB_PASSWORD, DJANGO_SECRET_KEY
