@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Việc làm{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <aside class="col-lg-3">
+    <form method="get" class="card shadow-sm filter-card">
+      <div class="card-body">
+        <h2 class="h6 mb-3"><i class="bi bi-funnel me-1"></i>Bộ lọc</h2>
+        <input type="hidden" name="f" value="1">
+        {% include "partials/_form_field.html" with field=form.q %}
+        {% include "partials/_form_field.html" with field=form.skill %}
+        <datalist id="skill-options">{% for s in skill_options %}<option value="{{ s }}">{% endfor %}</datalist>
+        {% include "partials/_form_field.html" with field=form.city %}
+        {% include "partials/_form_field.html" with field=form.work_mode %}
+        {% include "partials/_form_field.html" with field=form.employment_type %}
+        {% include "partials/_form_field.html" with field=form.min_salary %}
+        {% include "partials/_form_field.html" with field=form.it_only %}
+        {% include "partials/_form_field.html" with field=form.active_only %}
+        <div class="d-grid gap-2">
+          <button type="submit" class="btn btn-brand"><i class="bi bi-search me-1"></i>Lọc</button>
+          <a href="{% url 'jobs:list' %}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+        </div>
+      </div>
+    </form>
+  </aside>
+
+  <section class="col-lg-9">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h1 class="h5 mb-0">{{ page_obj.paginator.count|intcomma }} việc làm</h1>
+      <form method="get" class="d-flex align-items-center gap-2">
+        {% for key, values in request.GET.lists %}{% if key != "sort" and key != "page" %}{% for v in values %}
+          <input type="hidden" name="{{ key }}" value="{{ v }}">{% endfor %}{% endif %}{% endfor %}
+        <label for="{{ form.sort.id_for_label }}" class="small text-body-secondary text-nowrap">Sắp xếp</label>
+        <select name="sort" id="{{ form.sort.id_for_label }}" class="form-select form-select-sm" onchange="this.form.submit()">
+          {% for value, label in form.fields.sort.choices %}
+            <option value="{{ value }}" {% if form.sort.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+
+    <div class="d-grid gap-3">
+      {% for job in page_obj %}
+        {% include "partials/_job_card.html" %}
+      {% empty %}
+        <div class="text-center text-body-secondary py-5">
+          <i class="bi bi-search fs-1 d-block mb-2"></i>
+          Không tìm thấy việc làm phù hợp. Thử bỏ bớt bộ lọc{% if form.active_only.value %} hoặc tắt "Chỉ tin còn hạn"{% endif %}.
+        </div>
+      {% endfor %}
+    </div>
+
+    {% include "partials/_pagination.html" %}
+  </section>
+</div>
+{% endblock %}

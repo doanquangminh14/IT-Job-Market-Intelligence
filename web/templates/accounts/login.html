@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Đăng nhập{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-sm-10 col-md-7 col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-4 text-center">Đăng nhập</h1>
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>
+          {% endif %}
+          {% for field in form %}{% include "partials/_form_field.html" %}{% endfor %}
+          <input type="hidden" name="next" value="{{ next }}">
+          <button type="submit" class="btn btn-brand w-100">Đăng nhập</button>
+        </form>
+        <p class="text-center small mt-3 mb-0">Chưa có tài khoản? <a href="{% url 'accounts:register' %}">Đăng ký</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

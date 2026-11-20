@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Hồ sơ{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h1 class="h4 mb-0">Hồ sơ của {{ user.username }}</h1>
+      <a href="{% url 'jobs:saved' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-bookmark-heart me-1"></i>Tin đã lưu</a>
+    </div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-header bg-body">Thông tin tài khoản</div>
+        <div class="card-body">
+          <div class="row">
+            {% for field in user_form %}<div class="col-md-4">{% include "partials/_form_field.html" %}</div>{% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="card shadow-sm mb-3">
+        <div class="card-header bg-body">
+          Hồ sơ ứng viên
+          <span class="small text-body-secondary">· dùng để so khớp kỹ năng và (sắp tới) gợi ý việc làm</span>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">{% include "partials/_form_field.html" with field=profile_form.desired_title %}</div>
+            <div class="col-md-6">{% include "partials/_form_field.html" with field=profile_form.skills %}</div>
+            <div class="col-md-3">{% include "partials/_form_field.html" with field=profile_form.years_experience %}</div>
+            <div class="col-md-3">{% include "partials/_form_field.html" with field=profile_form.preferred_city %}</div>
+            <div class="col-md-3">{% include "partials/_form_field.html" with field=profile_form.preferred_work_mode %}</div>
+            <div class="col-md-3">{% include "partials/_form_field.html" with field=profile_form.min_salary %}</div>
+            <div class="col-12">{% include "partials/_form_field.html" with field=profile_form.bio %}</div>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-brand"><i class="bi bi-check2 me-1"></i>Lưu hồ sơ</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

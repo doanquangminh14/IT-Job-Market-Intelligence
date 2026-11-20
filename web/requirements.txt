@@ -1,0 +1,4 @@
+# Thư viện cho website Django (cài vào cùng .venv của repo: pip install -r web/requirements.txt)
+Django>=5.2,<6.0
+psycopg2-binary>=2.9
+python-dotenv>=1.0

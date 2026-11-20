@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb small">
+    <li class="breadcrumb-item"><a href="{% url 'jobs:list' %}">Việc làm</a></li>
+    <li class="breadcrumb-item active text-truncate" aria-current="page">{{ job.title }}</li>
+  </ol>
+</nav>
+
+<div class="row g-4">
+  <article class="col-lg-8">
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex gap-3 mb-3">
+          {% if job.company.logo_url %}
+            <img src="{{ job.company.logo_url }}" alt="" class="company-logo" referrerpolicy="no-referrer">
+          {% else %}
+            <span class="company-logo company-logo-placeholder"><i class="bi bi-building"></i></span>
+          {% endif %}
+          <div class="min-w-0">
+            <h1 class="h4 mb-1">{{ job.title }}</h1>
+            <div class="text-body-secondary">{{ job.company.name }}</div>
+          </div>
+        </div>
+
+        <div class="row row-cols-2 row-cols-md-4 g-3 small mb-3">
+          <div><div class="text-body-secondary">Mức lương</div><div class="fw-semibold">{{ job.salary_display }}</div></div>
+          <div><div class="text-body-secondary">Kinh nghiệm</div><div class="fw-semibold">{{ job.experience_display }}</div></div>
+          <div><div class="text-body-secondary">Hình thức</div><div class="fw-semibold">{{ job.get_work_mode_display|default:"—" }}</div></div>
+          <div><div class="text-body-secondary">Loại hình</div><div class="fw-semibold">{{ job.get_employment_type_display|default:"—" }}</div></div>
+          <div><div class="text-body-secondary">Thành phố</div><div class="fw-semibold">{{ job.city|default:"—" }}</div></div>
+          <div><div class="text-body-secondary">Hạn nộp</div>
+            <div class="fw-semibold {% if not job.is_active %}text-danger{% endif %}">
+              {{ job.deadline|date:"d/m/Y"|default:"—" }}{% if not job.is_active %} (hết hạn){% endif %}
+            </div>
+          </div>
+          <div><div class="text-body-secondary">Nguồn</div><div class="fw-semibold text-capitalize">{{ job.source }}</div></div>
+        </div>
+        {% if job.location %}<p class="small mb-3"><i class="bi bi-geo-alt me-1"></i>{{ job.location }}</p>{% endif %}
+
+        <div class="d-flex flex-wrap gap-2">
+          {% if job.job_url %}
+            <a href="{{ job.job_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-brand">
+              <i class="bi bi-box-arrow-up-right me-1"></i>Xem tin gốc &amp; ứng tuyển</a>
+          {% endif %}
+          {% if user.is_authenticated %}
+            <form method="post" action="{% url 'jobs:toggle_save' job.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-secondary">
+                <i class="bi {% if is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %} me-1"></i>{% if is_saved %}Đã lưu{% else %}Lưu tin{% endif %}
+              </button>
+            </form>
+          {% else %}
+            <a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}" class="btn btn-outline-secondary">
+              <i class="bi bi-bookmark me-1"></i>Đăng nhập để lưu tin</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-body fw-semibold">Mô tả công việc</div>
+      <div class="card-body job-description">
+        {{ job.description|linebreaks|default:"<p class='text-body-secondary'>Không có mô tả.</p>" }}
+      </div>
+    </div>
+  </article>
+
+  <aside class="col-lg-4">
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-body fw-semibold">Kỹ năng yêu cầu</div>
+      <div class="card-body">
+        {% if has_profile_skills %}
+          <p class="small text-body-secondary mb-2">So với kỹ năng trong hồ sơ của bạn:</p>
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            {% for s in matched_skills %}<span class="skill-badge matched small"><i class="bi bi-check2"></i> {{ s }}</span>{% endfor %}
+            {% for s in missing_skills %}<span class="skill-badge missing small">{{ s }}</span>{% endfor %}
+          </div>
+          <p class="small mb-0">Khớp {{ matched_skills|length }}/{{ job.skills.all|length }} kỹ năng.</p>
+        {% else %}
+          <div class="d-flex flex-wrap gap-1">
+            {% for s in job.skills.all %}
+              <a class="skill-badge small" href="{% url 'jobs:list' %}?skill={{ s.name|urlencode }}">{{ s.name }}</a>
+            {% empty %}<span class="text-body-secondary small">Tin không liệt kê kỹ năng.</span>{% endfor %}
+          </div>
+          {% if job.skills.all %}
+            <p class="small text-body-secondary mt-2 mb-0">
+              {% if user.is_authenticated %}<a href="{% url 'accounts:profile' %}">Thêm kỹ năng vào hồ sơ</a>{% else %}<a href="{% url 'accounts:register' %}">Đăng ký</a>{% endif %}
+              để xem bạn đã khớp bao nhiêu kỹ năng.
+            </p>
+          {% endif %}
+        {% endif %}
+        {% if job.tag_list %}
+          <hr>
+          <div class="small text-body-secondary mb-1">Thẻ ngành</div>
+          <div class="d-flex flex-wrap gap-1">
+            {% for t in job.tag_list %}<span class="badge text-bg-light border fw-normal">{{ t }}</span>{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if similar_jobs %}
+      <div class="card shadow-sm">
+        <div class="card-header bg-body fw-semibold">Tin tương tự <span class="small fw-normal text-body-secondary">(chung kỹ năng)</span></div>
+        <ul class="list-group list-group-flush">
+          {% for s in similar_jobs %}
+            <li class="list-group-item">
+              <a href="{{ s.get_absolute_url }}" class="fw-semibold text-decoration-none d-block">{{ s.title }}</a>
+              <div class="small text-body-secondary">{{ s.company.name }} · {{ s.salary_display }} · chung {{ s.shared }} kỹ năng</div>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

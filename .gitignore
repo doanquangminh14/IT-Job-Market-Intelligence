@@ -70,3 +70,7 @@ data/_probe/
 
 # Temporary scratch scripts
 scratch/
+# Django website (web/)
+web/media/
+web/staticfiles/
+web/db.sqlite3

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static humanize %}
+{% block title %}Phân tích thị trường{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Phân tích thị trường việc làm IT</h1>
+    <p class="text-body-secondary small mb-0">
+      {% if active_only %}Chỉ tính tin còn hạn nộp tại hôm nay.{% else %}Toàn bộ tin IT trong ảnh chụp dữ liệu.{% endif %}
+    </p>
+  </div>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Phạm vi dữ liệu">
+    <a href="?" class="btn {% if not active_only %}btn-brand{% else %}btn-outline-secondary{% endif %}">Tất cả tin</a>
+    <a href="?active=1" class="btn {% if active_only %}btn-brand{% else %}btn-outline-secondary{% endif %}">Còn hạn</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value">{{ overview.total_jobs|intcomma }}</div><div class="stat-label">Tin tuyển dụng</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value">{{ overview.companies|intcomma }}</div><div class="stat-label">Công ty</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value">{{ overview.skills|intcomma }}</div><div class="stat-label">Kỹ năng khác nhau</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value">{{ overview.salary_share }}%</div><div class="stat-label">Tin công khai lương</div></div></div></div>
+</div>
+
+{% if not overview.total_jobs %}
+  <div class="alert alert-warning">Chưa có dữ liệu để phân tích. Chạy <code>python manage.py import_jobs</code>.</div>
+{% else %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Top 15 kỹ năng được yêu cầu</h2>
+      <div class="chart-box" style="height:420px"><canvas id="chart-skills" aria-label="Biểu đồ kỹ năng"></canvas></div>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Số tin theo thành phố</h2>
+      <div class="chart-box" style="height:420px"><canvas id="chart-cities" aria-label="Biểu đồ thành phố"></canvas></div>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Lương trung bình theo thành phố <span class="small fw-normal text-body-secondary">(triệu VNĐ/tháng, tin có đủ khoảng lương)</span></h2>
+      <div class="chart-box"><canvas id="chart-salary" aria-label="Biểu đồ lương"></canvas></div>
+    </div></div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Hình thức làm việc</h2>
+      <div class="chart-box"><canvas id="chart-workmode" aria-label="Biểu đồ hình thức"></canvas></div>
+    </div></div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Loại hình</h2>
+      <div class="chart-box"><canvas id="chart-employment" aria-label="Biểu đồ loại hình"></canvas></div>
+    </div></div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Công ty tuyển nhiều nhất</h2>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>#</th><th>Công ty</th><th class="text-end">Số tin</th></tr></thead>
+          <tbody>
+            {% for c in charts.companies %}
+              <tr><td class="text-body-secondary">{{ forloop.counter }}</td>
+                  <td><a href="{% url 'jobs:list' %}?q={{ c.label|urlencode }}&f=1&it_only=on{% if active_only %}&active_only=on{% endif %}" class="text-decoration-none">{{ c.label }}</a></td>
+                  <td class="text-end">{{ c.n }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Nguồn dữ liệu</h2>
+      <div class="chart-box"><canvas id="chart-sources" aria-label="Biểu đồ nguồn"></canvas></div>
+    </div></div>
+  </div>
+</div>
+{% endif %}
+
+{{ charts|json_script:"chart-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/analytics.js' %}"></script>
+{% endblock %}

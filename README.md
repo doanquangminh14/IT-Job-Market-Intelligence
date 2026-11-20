@@ -13,6 +13,7 @@ Hệ thống thu thập, làm sạch, phân tích dữ liệu thị trường vi
 | **`src/quality/`** | [📖 Data Quality](src/quality/README.md) | Rule engine phân luồng bản ghi `valid` / `invalid` / `quarantine`, sinh tầng Master Bronze. |
 | **`sql/`** | [📖 Thiết kế Silver (PostgreSQL)](sql/README.md) | ERD 9 bảng, schema Silver / Gold. |
 | **`notebook/`** | [📖 Notebook](notebook/README.md) | Quy trình làm sạch, NLP, EDA và xây dựng + đánh giá hệ gợi ý CBF. **Nơi nên đọc đầu tiên để hiểu logic.** |
+| **`web/`** | [📖 Website Django](web/README.md) | Website tra cứu / lọc việc làm, tài khoản & hồ sơ ứng viên, lưu tin, dashboard phân tích (Django + PostgreSQL). |
 | **`tests/`** | [📖 Test Suite](tests/README.md) | Pytest (89 test), cơ chế Sandbox Output cô lập không làm bẩn dữ liệu raw. |
 | **`reports/`** | [📋 Báo cáo Profiling](reports/profiling/latest_summary.md) | Tình trạng dữ liệu thô và lịch sử chỉ số chất lượng. |
 
