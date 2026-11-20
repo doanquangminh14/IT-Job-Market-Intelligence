@@ -36,10 +36,8 @@ notebook/
 │   ├── 02_simulated_data_inspection.ipynb       → Xem dữ liệu mô phỏng TRƯỚC khi làm CF
 │   └── 03_matrix_factorization.ipynb            → Matrix Factorization (ALS) + so sánh mô hình
 │
-├── 07_hybrid/
-│   └── 01_hybrid_cbf_cf_for_app.ipynb           → Thiết kế & kiểm chứng Hybrid CBF + CF dùng trong Streamlit  ★
-│
-└── _archive/                                    # Thử nghiệm cũ (collaborative filtering, hybrid, bảng Silver)
+└── 07_hybrid/
+    └── 01_hybrid_cbf_cf_for_app.ipynb           → Thiết kế & kiểm chứng Hybrid CBF + CF dùng trong Streamlit  ★
 ```
 
 **Thứ tự khuyến nghị:** `02/01` ➔ `02/02` (sinh `jobs_clean.csv`) ➔ `04` ➔ `05` ➔ `06` ➔ `07`.

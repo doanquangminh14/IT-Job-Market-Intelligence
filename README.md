@@ -199,7 +199,6 @@ IT-Job-Market-Intelligence/
 │   ├── embeddings/               # Sinh vector ngữ nghĩa (SentenceTransformer, thử nghiệm)
 │   └── schemas/                  # Pydantic schema JobListingRaw / JobDetailRaw
 ├── tests/                        # Pytest (unit + integration)
-├── _archive/                     # Mã cũ: FastAPI + web HTML, collaborative filtering (không còn dùng)
 ├── main_crawl.py · main_quality.py · main_profile.py · run_pipeline.py   # CLI
 └── requirements.txt
 ```
