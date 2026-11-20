@@ -4,15 +4,11 @@
 # Crawl / HTTP
 requests>=2.31.0
 beautifulsoup4>=4.12.0
-httpx>=0.25.0
 curl_cffi>=0.7.0
 
 # NLP & embedding
-spacy>=3.7.0
 sentence-transformers>=2.2.0
 torch>=2.0.0
-nltk>=3.8.1
-huggingface_hub>=0.23
 
 # Notebook, bieu do, Streamlit (app/)
 streamlit>=1.30.0
