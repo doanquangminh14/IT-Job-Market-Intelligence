@@ -18,7 +18,7 @@ from scipy.stats import rankdata
 from src.recommender.collaborative import CFModel, InteractionLog, build_training_events
 from src.recommender.content_based import ContentBasedRecommender
 
-W_CBF = 0.5                   # notebook 07, mục 3 (chọn trên validation theo Oracle-P@10)
+W_CBF = 0.6                   # notebook 07, mục 3 (chọn trên validation theo Oracle-P@10)
 MIN_USER_INTERACTIONS = 1     # notebook 07, mục 4
 CF_HIGHLIGHT_PCT = 80.0       # điểm CF từ mức này thì lời giải thích nhắc tới hành vi của người dùng tương tự
 
