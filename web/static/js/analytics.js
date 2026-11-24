@@ -20,6 +20,20 @@
   Chart.defaults.plugins.tooltip.cornerRadius = 8;
   Chart.defaults.plugins.tooltip.titleFont = { size: 13, weight: "bold" };
 
+  // Bấm vào cột/lát của biểu đồ để mở danh sách việc làm tương ứng (mỗi dòng dữ liệu có sẵn "url" do server tạo)
+  function linkTo(rows) {
+    return {
+      onClick: (_evt, elements) => {
+        const row = elements.length ? rows[elements[0].index] : null;
+        if (row && row.url) window.location.href = row.url;
+      },
+      onHover: (evt, elements) => {
+        const clickable = elements.length && rows[elements[0].index] && rows[elements[0].index].url;
+        evt.native.target.style.cursor = clickable ? "pointer" : "default";
+      },
+    };
+  }
+
   function draw(id, config) {
     const canvas = document.getElementById(id);
     if (canvas) new Chart(canvas, config);
@@ -39,6 +53,7 @@
         }],
       },
       options: {
+        ...linkTo(rows),
         indexAxis: "y",
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
@@ -63,6 +78,7 @@
         }],
       },
       options: {
+        ...linkTo(rows),
         maintainAspectRatio: false,
         cutout: "68%",
         plugins: {
@@ -75,7 +91,7 @@
     });
   }
 
-  hbar("chart-skills", data.skills, "name", "n", BRAND);
+  hbar("chart-skills", data.skills, "label", "n", BRAND);
   hbar("chart-cities", data.cities, "label", "n", ACCENT);
 
   draw("chart-salary", {
@@ -84,14 +100,14 @@
       labels: data.salary_by_city.map((r) => `${r.label} (${r.n})`),
       datasets: [
         {
-          label: "Mức sàn TB",
+          label: "Mức sàn trung vị",
           data: data.salary_by_city.map((r) => r.lo),
           backgroundColor: ACCENT,
           borderRadius: 6,
           maxBarThickness: 32,
         },
         {
-          label: "Mức trần TB",
+          label: "Mức trần trung vị",
           data: data.salary_by_city.map((r) => r.hi),
           backgroundColor: BRAND,
           borderRadius: 6,

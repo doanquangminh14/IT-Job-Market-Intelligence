@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Job
+from .models import EXPERIENCE_CHOICES, Job
 
 
 class JobFilterForm(forms.Form):
@@ -19,6 +19,11 @@ class JobFilterForm(forms.Form):
                                   choices=[("", "Tất cả")] + list(Job.WorkMode.choices))
     employment_type = forms.ChoiceField(label="Loại hình", required=False,
                                         choices=[("", "Tất cả")] + list(Job.EmploymentType.choices))
+    experience = forms.ChoiceField(label="Kinh nghiệm", required=False,
+                                   choices=[("", "Tất cả")] + EXPERIENCE_CHOICES)
+    # Hai trường ẩn, chỉ đến từ link của trang Phân tích (bấm vào công ty / kỹ năng đi kèm)
+    company = forms.IntegerField(required=False, min_value=1, widget=forms.HiddenInput)
+    with_skill = forms.CharField(required=False, max_length=100, widget=forms.HiddenInput)
     min_salary = forms.IntegerField(label="Lương từ (triệu)", required=False, min_value=0,
                                     widget=forms.NumberInput(attrs={"placeholder": "vd. 15"}))
     it_only = forms.BooleanField(label="Chỉ ngành IT", required=False, initial=True)
@@ -29,6 +34,8 @@ class JobFilterForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields["city"].choices = [("", "Tất cả")] + [(c, c) for c in cities]
         for name, field in self.fields.items():
+            if isinstance(field.widget, forms.HiddenInput):
+                continue
             if isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs["class"] = "form-check-input"
             elif isinstance(field.widget, forms.Select):

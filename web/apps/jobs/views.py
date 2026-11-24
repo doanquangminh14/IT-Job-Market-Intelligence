@@ -7,9 +7,11 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .forms import JobFilterForm
-from .models import Job, SavedJob, Skill
+from .models import Company, Job, SavedJob, Skill, experience_q
 
 PAGE_SIZE = 20
+# Khách chưa đăng nhập chỉ xem được trang đầu tiên của danh sách (quyết định CEO, thảo luận #001)
+ANONYMOUS_PAGES = 1
 
 
 def _filter_data(request):
@@ -40,8 +42,13 @@ def job_list(request):
                                | Q(skills__name__iexact=q) | Q(tags__icontains=q)).distinct()
         if cd["city"]:
             jobs = jobs.filter(city=cd["city"])
-        if cd["skill"]:
-            jobs = jobs.filter(skills__name__iexact=cd["skill"].strip())
+        for name in (cd["skill"], cd["with_skill"]):
+            if name and name.strip():
+                jobs = jobs.filter(id__in=Job.objects.filter(skills__name__iexact=name.strip()).values("id"))
+        if cd["experience"]:
+            jobs = jobs.filter(experience_q(cd["experience"]))
+        if cd["company"]:
+            jobs = jobs.filter(company_id=cd["company"])
         if cd["work_mode"]:
             jobs = jobs.filter(work_mode=cd["work_mode"])
         if cd["employment_type"]:
@@ -61,7 +68,9 @@ def job_list(request):
     else:
         jobs = jobs.order_by(F("deadline").desc(nulls_last=True), "-id")
 
-    page = Paginator(jobs, PAGE_SIZE).get_page(request.GET.get("page"))
+    paginator = Paginator(jobs, PAGE_SIZE)
+    limited = not request.user.is_authenticated and paginator.num_pages > ANONYMOUS_PAGES
+    page = paginator.get_page(1 if limited else request.GET.get("page"))
 
     # Giữ nguyên bộ lọc khi chuyển trang
     params = request.GET.copy()
@@ -71,9 +80,15 @@ def job_list(request):
     if request.user.is_authenticated:
         saved_ids = set(request.user.saved_jobs.values_list("job_id", flat=True))
 
+    company = None
+    if form.is_valid() and form.cleaned_data["company"]:
+        company = Company.objects.filter(pk=form.cleaned_data["company"]).first()
+
     context = {
         "form": form,
         "page_obj": page,
+        "limited": limited,
+        "company": company,
         "querystring": params.urlencode(),
         "saved_ids": saved_ids,
         "skill_options": Skill.objects.annotate(n=Count("jobs")).order_by("-n").values_list("name", flat=True)[:200],

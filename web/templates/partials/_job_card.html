@@ -4,7 +4,7 @@
     {% if job.company.logo_url %}
       <img src="{{ job.company.logo_url }}" alt="{{ job.company.name }}" class="company-logo" loading="lazy" referrerpolicy="no-referrer">
     {% else %}
-      <span class="company-logo company-logo-placeholder"><i class="bi bi-building"></i></span>
+      <span class="company-logo company-logo-placeholder">{{ job.company.name|slice:":2"|upper }}</span>
     {% endif %}
     
     <div class="flex-grow-1 min-w-0">
@@ -24,7 +24,7 @@
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
             <button class="btn-save-job {% if job.pk in saved_ids %}active{% endif %}" type="submit"
                     title="{% if job.pk in saved_ids %}Bỏ lưu tin{% else %}Lưu tin tuyển dụng{% endif %}">
-              <i class="bi {% if job.pk in saved_ids %}bi-bookmark-heart-fill{% else %}bi-bookmark{% endif %}"></i>
+              <span class="small">{% if job.pk in saved_ids %}Đã lưu{% else %}Lưu{% endif %}</span>
             </button>
           </form>
         {% endif %}
@@ -32,24 +32,24 @@
 
       <div class="d-flex flex-wrap gap-2 mb-3">
         <span class="meta-pill meta-pill-salary">
-          <i class="bi bi-currency-dollar"></i>{{ job.salary_display }}
+          {{ job.salary_display }}
         </span>
         {% if job.city %}
           <span class="meta-pill">
-            <i class="bi bi-geo-alt"></i>{{ job.city }}
+            {{ job.city }}
           </span>
         {% endif %}
         {% if job.work_mode %}
           <span class="meta-pill meta-pill-mode">
-            <i class="bi bi-laptop"></i>{{ job.get_work_mode_display }}
+            {{ job.get_work_mode_display }}
           </span>
         {% endif %}
         <span class="meta-pill">
-          <i class="bi bi-briefcase"></i>{{ job.experience_display }}
+          {{ job.experience_display }}
         </span>
         {% if job.deadline %}
           <span class="meta-pill {% if not job.is_active %}meta-pill-danger{% endif %}">
-            <i class="bi bi-calendar3"></i>{% if job.is_active %}Hạn {{ job.deadline|date:"d/m/Y" }}{% else %}Hết hạn{% endif %}
+            {% if job.is_active %}Hạn: {{ job.deadline|date:"d/m/Y" }}{% else %}Hết hạn{% endif %}
           </span>
         {% endif %}
       </div>

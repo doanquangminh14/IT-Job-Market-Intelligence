@@ -4,7 +4,7 @@
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-3">
   <ol class="breadcrumb small">
-    <li class="breadcrumb-item"><a href="{% url 'jobs:list' %}" class="text-decoration-none text-muted"><i class="bi bi-briefcase me-1"></i>Việc làm</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'jobs:list' %}" class="text-decoration-none text-muted">Việc làm</a></li>
     <li class="breadcrumb-item active text-truncate fw-medium" aria-current="page">{{ job.title }}</li>
   </ol>
 </nav>
@@ -16,13 +16,13 @@
         {% if job.company.logo_url %}
           <img src="{{ job.company.logo_url }}" alt="{{ job.company.name }}" class="company-logo" style="width:64px;height:64px;" referrerpolicy="no-referrer">
         {% else %}
-          <span class="company-logo company-logo-placeholder" style="width:64px;height:64px;font-size:1.75rem;"><i class="bi bi-building"></i></span>
+          <span class="company-logo company-logo-placeholder" style="width:64px;height:64px;font-size:1.25rem;font-weight:700;">{{ job.company.name|slice:":2"|upper }}</span>
         {% endif %}
         <div class="min-w-0 flex-grow-1">
           <h1 class="h4 fw-bold mb-1 text-dark">{{ job.title }}</h1>
           <div class="text-muted fw-medium d-flex align-items-center gap-2">
             <span class="text-brand">{{ job.company.name }}</span>
-            <span class="badge text-bg-light border text-capitalize"><i class="bi bi-link-45deg me-1"></i>{{ job.source }}</span>
+            <span class="badge text-bg-light border text-capitalize">{{ job.source }}</span>
           </div>
         </div>
       </div>
@@ -30,37 +30,37 @@
       <div class="row row-cols-2 row-cols-md-3 g-2 mb-4">
         <div class="col">
           <div class="detail-fact-box">
-            <div class="fact-label text-success"><i class="bi bi-cash-coin me-1"></i>Mức lương</div>
+            <div class="fact-label text-success">Mức lương</div>
             <div class="fact-value text-success">{{ job.salary_display }}</div>
           </div>
         </div>
         <div class="col">
           <div class="detail-fact-box">
-            <div class="fact-label"><i class="bi bi-briefcase me-1"></i>Kinh nghiệm</div>
+            <div class="fact-label">Kinh nghiệm</div>
             <div class="fact-value">{{ job.experience_display }}</div>
           </div>
         </div>
         <div class="col">
           <div class="detail-fact-box">
-            <div class="fact-label text-brand"><i class="bi bi-laptop me-1"></i>Hình thức</div>
+            <div class="fact-label text-brand">Hình thức</div>
             <div class="fact-value">{{ job.get_work_mode_display|default:"—" }}</div>
           </div>
         </div>
         <div class="col">
           <div class="detail-fact-box">
-            <div class="fact-label"><i class="bi bi-geo-alt me-1"></i>Thành phố</div>
+            <div class="fact-label">Thành phố</div>
             <div class="fact-value">{{ job.city|default:"—" }}</div>
           </div>
         </div>
         <div class="col">
           <div class="detail-fact-box">
-            <div class="fact-label"><i class="bi bi-clock-history me-1"></i>Loại hình</div>
+            <div class="fact-label">Loại hình</div>
             <div class="fact-value">{{ job.get_employment_type_display|default:"—" }}</div>
           </div>
         </div>
         <div class="col">
           <div class="detail-fact-box">
-            <div class="fact-label {% if not job.is_active %}text-danger{% endif %}"><i class="bi bi-calendar-event me-1"></i>Hạn nộp hồ sơ</div>
+            <div class="fact-label {% if not job.is_active %}text-danger{% endif %}">Hạn nộp hồ sơ</div>
             <div class="fact-value {% if not job.is_active %}text-danger{% endif %}">
               {{ job.deadline|date:"d/m/Y"|default:"—" }}{% if not job.is_active %} <span class="small fw-normal">(Hết hạn)</span>{% endif %}
             </div>
@@ -69,9 +69,8 @@
       </div>
 
       {% if job.location %}
-        <p class="small text-muted mb-4 p-2 bg-light rounded-3 d-flex align-items-center gap-2">
-          <i class="bi bi-pin-map text-brand fs-6"></i>
-          <span><strong>Địa chỉ làm việc:</strong> {{ job.location }}</span>
+        <p class="small text-muted mb-4 p-2 bg-light rounded-3">
+          <strong>Địa chỉ làm việc:</strong> {{ job.location }}
         </p>
       {% endif %}
 

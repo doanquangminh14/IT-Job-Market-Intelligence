@@ -3,160 +3,228 @@
 {% block title %}Phân tích thị trường IT{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 bg-white p-4 rounded-3 border shadow-xs">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 bg-white p-4 rounded-3 border shadow-xs">
   <div>
-    <h1 class="h4 fw-bold mb-1 text-dark d-flex align-items-center gap-2">
-      <span class="navbar-brand-badge"><i class="bi bi-bar-chart-fill"></i></span>
-      <span>Phân tích toàn cảnh thị trường việc làm IT</span>
+    <h1 class="h4 fw-bold mb-1 text-dark">
+      Phân tích toàn cảnh thị trường việc làm IT
     </h1>
     <p class="text-muted small mb-0">
-      {% if active_only %}Dữ liệu tính toán trên các tin tuyển dụng còn hạn nộp tại thời điểm hôm nay.{% else %}Toàn bộ cơ sở dữ liệu việc làm IT đã qua chuẩn hóa và làm sạch.{% endif %}
+      {% if filters.active %}Tính trên các tin còn hạn nộp tại thời điểm hôm nay.{% else %}Tính trên toàn bộ tin IT đã chuẩn hóa (gồm cả tin đã hết hạn).{% endif %}
+      {% if overview.last_import %}<span class="ms-1">· Cập nhật dữ liệu: {{ overview.last_import|date:"d/m/Y" }}</span>{% endif %}
     </p>
-  </div>
-  <div class="btn-group p-1 bg-light rounded-pill border" role="group" aria-label="Phạm vi dữ liệu">
-    <a href="?" class="btn btn-sm rounded-pill px-3 fw-semibold {% if not active_only %}btn-brand shadow-xs{% else %}text-muted{% endif %}">Tất cả dữ liệu</a>
-    <a href="?active=1" class="btn btn-sm rounded-pill px-3 fw-semibold {% if active_only %}btn-brand shadow-xs{% else %}text-muted{% endif %}">Chỉ tin còn hạn</a>
   </div>
 </div>
 
+<form method="get" class="dashboard-filter card p-3 mb-3 shadow-xs" aria-label="Bộ lọc phân tích">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-4 col-lg-2">
+      <label for="f-active" class="form-label small">Phạm vi</label>
+      <select id="f-active" name="active" class="form-select form-select-sm">
+        <option value="">Tất cả tin</option>
+        <option value="1" {% if filters.active %}selected{% endif %}>Chỉ tin còn hạn</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <label for="f-city" class="form-label small">Thành phố</label>
+      <select id="f-city" name="city" class="form-select form-select-sm">
+        <option value="">Tất cả</option>
+        {% for c in city_choices %}<option value="{{ c }}" {% if filters.city == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <label for="f-work" class="form-label small">Hình thức</label>
+      <select id="f-work" name="work_mode" class="form-select form-select-sm">
+        <option value="">Tất cả</option>
+        {% for v, l in work_mode_choices %}<option value="{{ v }}" {% if filters.work_mode == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <label for="f-emp" class="form-label small">Loại hình</label>
+      <select id="f-emp" name="employment_type" class="form-select form-select-sm">
+        <option value="">Tất cả</option>
+        {% for v, l in employment_choices %}<option value="{{ v }}" {% if filters.employment_type == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <label for="f-exp" class="form-label small">Kinh nghiệm</label>
+      <select id="f-exp" name="experience" class="form-select form-select-sm">
+        <option value="">Tất cả</option>
+        {% for v, l in experience_choices %}<option value="{{ v }}" {% if filters.experience == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+      </select>
+    </div>
+    {% if filters.skill %}<input type="hidden" name="skill" value="{{ filters.skill }}">{% endif %}
+    <div class="col-6 col-md-4 col-lg-2 d-flex gap-2">
+      <button type="submit" class="btn btn-brand btn-sm flex-grow-1">Lọc</button>
+      <a href="{% url 'analytics:dashboard' %}" class="btn btn-outline-secondary btn-sm">Đặt lại</a>
+    </div>
+  </div>
+  {% if summary %}
+    <div class="small text-muted mt-2" role="status">
+      Đang lọc:
+      {% for s in summary %}<span class="badge bg-brand-soft text-brand ms-1">{{ s }}</span>{% endfor %}
+      {% if filters.skill %}
+        <a href="?{{ clear_skill_query }}" class="ms-2 small">Bỏ lọc kỹ năng</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</form>
+
 <div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card h-100">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="stat-label mb-0">Tổng tin IT</span>
-        <i class="bi bi-briefcase text-brand fs-5"></i>
-      </div>
+      <span class="stat-label">Tổng tin IT</span>
       <div class="stat-value text-brand">{{ overview.total_jobs|intcomma }}</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card h-100">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="stat-label mb-0">Doanh nghiệp</span>
-        <i class="bi bi-buildings text-info fs-5"></i>
-      </div>
+      <span class="stat-label">Tin còn hạn</span>
+      <div class="stat-value text-success">{{ overview.active_jobs|intcomma }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="stat-card h-100">
+      <span class="stat-label">Doanh nghiệp</span>
       <div class="stat-value text-info">{{ overview.companies|intcomma }}</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card h-100">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="stat-label mb-0">Kỹ năng công nghệ</span>
-        <i class="bi bi-cpu text-warning fs-5"></i>
-      </div>
+      <span class="stat-label">Kỹ năng công nghệ</span>
       <div class="stat-value text-warning">{{ overview.skills|intcomma }}</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card h-100">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="stat-label mb-0">Công khai lương</span>
-        <i class="bi bi-cash-stack text-success fs-5"></i>
-      </div>
-      <div class="stat-value text-success">{{ overview.salary_share }}%</div>
+      <span class="stat-label">Lương trung vị</span>
+      {% if salary_overall.median is not None %}
+        <div class="stat-value text-success">{{ salary_overall.median }} <small class="fs-6 fw-semibold">triệu</small></div>
+        <div class="small text-muted">Dựa trên {{ salary_overall.n|intcomma }} tin có khoảng lương</div>
+      {% else %}
+        <div class="stat-value text-muted fs-5">Chưa đủ dữ liệu</div>
+        <div class="small text-muted">Cần ít nhất {{ min_sample }} tin có khoảng lương</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="stat-card h-100">
+      <span class="stat-label">Thông tin lương</span>
+      <div class="small"><span class="fw-bold fs-5">{{ overview.salary_share }}%</span> có ghi lương</div>
+      <div class="small"><span class="fw-bold fs-5">{{ overview.salary_range_share }}%</span> có khoảng lương</div>
     </div>
   </div>
 </div>
 
 {% if not overview.total_jobs %}
   <div class="alert alert-warning rounded-3 shadow-xs">
-    <i class="bi bi-exclamation-triangle me-1"></i> Chưa có dữ liệu để phân tích. Vui lòng chạy <code>python manage.py import_jobs</code>.
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    {% if summary %}Không có tin nào khớp bộ lọc hiện tại. <a href="{% url 'analytics:dashboard' %}">Đặt lại bộ lọc</a>.
+    {% else %}Chưa có dữ liệu để phân tích. Vui lòng chạy <code>python manage.py import_jobs</code>.{% endif %}
   </div>
 {% else %}
 <div class="row g-4">
   <div class="col-lg-7">
     <div class="card card-modern h-100 p-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h6 fw-bold mb-0 text-dark"><i class="bi bi-trophy text-warning me-1"></i> Top 15 kỹ năng được yêu cầu nhiều nhất</h2>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h2 class="h6 fw-bold mb-0 text-dark">
+          {% if filters.skill %}Kỹ năng đi kèm {{ filters.skill }} ({{ overview.total_jobs|intcomma }} tin){% else %}Top 15 kỹ năng được yêu cầu nhiều nhất{% endif %}
+        </h2>
         <span class="badge bg-light text-muted border">Số lượng tin</span>
       </div>
-      <div class="chart-box" style="height:420px"><canvas id="chart-skills" aria-label="Biểu đồ kỹ năng"></canvas></div>
+      <p class="small text-muted mb-3">Bấm vào một cột để xem các tin tương ứng.</p>
+      {% if charts.skills %}
+        <div class="chart-box chart-box-tall"><canvas id="chart-skills" role="img" aria-label="Biểu đồ kỹ năng"></canvas></div>
+        {% include "analytics/_chart_table.html" with rows=charts.skills caption="Kỹ năng theo số tin" %}
+      {% else %}<p class="chart-empty">Không có dữ liệu kỹ năng.</p>{% endif %}
     </div>
   </div>
-  
+
   <div class="col-lg-5">
     <div class="card card-modern h-100 p-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h6 fw-bold mb-0 text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Phân bổ tin theo thành phố</h2>
-        <span class="badge bg-light text-muted border">Khu vực</span>
-      </div>
-      <div class="chart-box" style="height:420px"><canvas id="chart-cities" aria-label="Biểu đồ thành phố"></canvas></div>
+      <h2 class="h6 fw-bold mb-3 text-dark">Phân bổ tin theo thành phố</h2>
+      {% if charts.cities %}
+        <div class="chart-box chart-box-tall"><canvas id="chart-cities" role="img" aria-label="Biểu đồ thành phố"></canvas></div>
+        {% include "analytics/_chart_table.html" with rows=charts.cities caption="Số tin theo thành phố" %}
+      {% else %}<p class="chart-empty">Không có dữ liệu thành phố.</p>{% endif %}
     </div>
   </div>
-  
+
   <div class="col-lg-6">
     <div class="card card-modern h-100 p-4">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-        <h2 class="h6 fw-bold mb-0 text-dark"><i class="bi bi-currency-dollar text-success me-1"></i> Mức lương trung bình theo khu vực</h2>
-      </div>
-      <p class="small text-muted mb-3">Đơn vị: triệu VNĐ/tháng (chỉ tính các tin có khoảng lương rõ ràng)</p>
-      <div class="chart-box"><canvas id="chart-salary" aria-label="Biểu đồ lương"></canvas></div>
+      <h2 class="h6 fw-bold mb-1 text-dark">Lương trung vị theo khu vực</h2>
+      <p class="small text-muted mb-3">Triệu VNĐ/tháng. Mức sàn và mức trần trung vị, chỉ tính tin có khoảng lương; chỉ hiện thành phố có từ {{ min_sample }} tin trở lên. Số trong ngoặc là số tin.</p>
+      {% if charts.salary_by_city %}
+        <div class="chart-box"><canvas id="chart-salary" role="img" aria-label="Biểu đồ lương theo khu vực"></canvas></div>
+        <table class="visually-hidden">
+          <caption>Lương trung vị theo thành phố (triệu VNĐ/tháng)</caption>
+          <thead><tr><th scope="col">Thành phố</th><th scope="col">Mức sàn</th><th scope="col">Mức trần</th><th scope="col">Số tin</th></tr></thead>
+          <tbody>{% for r in charts.salary_by_city %}<tr><td>{{ r.label }}</td><td>{{ r.lo }}</td><td>{{ r.hi }}</td><td>{{ r.n }}</td></tr>{% endfor %}</tbody>
+        </table>
+      {% else %}<p class="chart-empty">Chưa đủ tin có khoảng lương để so sánh theo khu vực.</p>{% endif %}
     </div>
   </div>
-  
+
   <div class="col-md-6 col-lg-3">
     <div class="card card-modern h-100 p-4">
-      <h2 class="h6 fw-bold mb-3 text-dark"><i class="bi bi-laptop text-brand me-1"></i> Hình thức làm việc</h2>
-      <div class="chart-box"><canvas id="chart-workmode" aria-label="Biểu đồ hình thức"></canvas></div>
+      <h2 class="h6 fw-bold mb-3 text-dark">Hình thức làm việc</h2>
+      {% if charts.work_modes %}
+        <div class="chart-box"><canvas id="chart-workmode" role="img" aria-label="Biểu đồ hình thức làm việc"></canvas></div>
+        {% include "analytics/_chart_table.html" with rows=charts.work_modes caption="Số tin theo hình thức làm việc" %}
+      {% else %}<p class="chart-empty">Không có dữ liệu.</p>{% endif %}
     </div>
   </div>
-  
+
   <div class="col-md-6 col-lg-3">
     <div class="card card-modern h-100 p-4">
-      <h2 class="h6 fw-bold mb-3 text-dark"><i class="bi bi-clock-history text-purple me-1"></i> Loại hình công việc</h2>
-      <div class="chart-box"><canvas id="chart-employment" aria-label="Biểu đồ loại hình"></canvas></div>
+      <h2 class="h6 fw-bold mb-3 text-dark">Loại hình công việc</h2>
+      {% if charts.employment_types %}
+        <div class="chart-box"><canvas id="chart-employment" role="img" aria-label="Biểu đồ loại hình công việc"></canvas></div>
+        {% include "analytics/_chart_table.html" with rows=charts.employment_types caption="Số tin theo loại hình" %}
+      {% else %}<p class="chart-empty">Không có dữ liệu.</p>{% endif %}
     </div>
   </div>
-  
+
   <div class="col-lg-8">
     <div class="card card-modern h-100 p-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h6 fw-bold mb-0 text-dark"><i class="bi bi-buildings-fill text-primary me-1"></i> Top doanh nghiệp tuyển dụng nhiều nhất</h2>
-        <span class="small text-muted">Bấm vào công ty để lọc tin</span>
+        <h2 class="h6 fw-bold mb-0 text-dark">Top doanh nghiệp tuyển dụng nhiều nhất</h2>
+        <span class="small text-muted">Bấm vào công ty để xem tin</span>
       </div>
+      {% if charts.companies %}
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th style="width: 50px;">#</th>
-              <th>Công ty tuyển dụng</th>
-              <th class="text-end" style="width: 140px;">Số lượng tin</th>
+              <th scope="col" class="col-rank">#</th>
+              <th scope="col">Công ty tuyển dụng</th>
+              <th scope="col" class="text-end col-count">Số lượng tin</th>
             </tr>
           </thead>
           <tbody>
             {% for c in charts.companies %}
               <tr>
                 <td>
-                  {% if forloop.counter == 1 %}
-                    <span class="badge bg-warning text-dark rounded-circle" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;">1</span>
-                  {% elif forloop.counter == 2 %}
-                    <span class="badge bg-secondary text-white rounded-circle" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;">2</span>
-                  {% elif forloop.counter == 3 %}
-                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-circle" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;">3</span>
-                  {% else %}
-                    <span class="text-muted small ps-1">{{ forloop.counter }}</span>
-                  {% endif %}
+                  {% if forloop.counter <= 3 %}<span class="rank-badge rank-{{ forloop.counter }}">{{ forloop.counter }}</span>
+                  {% else %}<span class="text-muted small ps-1">{{ forloop.counter }}</span>{% endif %}
                 </td>
-                <td>
-                  <a href="{% url 'jobs:list' %}?q={{ c.label|urlencode }}&f=1&it_only=on{% if active_only %}&active_only=on{% endif %}" class="fw-semibold text-dark text-decoration-none hover-brand">
-                    {{ c.label }}
-                  </a>
-                </td>
-                <td class="text-end">
-                  <span class="badge bg-brand-soft text-brand fw-bold px-2 py-1 rounded-pill">{{ c.n }} tin</span>
-                </td>
+                <td><a href="{{ c.url }}" class="fw-semibold text-dark text-decoration-none hover-brand">{{ c.label }}</a></td>
+                <td class="text-end"><span class="badge bg-brand-soft text-brand fw-bold px-2 py-1 rounded-pill">{{ c.n }} tin</span></td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      {% else %}<p class="chart-empty">Không có dữ liệu.</p>{% endif %}
     </div>
   </div>
-  
+
   <div class="col-lg-4">
     <div class="card card-modern h-100 p-4">
-      <h2 class="h6 fw-bold mb-3 text-dark"><i class="bi bi-pie-chart-fill text-info me-1"></i> Nguồn thu thập dữ liệu</h2>
-      <div class="chart-box"><canvas id="chart-sources" aria-label="Biểu đồ nguồn"></canvas></div>
+      <h2 class="h6 fw-bold mb-3 text-dark">Nguồn thu thập dữ liệu</h2>
+      {% if charts.sources %}
+        <div class="chart-box"><canvas id="chart-sources" role="img" aria-label="Biểu đồ nguồn dữ liệu"></canvas></div>
+        {% include "analytics/_chart_table.html" with rows=charts.sources caption="Số tin theo nguồn" %}
+      {% else %}<p class="chart-empty">Không có dữ liệu.</p>{% endif %}
     </div>
   </div>
 </div>
@@ -166,6 +234,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <script src="{% static 'js/analytics.js' %}"></script>
 {% endblock %}

@@ -7,11 +7,13 @@
   <aside class="col-lg-3">
     <form method="get" class="card filter-card p-3 shadow-xs">
       <div class="d-flex align-items-center justify-content-between pb-2 mb-3 border-bottom">
-        <h2 class="h6 fw-bold mb-0 text-brand"><i class="bi bi-funnel-fill me-1"></i> Bộ lọc tìm kiếm</h2>
+        <h2 class="h6 fw-bold mb-0 text-dark">Bộ lọc tìm kiếm</h2>
         <a href="{% url 'jobs:list' %}" class="small text-muted text-decoration-none">Đặt lại</a>
       </div>
       <input type="hidden" name="f" value="1">
-      
+      {% if form.company.value %}{{ form.company }}{% endif %}
+      {% if form.with_skill.value %}{{ form.with_skill }}{% endif %}
+
       {% include "partials/_form_field.html" with field=form.q %}
       {% include "partials/_form_field.html" with field=form.skill %}
       <datalist id="skill-options">{% for s in skill_options %}<option value="{{ s }}">{% endfor %}</datalist>
@@ -20,6 +22,7 @@
         <div class="col-12">{% include "partials/_form_field.html" with field=form.city %}</div>
         <div class="col-12">{% include "partials/_form_field.html" with field=form.work_mode %}</div>
         <div class="col-12">{% include "partials/_form_field.html" with field=form.employment_type %}</div>
+        <div class="col-12">{% include "partials/_form_field.html" with field=form.experience %}</div>
         <div class="col-12">{% include "partials/_form_field.html" with field=form.min_salary %}</div>
       </div>
 
@@ -29,7 +32,7 @@
       </div>
 
       <div class="d-grid gap-2">
-        <button type="submit" class="btn btn-brand py-2"><i class="bi bi-search me-1"></i>Áp dụng bộ lọc</button>
+        <button type="submit" class="btn btn-brand py-2">Áp dụng bộ lọc</button>
       </div>
     </form>
   </aside>
@@ -37,15 +40,17 @@
   <section class="col-lg-9">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 bg-white p-3 rounded-3 border shadow-xs">
       <div>
-        <span class="badge bg-brand-soft text-brand fw-bold px-3 py-2 rounded-pill fs-6">
-          <i class="bi bi-briefcase-fill me-1"></i> {{ page_obj.paginator.count|intcomma }} việc làm
+        <span class="badge bg-brand-soft text-brand fw-bold px-3 py-2 rounded-2 fs-6">
+          {{ page_obj.paginator.count|intcomma }} việc làm
         </span>
+        {% if company %}<span class="badge bg-light text-dark border ms-1">Công ty: {{ company.name }}</span>{% endif %}
+        {% if form.with_skill.value %}<span class="badge bg-light text-dark border ms-1">Kèm kỹ năng: {{ form.with_skill.value }}</span>{% endif %}
       </div>
       <form method="get" class="d-flex align-items-center gap-2">
         {% for key, values in request.GET.lists %}{% if key != "sort" and key != "page" %}{% for v in values %}
           <input type="hidden" name="{{ key }}" value="{{ v }}">{% endfor %}{% endif %}{% endfor %}
-        <label for="{{ form.sort.id_for_label }}" class="small text-muted text-nowrap fw-medium"><i class="bi bi-sort-down me-1"></i>Sắp xếp:</label>
-        <select name="sort" id="{{ form.sort.id_for_label }}" class="form-select form-select-sm rounded-pill px-3" onchange="this.form.submit()">
+        <label for="{{ form.sort.id_for_label }}" class="small text-muted text-nowrap fw-medium">Sắp xếp:</label>
+        <select name="sort" id="{{ form.sort.id_for_label }}" class="form-select form-select-sm rounded-2 px-3" onchange="this.form.submit()">
           {% for value, label in form.fields.sort.choices %}
             <option value="{{ value }}" {% if form.sort.value == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
@@ -68,7 +73,17 @@
       {% endfor %}
     </div>
 
-    {% include "partials/_pagination.html" %}
+    {% if limited %}
+      <div class="alert alert-info rounded-3 shadow-xs mt-4 d-flex flex-wrap align-items-center justify-content-between gap-2" role="status">
+        <span><i class="bi bi-lock me-1"></i> Bạn đang xem {{ page_obj|length }} / {{ page_obj.paginator.count|intcomma }} việc làm. Đăng nhập để xem toàn bộ danh sách.</span>
+        <span class="d-flex gap-2">
+          <a href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-brand btn-sm px-3">Đăng nhập</a>
+          <a href="{% url 'accounts:register' %}" class="btn btn-outline-brand btn-sm px-3">Đăng ký</a>
+        </span>
+      </div>
+    {% else %}
+      {% include "partials/_pagination.html" %}
+    {% endif %}
   </section>
 </div>
 {% endblock %}

@@ -59,9 +59,31 @@ class JobListTests(TestCase):
     def test_pagination_keeps_filters(self):
         for i in range(25):
             make_job(f"Python job {i}")
+        self.client.force_login(make_user())
         resp = self.get(q="python")
         self.assertEqual(resp.context["page_obj"].paginator.count, 26)
         self.assertContains(resp, "?q=python&page=2")
+
+    def test_anonymous_sees_first_page_only(self):
+        for i in range(25):
+            make_job(f"Python job {i}")
+        resp = self.get(q="python", page=2)
+        self.assertTrue(resp.context["limited"])
+        self.assertEqual(resp.context["page_obj"].number, 1)
+        self.assertEqual(resp.context["page_obj"].paginator.count, 26)
+        self.assertNotContains(resp, "page=2")
+        self.assertContains(resp, reverse("accounts:login"))
+
+    def test_anonymous_not_limited_when_one_page(self):
+        self.assertFalse(self.get().context["limited"])
+
+    def test_experience_company_and_with_skill_filters(self):
+        junior = make_job("Junior Python", skills=("Python", "Docker"), experience_min=0.2)
+        senior = make_job("Senior Python", company="Gamma", skills=("Python",), experience_min=6)
+        self.assertEqual(list(self.get(experience="0").context["page_obj"]), [junior])
+        self.assertEqual(list(self.get(experience="5+").context["page_obj"]), [senior])
+        self.assertEqual(list(self.get(company=senior.company_id).context["page_obj"]), [senior])
+        self.assertEqual(list(self.get(skill="python", with_skill="docker").context["page_obj"]), [junior])
 
 
 class JobDetailTests(TestCase):

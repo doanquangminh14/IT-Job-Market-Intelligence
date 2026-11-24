@@ -1,0 +1,8 @@
+{# Bảng dữ liệu ẩn cho trình đọc màn hình. Biến: rows (label, n), caption #}
+<table class="visually-hidden">
+  <caption>{{ caption }}</caption>
+  <thead><tr><th scope="col">Nhóm</th><th scope="col">Số tin</th></tr></thead>
+  <tbody>
+    {% for r in rows %}<tr><td>{{ r.label }}</td><td>{{ r.n }}</td></tr>{% endfor %}
+  </tbody>
+</table>

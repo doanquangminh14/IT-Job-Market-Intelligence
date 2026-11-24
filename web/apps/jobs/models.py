@@ -29,11 +29,38 @@ class Skill(models.Model):
         return self.name
 
 
+def active_q() -> models.Q:
+    """Điều kiện tin còn hạn theo NGÀY HÔM NAY (giống src.data_cleaning.freshness): deadline >= hôm nay hoặc không có deadline."""
+    return models.Q(deadline__gte=timezone.localdate()) | models.Q(deadline__isnull=True)
+
+
+# Nhóm kinh nghiệm theo experience_min (năm): (mã, nhãn, cận dưới gồm, cận trên không gồm).
+# Dữ liệu có giá trị lẻ như 0.2 năm nên các cận là nửa khoảng [lo, hi).
+EXPERIENCE_BANDS = [
+    ("0", "Dưới 1 năm / không yêu cầu", 0, 1),
+    ("1-2", "1–2 năm", 1, 3),
+    ("3-4", "3–4 năm", 3, 5),
+    ("5+", "Từ 5 năm", 5, None),
+    ("none", "Không ghi", None, None),
+]
+EXPERIENCE_CHOICES = [(key, label) for key, label, _, _ in EXPERIENCE_BANDS]
+
+
+def experience_q(band: str) -> models.Q | None:
+    """Điều kiện lọc cho một nhóm kinh nghiệm; None nếu mã không hợp lệ."""
+    for key, _, lo, hi in EXPERIENCE_BANDS:
+        if key != band:
+            continue
+        if key == "none":
+            return models.Q(experience_min__isnull=True)
+        q = models.Q(experience_min__gte=lo)
+        return q & models.Q(experience_min__lt=hi) if hi is not None else q
+    return None
+
+
 class JobQuerySet(models.QuerySet):
     def active(self):
-        """Tin còn hạn theo NGÀY HÔM NAY (giống src.data_cleaning.freshness): deadline >= hôm nay hoặc không có deadline."""
-        today = timezone.localdate()
-        return self.filter(models.Q(deadline__gte=today) | models.Q(deadline__isnull=True))
+        return self.filter(active_q())
 
     def it_only(self):
         return self.filter(is_it=True)
