@@ -1,44 +1,69 @@
 {# Thẻ một tin tuyển dụng. Biến: job, saved_ids (tùy chọn) #}
-<div class="card job-card h-100">
-  <div class="card-body d-flex gap-3">
+<div class="job-card h-100 d-flex flex-column p-3">
+  <div class="d-flex gap-3 align-items-start">
     {% if job.company.logo_url %}
-      <img src="{{ job.company.logo_url }}" alt="" class="company-logo" loading="lazy" referrerpolicy="no-referrer">
+      <img src="{{ job.company.logo_url }}" alt="{{ job.company.name }}" class="company-logo" loading="lazy" referrerpolicy="no-referrer">
     {% else %}
       <span class="company-logo company-logo-placeholder"><i class="bi bi-building"></i></span>
     {% endif %}
+    
     <div class="flex-grow-1 min-w-0">
       <div class="d-flex justify-content-between align-items-start gap-2">
-        <h2 class="h6 mb-1">
-          <a class="job-title stretched-link" href="{{ job.get_absolute_url }}">{{ job.title }}</a>
-        </h2>
+        <div>
+          <h2 class="h6 mb-1">
+            <a class="job-title stretched-link" href="{{ job.get_absolute_url }}">{{ job.title }}</a>
+          </h2>
+          <div class="text-muted small fw-medium mb-2 d-flex align-items-center gap-1">
+            <span>{{ job.company.name }}</span>
+          </div>
+        </div>
+
         {% if user.is_authenticated %}
           <form method="post" action="{% url 'jobs:toggle_save' job.pk %}" class="position-relative" style="z-index:2">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
-            <button class="btn btn-link p-0 text-brand" type="submit"
-                    title="{% if job.pk in saved_ids %}Bỏ lưu{% else %}Lưu tin{% endif %}">
-              <i class="bi {% if job.pk in saved_ids %}bi-bookmark-fill{% else %}bi-bookmark{% endif %} fs-5"></i>
+            <button class="btn-save-job {% if job.pk in saved_ids %}active{% endif %}" type="submit"
+                    title="{% if job.pk in saved_ids %}Bỏ lưu tin{% else %}Lưu tin tuyển dụng{% endif %}">
+              <i class="bi {% if job.pk in saved_ids %}bi-bookmark-heart-fill{% else %}bi-bookmark{% endif %}"></i>
             </button>
           </form>
         {% endif %}
       </div>
-      <div class="text-body-secondary small mb-2">{{ job.company.name }}</div>
-      <div class="d-flex flex-wrap gap-3 small mb-2">
-        <span><i class="bi bi-cash-coin me-1"></i>{{ job.salary_display }}</span>
-        {% if job.city %}<span><i class="bi bi-geo-alt me-1"></i>{{ job.city }}</span>{% endif %}
-        {% if job.work_mode %}<span><i class="bi bi-laptop me-1"></i>{{ job.get_work_mode_display }}</span>{% endif %}
-        <span><i class="bi bi-briefcase me-1"></i>{{ job.experience_display }}</span>
+
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="meta-pill meta-pill-salary">
+          <i class="bi bi-currency-dollar"></i>{{ job.salary_display }}
+        </span>
+        {% if job.city %}
+          <span class="meta-pill">
+            <i class="bi bi-geo-alt"></i>{{ job.city }}
+          </span>
+        {% endif %}
+        {% if job.work_mode %}
+          <span class="meta-pill meta-pill-mode">
+            <i class="bi bi-laptop"></i>{{ job.get_work_mode_display }}
+          </span>
+        {% endif %}
+        <span class="meta-pill">
+          <i class="bi bi-briefcase"></i>{{ job.experience_display }}
+        </span>
         {% if job.deadline %}
-          <span class="{% if job.is_active %}text-body-secondary{% else %}text-danger{% endif %}">
-            <i class="bi bi-calendar-event me-1"></i>{% if job.is_active %}Hạn {{ job.deadline|date:"d/m/Y" }}{% else %}Hết hạn{% endif %}
+          <span class="meta-pill {% if not job.is_active %}meta-pill-danger{% endif %}">
+            <i class="bi bi-calendar3"></i>{% if job.is_active %}Hạn {{ job.deadline|date:"d/m/Y" }}{% else %}Hết hạn{% endif %}
           </span>
         {% endif %}
       </div>
-      <div class="d-flex flex-wrap gap-1">
-        {% for skill in job.skills.all|slice:":6" %}
-          <span class="skill-badge small">{{ skill.name }}</span>
-        {% endfor %}
-      </div>
+
+      {% if job.skills.all %}
+        <div class="d-flex flex-wrap gap-1 mt-auto pt-2 border-top border-light-subtle">
+          {% for skill in job.skills.all|slice:":6" %}
+            <span class="skill-badge">{{ skill.name }}</span>
+          {% endfor %}
+          {% if job.skills.all|length > 6 %}
+            <span class="skill-badge text-muted">+{{ job.skills.all|length|add:"-6" }}</span>
+          {% endif %}
+        </div>
+      {% endif %}
     </div>
   </div>
 </div>

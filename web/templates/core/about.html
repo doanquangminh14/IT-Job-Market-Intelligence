@@ -1,33 +1,69 @@
 {% extends "base.html" %}
-{% block title %}Giới thiệu{% endblock %}
+{% block title %}Giới thiệu dự án{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-lg-8">
-    <h1 class="h3 mb-3">Về dự án</h1>
-    <p><strong>IT Job Market Intelligence</strong> thu thập, làm sạch và phân tích dữ liệu thị trường việc làm Công nghệ Thông tin tại Việt Nam, và gợi ý việc làm theo hồ sơ ứng viên.</p>
+  <div class="col-lg-9">
+    <div class="card card-modern p-4 p-md-5 mb-4">
+      <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <span class="navbar-brand-badge" style="width:48px;height:48px;font-size:1.5rem;"><i class="bi bi-cpu-fill"></i></span>
+        <div>
+          <h1 class="h3 fw-bold mb-1 text-dark">Về dự án IT Job Market Intelligence</h1>
+          <p class="text-muted small mb-0">Hệ thống thu thập, làm sạch và phân tích dữ liệu thị trường việc làm Công nghệ Thông tin tại Việt Nam</p>
+        </div>
+      </div>
 
-    <h2 class="h5 mt-4">Luồng dữ liệu</h2>
-    <ol>
-      <li><strong>Raw</strong>: crawler lấy tin từ TopCV, TopDev, VietnamWorks (JSON theo ngày).</li>
-      <li><strong>Bronze</strong>: kiểm định chất lượng, tách bản ghi hợp lệ / cách ly.</li>
-      <li><strong>Silver</strong>: làm sạch, chuẩn hóa lương (VNĐ/tháng), kinh nghiệm, địa điểm, tách kỹ năng, khử trùng lặp ➔ <code>jobs_clean.csv</code>.</li>
-      <li><strong>Website</strong>: lệnh <code>import_jobs</code> nạp file sạch vào PostgreSQL để tra cứu và thống kê.</li>
-    </ol>
+      <div class="mb-4">
+        <h2 class="h5 fw-bold text-dark mb-2"><i class="bi bi-bullseye text-brand me-1"></i> Mục tiêu &amp; Sứ mệnh</h2>
+        <p class="text-secondary leading-relaxed">
+          <strong>IT Job Market Intelligence</strong> được xây dựng nhằm giải quyết bài toán phân mảnh dữ liệu tuyển dụng IT tại Việt Nam. Hệ thống tự động thu thập thông tin từ các cổng tuyển dụng hàng đầu (TopCV, TopDev, VietnamWorks), chuẩn hóa dữ liệu theo chuẩn kiến trúc Medallion (Raw, Bronze, Silver, Gold), và cung cấp góc nhìn toàn cảnh về nhu cầu công nghệ, xu hướng mức lương và kỹ năng cốt lõi.
+        </p>
+      </div>
 
-    <h2 class="h5 mt-4">Chức năng hiện có</h2>
-    <ul>
-      <li>Tìm kiếm, lọc việc làm theo từ khóa, thành phố, kỹ năng, hình thức, loại hình, mức lương.</li>
-      <li>Trang chi tiết tin, so khớp kỹ năng với hồ sơ của bạn, gợi ý tin tương tự.</li>
-      <li>Tài khoản: đăng ký, đăng nhập, hồ sơ ứng viên, lưu tin.</li>
-      <li>Phân tích thị trường: kỹ năng, thành phố, hình thức làm việc, lương.</li>
-    </ul>
+      <div class="mb-4">
+        <h2 class="h5 fw-bold text-dark mb-3"><i class="bi bi-diagram-3-fill text-brand me-1"></i> Kiến trúc luồng dữ liệu (Data Pipeline)</h2>
+        <div class="row g-3">
+          <div class="col-md-6 col-lg-3">
+            <div class="p-3 bg-light rounded-3 h-100 border">
+              <div class="badge bg-secondary mb-2">Tầng 1: Raw</div>
+              <div class="fw-bold small mb-1">Thu thập thô</div>
+              <p class="small text-muted mb-0">Cào dữ liệu đa nguồn qua <code>curl_cffi</code>, lưu JSON nguyên bản.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="p-3 bg-light rounded-3 h-100 border">
+              <div class="badge bg-warning text-dark mb-2">Tầng 2: Bronze</div>
+              <div class="fw-bold small mb-1">Kiểm định chất lượng</div>
+              <p class="small text-muted mb-0">Rule engine lọc dữ liệu hợp lệ và chuyển tin lỗi vào quarantine.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="p-3 bg-light rounded-3 h-100 border">
+              <div class="badge bg-info text-white mb-2">Tầng 3: Silver</div>
+              <div class="fw-bold small mb-1">Làm sạch &amp; Chuẩn hóa</div>
+              <p class="small text-muted mb-0">Chuẩn hóa mức lương, bóc tách kỹ năng, khử trùng lặp đa tiêu chí.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="p-3 bg-light rounded-3 h-100 border">
+              <div class="badge bg-success mb-2">Tầng 4: Website</div>
+              <div class="fw-bold small mb-1">Ứng dụng &amp; Trực quan</div>
+              <p class="small text-muted mb-0">Nạp vào PostgreSQL phục vụ tra cứu, phân tích và gợi ý việc làm.</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <h2 class="h5 mt-4">Sắp tới</h2>
-    <ul class="text-body-secondary">
-      <li>Gợi ý việc làm theo hồ sơ (Content-Based + Collaborative Filtering) từ <code>src/recommender</code>.</li>
-      <li>Ghi nhận tương tác (xem, lưu, ứng tuyển) làm dữ liệu cho Collaborative Filtering.</li>
-    </ul>
+      <div>
+        <h2 class="h5 fw-bold text-dark mb-2"><i class="bi bi-rocket-takeoff-fill text-brand me-1"></i> Chức năng nổi bật</h2>
+        <ul class="text-secondary small leading-relaxed">
+          <li class="mb-1"><strong>Tra cứu &amp; Lọc đa chiều:</strong> Tìm việc theo từ khóa, thành phố, kỹ năng công nghệ, hình thức làm việc và mức lương.</li>
+          <li class="mb-1"><strong>So khớp kỹ năng (Skill Match):</strong> Tự động đối chiếu kỹ năng trong hồ sơ ứng viên với yêu cầu tuyển dụng của từng vị trí.</li>
+          <li class="mb-1"><strong>Phân tích thị trường (Market Analytics):</strong> Biểu đồ trực quan về kỹ năng hot, mức lương trung vị và phân bố địa lý.</li>
+          <li class="mb-1"><strong>Hệ thống gợi ý Hybrid (Sắp tới):</strong> Kết hợp Content-Based Filtering và Collaborative Filtering (ALS) từ <code>src/recommender</code>.</li>
+        </ul>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

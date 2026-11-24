@@ -1,25 +1,25 @@
 {# Phân trang. Biến: page_obj, querystring (bộ lọc hiện tại, không gồm page) #}
 {% if page_obj.paginator.num_pages > 1 %}
 <nav aria-label="Phân trang" class="mt-4">
-  <ul class="pagination justify-content-center flex-wrap">
+  <ul class="pagination justify-content-center flex-wrap shadow-xs p-1 bg-white rounded-pill d-inline-flex border">
     {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+      <li class="page-item"><a class="page-link border-0 rounded-circle" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Trang trước"><i class="bi bi-chevron-left"></i></a></li>
     {% else %}
-      <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+      <li class="page-item disabled"><span class="page-link border-0 rounded-circle"><i class="bi bi-chevron-left text-muted opacity-50"></i></span></li>
     {% endif %}
     {% for n in page_obj.paginator.get_elided_page_range %}
       {% if n == page_obj.paginator.ELLIPSIS %}
-        <li class="page-item disabled"><span class="page-link">…</span></li>
+        <li class="page-item disabled"><span class="page-link border-0">…</span></li>
       {% elif n == page_obj.number %}
-        <li class="page-item active" aria-current="page"><span class="page-link">{{ n }}</span></li>
+        <li class="page-item active" aria-current="page"><span class="page-link border-0 rounded-pill px-3">{{ n }}</span></li>
       {% else %}
-        <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ n }}">{{ n }}</a></li>
+        <li class="page-item"><a class="page-link border-0 rounded-pill px-3" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ n }}">{{ n }}</a></li>
       {% endif %}
     {% endfor %}
     {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">&raquo;</a></li>
+      <li class="page-item"><a class="page-link border-0 rounded-circle" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Trang sau"><i class="bi bi-chevron-right"></i></a></li>
     {% else %}
-      <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+      <li class="page-item disabled"><span class="page-link border-0 rounded-circle"><i class="bi bi-chevron-right text-muted opacity-50"></i></span></li>
     {% endif %}
   </ul>
 </nav>

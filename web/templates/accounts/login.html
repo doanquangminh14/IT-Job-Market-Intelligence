@@ -2,21 +2,25 @@
 {% block title %}Đăng nhập{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
+<div class="row justify-content-center py-4">
   <div class="col-sm-10 col-md-7 col-lg-5">
-    <div class="card shadow-sm">
-      <div class="card-body p-4">
-        <h1 class="h4 mb-4 text-center">Đăng nhập</h1>
-        <form method="post" novalidate>
-          {% csrf_token %}
-          {% if form.non_field_errors %}
-            <div class="alert alert-danger">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>
-          {% endif %}
-          {% for field in form %}{% include "partials/_form_field.html" %}{% endfor %}
-          <input type="hidden" name="next" value="{{ next }}">
-          <button type="submit" class="btn btn-brand w-100">Đăng nhập</button>
-        </form>
-        <p class="text-center small mt-3 mb-0">Chưa có tài khoản? <a href="{% url 'accounts:register' %}">Đăng ký</a></p>
+    <div class="card card-modern p-4 p-md-5">
+      <div class="text-center mb-4">
+        <span class="navbar-brand-badge mb-2" style="width:48px;height:48px;font-size:1.5rem;"><i class="bi bi-person-fill"></i></span>
+        <h1 class="h4 fw-bold mb-1 text-dark">Đăng nhập tài khoản</h1>
+        <p class="text-muted small">Truy cập hồ sơ ứng viên và quản lý việc làm đã lưu</p>
+      </div>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger rounded-3 small">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>
+        {% endif %}
+        {% for field in form %}{% include "partials/_form_field.html" %}{% endfor %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <button type="submit" class="btn btn-brand w-100 py-2 mt-2">Đăng nhập ngay</button>
+      </form>
+      <div class="text-center small mt-4 pt-3 border-top text-muted">
+        Chưa có tài khoản? <a href="{% url 'accounts:register' %}" class="fw-bold text-brand text-decoration-none">Đăng ký thành viên</a>
       </div>
     </div>
   </div>

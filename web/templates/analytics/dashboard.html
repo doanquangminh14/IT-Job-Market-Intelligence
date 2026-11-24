@@ -1,88 +1,163 @@
 {% extends "base.html" %}
 {% load static humanize %}
-{% block title %}Phân tích thị trường{% endblock %}
+{% block title %}Phân tích thị trường IT{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 bg-white p-4 rounded-3 border shadow-xs">
   <div>
-    <h1 class="h4 mb-0">Phân tích thị trường việc làm IT</h1>
-    <p class="text-body-secondary small mb-0">
-      {% if active_only %}Chỉ tính tin còn hạn nộp tại hôm nay.{% else %}Toàn bộ tin IT trong ảnh chụp dữ liệu.{% endif %}
+    <h1 class="h4 fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+      <span class="navbar-brand-badge"><i class="bi bi-bar-chart-fill"></i></span>
+      <span>Phân tích toàn cảnh thị trường việc làm IT</span>
+    </h1>
+    <p class="text-muted small mb-0">
+      {% if active_only %}Dữ liệu tính toán trên các tin tuyển dụng còn hạn nộp tại thời điểm hôm nay.{% else %}Toàn bộ cơ sở dữ liệu việc làm IT đã qua chuẩn hóa và làm sạch.{% endif %}
     </p>
   </div>
-  <div class="btn-group btn-group-sm" role="group" aria-label="Phạm vi dữ liệu">
-    <a href="?" class="btn {% if not active_only %}btn-brand{% else %}btn-outline-secondary{% endif %}">Tất cả tin</a>
-    <a href="?active=1" class="btn {% if active_only %}btn-brand{% else %}btn-outline-secondary{% endif %}">Còn hạn</a>
+  <div class="btn-group p-1 bg-light rounded-pill border" role="group" aria-label="Phạm vi dữ liệu">
+    <a href="?" class="btn btn-sm rounded-pill px-3 fw-semibold {% if not active_only %}btn-brand shadow-xs{% else %}text-muted{% endif %}">Tất cả dữ liệu</a>
+    <a href="?active=1" class="btn btn-sm rounded-pill px-3 fw-semibold {% if active_only %}btn-brand shadow-xs{% else %}text-muted{% endif %}">Chỉ tin còn hạn</a>
   </div>
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-6 col-md-3"><div class="card stat-card h-100"><div class="card-body">
-    <div class="stat-value">{{ overview.total_jobs|intcomma }}</div><div class="stat-label">Tin tuyển dụng</div></div></div></div>
-  <div class="col-6 col-md-3"><div class="card stat-card h-100"><div class="card-body">
-    <div class="stat-value">{{ overview.companies|intcomma }}</div><div class="stat-label">Công ty</div></div></div></div>
-  <div class="col-6 col-md-3"><div class="card stat-card h-100"><div class="card-body">
-    <div class="stat-value">{{ overview.skills|intcomma }}</div><div class="stat-label">Kỹ năng khác nhau</div></div></div></div>
-  <div class="col-6 col-md-3"><div class="card stat-card h-100"><div class="card-body">
-    <div class="stat-value">{{ overview.salary_share }}%</div><div class="stat-label">Tin công khai lương</div></div></div></div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="stat-label mb-0">Tổng tin IT</span>
+        <i class="bi bi-briefcase text-brand fs-5"></i>
+      </div>
+      <div class="stat-value text-brand">{{ overview.total_jobs|intcomma }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="stat-label mb-0">Doanh nghiệp</span>
+        <i class="bi bi-buildings text-info fs-5"></i>
+      </div>
+      <div class="stat-value text-info">{{ overview.companies|intcomma }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="stat-label mb-0">Kỹ năng công nghệ</span>
+        <i class="bi bi-cpu text-warning fs-5"></i>
+      </div>
+      <div class="stat-value text-warning">{{ overview.skills|intcomma }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="stat-label mb-0">Công khai lương</span>
+        <i class="bi bi-cash-stack text-success fs-5"></i>
+      </div>
+      <div class="stat-value text-success">{{ overview.salary_share }}%</div>
+    </div>
+  </div>
 </div>
 
 {% if not overview.total_jobs %}
-  <div class="alert alert-warning">Chưa có dữ liệu để phân tích. Chạy <code>python manage.py import_jobs</code>.</div>
+  <div class="alert alert-warning rounded-3 shadow-xs">
+    <i class="bi bi-exclamation-triangle me-1"></i> Chưa có dữ liệu để phân tích. Vui lòng chạy <code>python manage.py import_jobs</code>.
+  </div>
 {% else %}
-<div class="row g-3">
+<div class="row g-4">
   <div class="col-lg-7">
-    <div class="card h-100"><div class="card-body">
-      <h2 class="h6">Top 15 kỹ năng được yêu cầu</h2>
+    <div class="card card-modern h-100 p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 fw-bold mb-0 text-dark"><i class="bi bi-trophy text-warning me-1"></i> Top 15 kỹ năng được yêu cầu nhiều nhất</h2>
+        <span class="badge bg-light text-muted border">Số lượng tin</span>
+      </div>
       <div class="chart-box" style="height:420px"><canvas id="chart-skills" aria-label="Biểu đồ kỹ năng"></canvas></div>
-    </div></div>
+    </div>
   </div>
+  
   <div class="col-lg-5">
-    <div class="card h-100"><div class="card-body">
-      <h2 class="h6">Số tin theo thành phố</h2>
+    <div class="card card-modern h-100 p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 fw-bold mb-0 text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Phân bổ tin theo thành phố</h2>
+        <span class="badge bg-light text-muted border">Khu vực</span>
+      </div>
       <div class="chart-box" style="height:420px"><canvas id="chart-cities" aria-label="Biểu đồ thành phố"></canvas></div>
-    </div></div>
+    </div>
   </div>
+  
   <div class="col-lg-6">
-    <div class="card h-100"><div class="card-body">
-      <h2 class="h6">Lương trung bình theo thành phố <span class="small fw-normal text-body-secondary">(triệu VNĐ/tháng, tin có đủ khoảng lương)</span></h2>
+    <div class="card card-modern h-100 p-4">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h2 class="h6 fw-bold mb-0 text-dark"><i class="bi bi-currency-dollar text-success me-1"></i> Mức lương trung bình theo khu vực</h2>
+      </div>
+      <p class="small text-muted mb-3">Đơn vị: triệu VNĐ/tháng (chỉ tính các tin có khoảng lương rõ ràng)</p>
       <div class="chart-box"><canvas id="chart-salary" aria-label="Biểu đồ lương"></canvas></div>
-    </div></div>
+    </div>
   </div>
+  
   <div class="col-md-6 col-lg-3">
-    <div class="card h-100"><div class="card-body">
-      <h2 class="h6">Hình thức làm việc</h2>
+    <div class="card card-modern h-100 p-4">
+      <h2 class="h6 fw-bold mb-3 text-dark"><i class="bi bi-laptop text-brand me-1"></i> Hình thức làm việc</h2>
       <div class="chart-box"><canvas id="chart-workmode" aria-label="Biểu đồ hình thức"></canvas></div>
-    </div></div>
+    </div>
   </div>
+  
   <div class="col-md-6 col-lg-3">
-    <div class="card h-100"><div class="card-body">
-      <h2 class="h6">Loại hình</h2>
+    <div class="card card-modern h-100 p-4">
+      <h2 class="h6 fw-bold mb-3 text-dark"><i class="bi bi-clock-history text-purple me-1"></i> Loại hình công việc</h2>
       <div class="chart-box"><canvas id="chart-employment" aria-label="Biểu đồ loại hình"></canvas></div>
-    </div></div>
+    </div>
   </div>
+  
   <div class="col-lg-8">
-    <div class="card h-100"><div class="card-body">
-      <h2 class="h6">Công ty tuyển nhiều nhất</h2>
+    <div class="card card-modern h-100 p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 fw-bold mb-0 text-dark"><i class="bi bi-buildings-fill text-primary me-1"></i> Top doanh nghiệp tuyển dụng nhiều nhất</h2>
+        <span class="small text-muted">Bấm vào công ty để lọc tin</span>
+      </div>
       <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-          <thead><tr><th>#</th><th>Công ty</th><th class="text-end">Số tin</th></tr></thead>
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 50px;">#</th>
+              <th>Công ty tuyển dụng</th>
+              <th class="text-end" style="width: 140px;">Số lượng tin</th>
+            </tr>
+          </thead>
           <tbody>
             {% for c in charts.companies %}
-              <tr><td class="text-body-secondary">{{ forloop.counter }}</td>
-                  <td><a href="{% url 'jobs:list' %}?q={{ c.label|urlencode }}&f=1&it_only=on{% if active_only %}&active_only=on{% endif %}" class="text-decoration-none">{{ c.label }}</a></td>
-                  <td class="text-end">{{ c.n }}</td></tr>
+              <tr>
+                <td>
+                  {% if forloop.counter == 1 %}
+                    <span class="badge bg-warning text-dark rounded-circle" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;">1</span>
+                  {% elif forloop.counter == 2 %}
+                    <span class="badge bg-secondary text-white rounded-circle" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;">2</span>
+                  {% elif forloop.counter == 3 %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-circle" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;">3</span>
+                  {% else %}
+                    <span class="text-muted small ps-1">{{ forloop.counter }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'jobs:list' %}?q={{ c.label|urlencode }}&f=1&it_only=on{% if active_only %}&active_only=on{% endif %}" class="fw-semibold text-dark text-decoration-none hover-brand">
+                    {{ c.label }}
+                  </a>
+                </td>
+                <td class="text-end">
+                  <span class="badge bg-brand-soft text-brand fw-bold px-2 py-1 rounded-pill">{{ c.n }} tin</span>
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-    </div></div>
+    </div>
   </div>
+  
   <div class="col-lg-4">
-    <div class="card h-100"><div class="card-body">
-      <h2 class="h6">Nguồn dữ liệu</h2>
+    <div class="card card-modern h-100 p-4">
+      <h2 class="h6 fw-bold mb-3 text-dark"><i class="bi bi-pie-chart-fill text-info me-1"></i> Nguồn thu thập dữ liệu</h2>
       <div class="chart-box"><canvas id="chart-sources" aria-label="Biểu đồ nguồn"></canvas></div>
-    </div></div>
+    </div>
   </div>
 </div>
 {% endif %}

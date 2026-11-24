@@ -1,20 +1,38 @@
 {% extends "base.html" %}
-{% block title %}Tin đã lưu{% endblock %}
+{% block title %}Tin tuyển dụng đã lưu{% endblock %}
 
 {% block content %}
-<h1 class="h4 mb-3">Tin đã lưu <span class="text-body-secondary fs-6">({{ saved_list|length }})</span></h1>
+<div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-3 border shadow-xs">
+  <div>
+    <h1 class="h4 fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+      <i class="bi bi-bookmark-heart-fill text-danger"></i>
+      <span>Danh sách việc làm đã lưu</span>
+    </h1>
+    <p class="small text-muted mb-0">Các cơ hội việc làm bạn quan tâm và lưu lại để ứng tuyển sau</p>
+  </div>
+  <span class="badge bg-brand-soft text-brand fw-bold px-3 py-2 rounded-pill fs-6">
+    {{ saved_list|length }} tin đã lưu
+  </span>
+</div>
+
 <div class="d-grid gap-3">
   {% for item in saved_list %}
     {% with job=item.job %}
       <div>
         {% include "partials/_job_card.html" %}
-        <div class="small text-body-secondary mt-1 ms-1">Đã lưu {{ item.created_at|date:"d/m/Y H:i" }}</div>
+        <div class="small text-muted mt-1 ms-2 d-flex align-items-center gap-1">
+          <i class="bi bi-clock-history"></i> Đã lưu vào lúc {{ item.created_at|date:"d/m/Y H:i" }}
+        </div>
       </div>
     {% endwith %}
   {% empty %}
-    <div class="text-center text-body-secondary py-5">
-      <i class="bi bi-bookmark fs-1 d-block mb-2"></i>
-      Bạn chưa lưu tin nào. <a href="{% url 'jobs:list' %}">Tìm việc làm</a>
+    <div class="text-center text-body-secondary py-5 bg-white rounded-3 border p-4 shadow-xs">
+      <div class="d-inline-flex p-3 rounded-circle bg-light text-danger mb-3">
+        <i class="bi bi-bookmark-x fs-2"></i>
+      </div>
+      <h3 class="h6 fw-bold">Bạn chưa lưu tin tuyển dụng nào</h3>
+      <p class="small text-muted mb-3">Hãy duyệt danh sách việc làm và bấm vào biểu tượng dấu trang để lưu lại các vị trí yêu thích.</p>
+      <a href="{% url 'jobs:list' %}" class="btn btn-brand btn-sm px-4">Khám phá việc làm ngay</a>
     </div>
   {% endfor %}
 </div>

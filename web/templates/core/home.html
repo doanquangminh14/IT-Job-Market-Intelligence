@@ -1,56 +1,285 @@
 {% extends "base.html" %}
 {% load humanize %}
-{% block title %}Trang chủ{% endblock %}
+{% block title %}Hệ thống Phân tích Thị trường Việc làm IT Việt Nam{% endblock %}
 
 {% block content %}
-<section class="hero p-4 p-md-5 mb-4">
+<!-- 1. HERO SECTION -->
+<section class="hero p-4 p-md-5 mb-5">
   <div class="row align-items-center g-4">
     <div class="col-lg-7">
-      <h1 class="display-6 fw-bold mb-3">Thị trường việc làm IT Việt Nam, trong một trang</h1>
-      <p class="lead mb-4 opacity-75">Tin tuyển dụng thu thập từ TopCV, TopDev, VietnamWorks, đã làm sạch, chuẩn hóa lương và tách kỹ năng.</p>
-      <form action="{% url 'jobs:list' %}" method="get" class="d-flex gap-2 flex-wrap">
-        <input type="search" name="q" class="form-control form-control-lg flex-grow-1" style="min-width:0;flex-basis:14rem"
-               placeholder="Chức danh, công ty hoặc kỹ năng..." aria-label="Từ khóa">
-        <button class="btn btn-light btn-lg" type="submit"><i class="bi bi-search me-1"></i>Tìm việc</button>
+      <div class="hero-tag">
+        <i class="bi bi-cpu"></i> IT Job Market Intelligence
+      </div>
+      <h1 class="hero-title mb-3">
+        Thị trường việc làm IT Việt Nam, <span class="hero-highlight">dữ liệu thực & phân tích chuyên sâu</span>
+      </h1>
+      <p class="lead text-light opacity-75 mb-4 fs-6 pe-lg-4" style="line-height:1.65;">
+        Nền tảng toàn diện tự động thu thập từ TopCV, TopDev, VietnamWorks; chuẩn hóa thang lương, bóc tách kỹ năng công nghệ và cung cấp dashboard phân tích thị trường cùng hệ thống gợi ý việc làm thông minh.
+      </p>
+      
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        <a href="{% url 'jobs:list' %}" class="btn btn-brand px-4 py-2">
+          <i class="bi bi-briefcase me-1"></i> Khám phá việc làm IT
+        </a>
+        <a href="{% url 'analytics:dashboard' %}" class="btn btn-outline-light px-4 py-2">
+          <i class="bi bi-graph-up-arrow me-1"></i> Xem báo cáo thị trường
+        </a>
+      </div>
+
+      <form action="{% url 'jobs:list' %}" method="get" class="hero-search-box">
+        <i class="bi bi-search text-muted fs-5 ms-2 me-2"></i>
+        <input type="search" name="q" class="form-control form-control-lg flex-grow-1"
+               placeholder="Nhập chức danh, công nghệ (React, Python...) hoặc tên công ty..." aria-label="Từ khóa tìm kiếm">
+        <button class="btn btn-brand px-4 py-2" type="submit">
+          <span>Tìm kiếm</span> <i class="bi bi-arrow-right ms-1"></i>
+        </button>
       </form>
     </div>
+    
     <div class="col-lg-5">
       <div class="row g-3 text-center">
-        <div class="col-6"><div class="bg-white bg-opacity-10 rounded-3 p-3">
-          <div class="fs-3 fw-bold">{{ stats.total_jobs|intcomma }}</div><div class="small opacity-75">Tin IT</div></div></div>
-        <div class="col-6"><div class="bg-white bg-opacity-10 rounded-3 p-3">
-          <div class="fs-3 fw-bold">{{ stats.active_jobs|intcomma }}</div><div class="small opacity-75">Còn hạn nộp</div></div></div>
-        <div class="col-6"><div class="bg-white bg-opacity-10 rounded-3 p-3">
-          <div class="fs-3 fw-bold">{{ stats.companies|intcomma }}</div><div class="small opacity-75">Công ty</div></div></div>
-        <div class="col-6"><div class="bg-white bg-opacity-10 rounded-3 p-3">
-          <div class="fs-3 fw-bold">{{ stats.skills|intcomma }}</div><div class="small opacity-75">Kỹ năng</div></div></div>
+        <div class="col-6">
+          <div class="hero-stat-card">
+            <div class="stat-num">{{ stats.total_jobs|default:0|intcomma }}</div>
+            <div class="stat-desc"><i class="bi bi-briefcase me-1"></i>Tin IT thu thập</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="hero-stat-card">
+            <div class="stat-num text-success">{{ stats.active_jobs|default:0|intcomma }}</div>
+            <div class="stat-desc"><i class="bi bi-clock-history me-1"></i>Tin còn hạn nộp</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="hero-stat-card">
+            <div class="stat-num text-info">{{ stats.companies|default:0|intcomma }}</div>
+            <div class="stat-desc"><i class="bi bi-building me-1"></i>Công ty tuyển dụng</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="hero-stat-card">
+            <div class="stat-num text-warning">{{ stats.skills|default:0|intcomma }}</div>
+            <div class="stat-desc"><i class="bi bi-lightning me-1"></i>Kỹ năng chuẩn hóa</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
 {% if not stats.total_jobs %}
-  <div class="alert alert-warning">
+  <div class="alert alert-warning rounded-3 shadow-xs mb-5">
     <i class="bi bi-exclamation-triangle me-1"></i>
     Database chưa có dữ liệu. Chạy <code>python manage.py import_jobs</code> để nạp <code>jobs_clean.csv</code>.
   </div>
 {% endif %}
 
+<!-- 2. CORE CAPABILITIES / NĂNG LỰC CỐT LÕI -->
+<section class="mb-5">
+  <div class="text-center mb-4">
+    <div class="section-tag"><i class="bi bi-stars"></i> Tính năng cốt lõi</div>
+    <h2 class="section-title">Nền tảng Thông minh cho Thị trường IT</h2>
+    <p class="section-subtitle mx-auto">
+      Kết hợp quy trình kỹ thuật dữ liệu lớn, xử lý văn bản tự nhiên và mô hình đề xuất việc làm chuẩn hóa.
+    </p>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-6 col-lg-3">
+      <div class="feature-card">
+        <div class="feature-icon-box feature-icon-blue">
+          <i class="bi bi-diagram-3"></i>
+        </div>
+        <h3 class="h5 fw-bold mb-2">Thu thập Đa nguồn</h3>
+        <p class="text-muted small mb-0" style="line-height:1.6;">
+          Hệ thống tự động cào và hợp nhất dữ liệu từ TopCV, TopDev, VietnamWorks; loại bỏ tin rác, phát hiện tin trùng lặp với thuật toán dedup đa tầng.
+        </p>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+      <div class="feature-card">
+        <div class="feature-icon-box feature-icon-emerald">
+          <i class="bi bi-cash-stack"></i>
+        </div>
+        <h3 class="h5 fw-bold mb-2">Chuẩn hóa Thang lương</h3>
+        <p class="text-muted small mb-0" style="line-height:1.6;">
+          Quy đổi mọi hình thức lương (USD, triệu đồng, thỏa thuận) về khoảng lương VNĐ/tháng chuẩn xác, hỗ trợ so sánh thực tế giữa các vị trí.
+        </p>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+      <div class="feature-card">
+        <div class="feature-icon-box feature-icon-purple">
+          <i class="bi bi-tags"></i>
+        </div>
+        <h3 class="h5 fw-bold mb-2">Bóc tách Kỹ năng IT</h3>
+        <p class="text-muted small mb-0" style="line-height:1.6;">
+          Từ điển hơn 160+ công nghệ chuẩn hóa bóc tách chính xác các kỹ năng cốt lõi từ mô tả công việc (Python, SQL, React, AWS, Docker...).
+        </p>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+      <div class="feature-card">
+        <div class="feature-icon-box feature-icon-amber">
+          <i class="bi bi-graph-up"></i>
+        </div>
+        <h3 class="h5 fw-bold mb-2">Dashboard Toàn cảnh</h3>
+        <p class="text-muted small mb-0" style="line-height:1.6;">
+          Trực quan hóa phân bổ thị trường theo mức lương, số năm kinh nghiệm, khu vực làm việc (Hà Nội, TP.HCM, Đà Nẵng, Remote) và kỹ năng hot.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. DATA ARCHITECTURE & PIPELINE FLOW -->
+<section class="card border-0 shadow-xs rounded-4 p-4 p-md-5 mb-5" style="background:#ffffff; border:1px solid var(--surface-border) !important;">
+  <div class="text-center mb-4">
+    <div class="section-tag"><i class="bi bi-layers"></i> Kiến trúc dữ liệu</div>
+    <h2 class="section-title">Quy trình Xử lý Dữ liệu Chuẩn Medallion</h2>
+    <p class="section-subtitle mx-auto">
+      Dữ liệu tuyển dụng trải qua 4 tầng xử lý nghiêm ngặt nhằm đảm bảo tính toàn vẹn, tính xác thực và tốc độ truy vấn cao.
+    </p>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-6 col-lg-3">
+      <div class="pipeline-step-card">
+        <div class="step-badge">01</div>
+        <div class="small fw-bold text-brand text-uppercase tracking-wide mb-1">Thu thập Đa kênh</div>
+        <h4 class="h6 fw-bold mb-2">Multi-source Scrapers</h4>
+        <p class="text-muted small mb-0" style="line-height:1.6;">
+          Thu thập định kỳ từ các sàn việc làm uy tín, xử lý cấu trúc DOM phức tạp và lưu trữ dạng thô.
+        </p>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+      <div class="pipeline-step-card">
+        <div class="step-badge">02</div>
+        <div class="small fw-bold text-brand text-uppercase tracking-wide mb-1">Lưu trữ Thô</div>
+        <h4 class="h6 fw-bold mb-2">Raw / Bronze Layer</h4>
+        <p class="text-muted small mb-0" style="line-height:1.6;">
+          Lưu trữ nguyên vẹn cấu trúc gốc, theo dõi phiên bản và vết dữ liệu phục vụ tái lập quy trình khi cần.
+        </p>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+      <div class="pipeline-step-card">
+        <div class="step-badge">03</div>
+        <div class="small fw-bold text-brand text-uppercase tracking-wide mb-1">Làm sạch & ML</div>
+        <h4 class="h6 fw-bold mb-2">Silver Layer (Clean)</h4>
+        <p class="text-muted small mb-0" style="line-height:1.6;">
+          Lọc tin IT, chuyển đổi mức lương, khử tin trùng lặp, bóc tách kỹ năng qua từ điển công nghệ.
+        </p>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+      <div class="pipeline-step-card">
+        <div class="step-badge">04</div>
+        <div class="small fw-bold text-brand text-uppercase tracking-wide mb-1">Ứng dụng & Báo cáo</div>
+        <h4 class="h6 fw-bold mb-2">Gold Layer & Web Portal</h4>
+        <p class="text-muted small mb-0" style="line-height:1.6;">
+          Cung cấp giao diện trực quan cho ứng viên, nhà nghiên cứu và API gợi ý việc làm thông minh.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. VALUE FOR TARGET AUDIENCE -->
+<section class="mb-5">
+  <div class="text-center mb-4">
+    <div class="section-tag"><i class="bi bi-people"></i> Đối tượng sử dụng</div>
+    <h2 class="section-title">Giá trị Nền tảng Mang lại</h2>
+    <p class="section-subtitle mx-auto">
+      Hệ thống được thiết kế hướng tới giải quyết bài toán thực tế cho cả ứng viên công nghệ lẫn nhà tuyển dụng và cơ sở đào tạo.
+    </p>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="audience-card">
+        <div class="audience-icon bg-brand-soft text-brand">
+          <i class="bi bi-mortarboard"></i>
+        </div>
+        <h3 class="h5 fw-bold mb-3">Ứng viên & Sinh viên IT</h3>
+        <ul class="list-unstyled text-sub small mb-0 d-flex flex-column gap-2" style="line-height:1.6;">
+          <li><i class="bi bi-check2-circle text-success me-2"></i>Nắm bắt chính xác kỹ năng đang được săn đón nhiều nhất.</li>
+          <li><i class="bi bi-check2-circle text-success me-2"></i>Tham chiếu mức lương thực tế theo từng số năm kinh nghiệm.</li>
+          <li><i class="bi bi-check2-circle text-success me-2"></i>Phân tích khoảng cách kỹ năng để có kế hoạch học tập phù hợp.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="audience-card">
+        <div class="audience-icon bg-emerald-bg text-emerald">
+          <i class="bi bi-building-check"></i>
+        </div>
+        <h3 class="h5 fw-bold mb-3">Nhà tuyển dụng & HR Tech</h3>
+        <ul class="list-unstyled text-sub small mb-0 d-flex flex-column gap-2" style="line-height:1.6;">
+          <li><i class="bi bi-check2-circle text-success me-2"></i>Khảo sát mức lương thị trường để đưa ra dải đãi ngộ cạnh tranh.</li>
+          <li><i class="bi bi-check2-circle text-success me-2"></i>Hiểu rõ mức độ khan hiếm của từng nhóm kỹ năng công nghệ.</li>
+          <li><i class="bi bi-check2-circle text-success me-2"></i>Tối ưu nội dung yêu cầu công việc sát với xu thế ngành.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="audience-card">
+        <div class="audience-icon bg-purple-bg text-purple">
+          <i class="bi bi-journal-code"></i>
+        </div>
+        <h3 class="h5 fw-bold mb-3">Giảng viên & Nhà nghiên cứu</h3>
+        <ul class="list-unstyled text-sub small mb-0 d-flex flex-column gap-2" style="line-height:1.6;">
+          <li><i class="bi bi-check2-circle text-success me-2"></i>Dữ liệu thị trường lao động số thực tế, phục vụ nghiên cứu khoa học.</li>
+          <li><i class="bi bi-check2-circle text-success me-2"></i>Căn cứ thực tiễn để định hướng chương trình đào tạo sinh viên.</li>
+          <li><i class="bi bi-check2-circle text-success me-2"></i>Dễ dàng xuất và kiểm chứng dữ liệu qua notebook và dashboard.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. TRENDING SKILLS -->
 {% if top_skills %}
-<section class="mb-4">
-  <h2 class="h5 mb-3">Kỹ năng được tuyển nhiều nhất <span class="text-body-secondary small fw-normal">(tin còn hạn)</span></h2>
+<section class="mb-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="h5 fw-bold mb-1"><i class="bi bi-fire text-danger me-1"></i> Kỹ năng được săn đón nhiều nhất</h2>
+      <p class="text-muted small mb-0">Thống kê theo số lượng tin tuyển dụng IT đang mở trên toàn hệ thống</p>
+    </div>
+    <a href="{% url 'analytics:dashboard' %}" class="small text-brand text-decoration-none fw-semibold">
+      Xem toàn cảnh thị trường <i class="bi bi-chevron-right"></i>
+    </a>
+  </div>
   <div class="d-flex flex-wrap gap-2">
     {% for s in top_skills %}
-      <a class="skill-badge" href="{% url 'jobs:list' %}?skill={{ s.name|urlencode }}">{{ s.name }} <span class="opacity-75">· {{ s.n }}</span></a>
+      <a class="top-skill-pill" href="{% url 'jobs:list' %}?skill={{ s.name|urlencode }}">
+        <span>{{ s.name }}</span>
+        <span class="count-chip">{{ s.n }}</span>
+      </a>
     {% endfor %}
   </div>
 </section>
 {% endif %}
 
-<section>
+<!-- 6. FEATURED / LATEST JOBS PREVIEW -->
+<section class="mb-5">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="h5 mb-0">Việc làm mới</h2>
-    <a href="{% url 'jobs:list' %}" class="small">Xem tất cả <i class="bi bi-arrow-right"></i></a>
+    <div>
+      <h2 class="h5 fw-bold mb-1"><i class="bi bi-sparkles text-brand me-1"></i> Cơ hội việc làm mới nhất</h2>
+      <p class="text-muted small mb-0">Các vị trí công nghệ vừa được cập nhật và kiểm duyệt</p>
+    </div>
+    <a href="{% url 'jobs:list' %}" class="btn btn-outline-brand btn-sm px-3">
+      Xem tất cả việc làm <i class="bi bi-arrow-right ms-1"></i>
+    </a>
   </div>
   <div class="row g-3">
     {% for job in latest_jobs %}
@@ -58,6 +287,27 @@
     {% empty %}
       <p class="text-body-secondary">Hiện chưa có tin còn hạn nộp.</p>
     {% endfor %}
+  </div>
+</section>
+
+<!-- 7. BOTTOM CTA BANNER -->
+<section class="mb-5">
+  <div class="cta-banner text-center text-light">
+    <div class="badge bg-white bg-opacity-10 text-white px-3 py-2 rounded-pill mb-3">
+      <i class="bi bi-rocket-takeoff me-1"></i> Dữ liệu Thực - Báo cáo Chuyên sâu
+    </div>
+    <h2 class="display-6 fw-bold text-white mb-3">Sẵn sàng Khám phá Thị trường Việc làm IT?</h2>
+    <p class="lead text-light opacity-75 mb-4 mx-auto" style="max-width: 640px; font-size: 1.05rem;">
+      Tra cứu việc làm phù hợp với năng lực kỹ năng của bạn hoặc truy cập dashboard phân tích toàn cảnh để nắm bắt xu hướng thị trường ngay hôm nay.
+    </p>
+    <div class="d-flex flex-wrap justify-content-center gap-3">
+      <a href="{% url 'jobs:list' %}" class="btn btn-brand btn-lg px-4 py-2">
+        <i class="bi bi-search me-1"></i> Khám phá việc làm ngay
+      </a>
+      <a href="{% url 'analytics:dashboard' %}" class="btn btn-outline-light btn-lg px-4 py-2">
+        <i class="bi bi-pie-chart me-1"></i> Xem báo cáo phân tích
+      </a>
+    </div>
   </div>
 </section>
 {% endblock %}

@@ -2,117 +2,198 @@
 {% block title %}{{ job.title }}{% endblock %}
 
 {% block content %}
-<nav aria-label="breadcrumb">
+<nav aria-label="breadcrumb" class="mb-3">
   <ol class="breadcrumb small">
-    <li class="breadcrumb-item"><a href="{% url 'jobs:list' %}">Việc làm</a></li>
-    <li class="breadcrumb-item active text-truncate" aria-current="page">{{ job.title }}</li>
+    <li class="breadcrumb-item"><a href="{% url 'jobs:list' %}" class="text-decoration-none text-muted"><i class="bi bi-briefcase me-1"></i>Việc làm</a></li>
+    <li class="breadcrumb-item active text-truncate fw-medium" aria-current="page">{{ job.title }}</li>
   </ol>
 </nav>
 
 <div class="row g-4">
   <article class="col-lg-8">
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <div class="d-flex gap-3 mb-3">
-          {% if job.company.logo_url %}
-            <img src="{{ job.company.logo_url }}" alt="" class="company-logo" referrerpolicy="no-referrer">
-          {% else %}
-            <span class="company-logo company-logo-placeholder"><i class="bi bi-building"></i></span>
-          {% endif %}
-          <div class="min-w-0">
-            <h1 class="h4 mb-1">{{ job.title }}</h1>
-            <div class="text-body-secondary">{{ job.company.name }}</div>
+    <div class="card card-modern p-4 mb-4">
+      <div class="d-flex gap-3 align-items-start mb-4">
+        {% if job.company.logo_url %}
+          <img src="{{ job.company.logo_url }}" alt="{{ job.company.name }}" class="company-logo" style="width:64px;height:64px;" referrerpolicy="no-referrer">
+        {% else %}
+          <span class="company-logo company-logo-placeholder" style="width:64px;height:64px;font-size:1.75rem;"><i class="bi bi-building"></i></span>
+        {% endif %}
+        <div class="min-w-0 flex-grow-1">
+          <h1 class="h4 fw-bold mb-1 text-dark">{{ job.title }}</h1>
+          <div class="text-muted fw-medium d-flex align-items-center gap-2">
+            <span class="text-brand">{{ job.company.name }}</span>
+            <span class="badge text-bg-light border text-capitalize"><i class="bi bi-link-45deg me-1"></i>{{ job.source }}</span>
           </div>
         </div>
+      </div>
 
-        <div class="row row-cols-2 row-cols-md-4 g-3 small mb-3">
-          <div><div class="text-body-secondary">Mức lương</div><div class="fw-semibold">{{ job.salary_display }}</div></div>
-          <div><div class="text-body-secondary">Kinh nghiệm</div><div class="fw-semibold">{{ job.experience_display }}</div></div>
-          <div><div class="text-body-secondary">Hình thức</div><div class="fw-semibold">{{ job.get_work_mode_display|default:"—" }}</div></div>
-          <div><div class="text-body-secondary">Loại hình</div><div class="fw-semibold">{{ job.get_employment_type_display|default:"—" }}</div></div>
-          <div><div class="text-body-secondary">Thành phố</div><div class="fw-semibold">{{ job.city|default:"—" }}</div></div>
-          <div><div class="text-body-secondary">Hạn nộp</div>
-            <div class="fw-semibold {% if not job.is_active %}text-danger{% endif %}">
-              {{ job.deadline|date:"d/m/Y"|default:"—" }}{% if not job.is_active %} (hết hạn){% endif %}
+      <div class="row row-cols-2 row-cols-md-3 g-2 mb-4">
+        <div class="col">
+          <div class="detail-fact-box">
+            <div class="fact-label text-success"><i class="bi bi-cash-coin me-1"></i>Mức lương</div>
+            <div class="fact-value text-success">{{ job.salary_display }}</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="detail-fact-box">
+            <div class="fact-label"><i class="bi bi-briefcase me-1"></i>Kinh nghiệm</div>
+            <div class="fact-value">{{ job.experience_display }}</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="detail-fact-box">
+            <div class="fact-label text-brand"><i class="bi bi-laptop me-1"></i>Hình thức</div>
+            <div class="fact-value">{{ job.get_work_mode_display|default:"—" }}</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="detail-fact-box">
+            <div class="fact-label"><i class="bi bi-geo-alt me-1"></i>Thành phố</div>
+            <div class="fact-value">{{ job.city|default:"—" }}</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="detail-fact-box">
+            <div class="fact-label"><i class="bi bi-clock-history me-1"></i>Loại hình</div>
+            <div class="fact-value">{{ job.get_employment_type_display|default:"—" }}</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="detail-fact-box">
+            <div class="fact-label {% if not job.is_active %}text-danger{% endif %}"><i class="bi bi-calendar-event me-1"></i>Hạn nộp hồ sơ</div>
+            <div class="fact-value {% if not job.is_active %}text-danger{% endif %}">
+              {{ job.deadline|date:"d/m/Y"|default:"—" }}{% if not job.is_active %} <span class="small fw-normal">(Hết hạn)</span>{% endif %}
             </div>
           </div>
-          <div><div class="text-body-secondary">Nguồn</div><div class="fw-semibold text-capitalize">{{ job.source }}</div></div>
         </div>
-        {% if job.location %}<p class="small mb-3"><i class="bi bi-geo-alt me-1"></i>{{ job.location }}</p>{% endif %}
+      </div>
 
-        <div class="d-flex flex-wrap gap-2">
-          {% if job.job_url %}
-            <a href="{{ job.job_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-brand">
-              <i class="bi bi-box-arrow-up-right me-1"></i>Xem tin gốc &amp; ứng tuyển</a>
-          {% endif %}
-          {% if user.is_authenticated %}
-            <form method="post" action="{% url 'jobs:toggle_save' job.pk %}">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-outline-secondary">
-                <i class="bi {% if is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %} me-1"></i>{% if is_saved %}Đã lưu{% else %}Lưu tin{% endif %}
-              </button>
-            </form>
-          {% else %}
-            <a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}" class="btn btn-outline-secondary">
-              <i class="bi bi-bookmark me-1"></i>Đăng nhập để lưu tin</a>
-          {% endif %}
-        </div>
+      {% if job.location %}
+        <p class="small text-muted mb-4 p-2 bg-light rounded-3 d-flex align-items-center gap-2">
+          <i class="bi bi-pin-map text-brand fs-6"></i>
+          <span><strong>Địa chỉ làm việc:</strong> {{ job.location }}</span>
+        </p>
+      {% endif %}
+
+      <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+        {% if job.job_url %}
+          <a href="{{ job.job_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-brand px-4 py-2">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Xem tin tuyển dụng gốc &amp; Ứng tuyển
+          </a>
+        {% endif %}
+        {% if user.is_authenticated %}
+          <form method="post" action="{% url 'jobs:toggle_save' job.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary px-3 py-2">
+              <i class="bi {% if is_saved %}bi-bookmark-heart-fill text-danger{% else %}bi-bookmark{% endif %} me-1"></i>{% if is_saved %}Đã lưu tin{% else %}Lưu tin tuyển dụng{% endif %}
+            </button>
+          </form>
+        {% else %}
+          <a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}" class="btn btn-outline-secondary px-3 py-2">
+            <i class="bi bi-bookmark me-1"></i>Đăng nhập để lưu tin
+          </a>
+        {% endif %}
       </div>
     </div>
 
-    <div class="card shadow-sm">
-      <div class="card-header bg-body fw-semibold">Mô tả công việc</div>
-      <div class="card-body job-description">
-        {{ job.description|linebreaks|default:"<p class='text-body-secondary'>Không có mô tả.</p>" }}
+    <div class="card card-modern p-4">
+      <h2 class="h5 fw-bold pb-2 mb-3 border-bottom text-dark">
+        <i class="bi bi-file-text me-1 text-brand"></i> Mô tả chi tiết công việc
+      </h2>
+      <div class="job-description">
+        {{ job.description|linebreaks|default:"<p class='text-body-secondary'>Chưa có thông tin mô tả chi tiết.</p>" }}
       </div>
     </div>
   </article>
 
   <aside class="col-lg-4">
-    <div class="card shadow-sm mb-3">
-      <div class="card-header bg-body fw-semibold">Kỹ năng yêu cầu</div>
-      <div class="card-body">
-        {% if has_profile_skills %}
-          <p class="small text-body-secondary mb-2">So với kỹ năng trong hồ sơ của bạn:</p>
-          <div class="d-flex flex-wrap gap-1 mb-2">
-            {% for s in matched_skills %}<span class="skill-badge matched small"><i class="bi bi-check2"></i> {{ s }}</span>{% endfor %}
-            {% for s in missing_skills %}<span class="skill-badge missing small">{{ s }}</span>{% endfor %}
+    <div class="card card-modern p-3 mb-4">
+      <h3 class="h6 fw-bold pb-2 mb-3 border-bottom text-dark d-flex align-items-center gap-2">
+        <i class="bi bi-lightning-charge-fill text-warning"></i>
+        <span>Yêu cầu công nghệ &amp; Kỹ năng</span>
+      </h3>
+      
+      {% if has_profile_skills %}
+        <div class="p-3 mb-3 bg-light rounded-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small fw-bold text-dark">Độ phù hợp kỹ năng</span>
+            <span class="badge bg-brand text-white fw-bold">{{ matched_skills|length }}/{{ job.skills.all|length }} kỹ năng</span>
           </div>
-          <p class="small mb-0">Khớp {{ matched_skills|length }}/{{ job.skills.all|length }} kỹ năng.</p>
-        {% else %}
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio matched_skills|length job.skills.all|length 100 %}%;" aria-valuenow="{% widthratio matched_skills|length job.skills.all|length 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="small fw-semibold text-success mb-2"><i class="bi bi-check-circle-fill me-1"></i>Kỹ năng bạn đã đáp ứng:</div>
           <div class="d-flex flex-wrap gap-1">
-            {% for s in job.skills.all %}
-              <a class="skill-badge small" href="{% url 'jobs:list' %}?skill={{ s.name|urlencode }}">{{ s.name }}</a>
-            {% empty %}<span class="text-body-secondary small">Tin không liệt kê kỹ năng.</span>{% endfor %}
+            {% for s in matched_skills %}
+              <span class="skill-badge matched"><i class="bi bi-check2"></i> {{ s }}</span>
+            {% empty %}
+              <span class="small text-muted">Chưa khớp kỹ năng nào trong hồ sơ.</span>
+            {% endfor %}
           </div>
-          {% if job.skills.all %}
-            <p class="small text-body-secondary mt-2 mb-0">
-              {% if user.is_authenticated %}<a href="{% url 'accounts:profile' %}">Thêm kỹ năng vào hồ sơ</a>{% else %}<a href="{% url 'accounts:register' %}">Đăng ký</a>{% endif %}
-              để xem bạn đã khớp bao nhiêu kỹ năng.
-            </p>
-          {% endif %}
-        {% endif %}
-        {% if job.tag_list %}
-          <hr>
-          <div class="small text-body-secondary mb-1">Thẻ ngành</div>
-          <div class="d-flex flex-wrap gap-1">
-            {% for t in job.tag_list %}<span class="badge text-bg-light border fw-normal">{{ t }}</span>{% endfor %}
+        </div>
+
+        {% if missing_skills %}
+          <div class="mb-2">
+            <div class="small fw-semibold text-danger mb-2"><i class="bi bi-exclamation-circle-fill me-1"></i>Kỹ năng bạn còn thiếu:</div>
+            <div class="d-flex flex-wrap gap-1">
+              {% for s in missing_skills %}
+                <span class="skill-badge missing">{{ s }}</span>
+              {% endfor %}
+            </div>
           </div>
         {% endif %}
-      </div>
+      {% else %}
+        <div class="d-flex flex-wrap gap-1 mb-2">
+          {% for s in job.skills.all %}
+            <a class="skill-badge" href="{% url 'jobs:list' %}?skill={{ s.name|urlencode }}">{{ s.name }}</a>
+          {% empty %}
+            <span class="text-body-secondary small">Tin tuyển dụng không liệt kê kỹ năng cụ thể.</span>
+          {% endfor %}
+        </div>
+        {% if job.skills.all %}
+          <div class="p-2 mt-2 bg-light rounded-3 small text-muted">
+            <i class="bi bi-info-circle text-brand me-1"></i>
+            {% if user.is_authenticated %}
+              <a href="{% url 'accounts:profile' %}" class="fw-semibold text-brand">Cập nhật kỹ năng hồ sơ</a>
+            {% else %}
+              <a href="{% url 'accounts:register' %}" class="fw-semibold text-brand">Đăng ký tài khoản</a>
+            {% endif %}
+            để tự động đối chiếu độ phù hợp kỹ năng của bạn với vị trí này.
+          </div>
+        {% endif %}
+      {% endif %}
+
+      {% if job.tag_list %}
+        <hr class="my-3">
+        <div class="small text-muted fw-bold mb-2 text-uppercase" style="font-size:0.72rem; letter-spacing:0.04em;">Lĩnh vực &amp; Thẻ ngành</div>
+        <div class="d-flex flex-wrap gap-1">
+          {% for t in job.tag_list %}
+            <span class="badge text-bg-light border text-secondary fw-normal">{{ t }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
     </div>
 
     {% if similar_jobs %}
-      <div class="card shadow-sm">
-        <div class="card-header bg-body fw-semibold">Tin tương tự <span class="small fw-normal text-body-secondary">(chung kỹ năng)</span></div>
-        <ul class="list-group list-group-flush">
+      <div class="card card-modern p-3">
+        <h3 class="h6 fw-bold pb-2 mb-3 border-bottom text-dark">
+          <i class="bi bi-grid-3x3-gap-fill text-brand me-1"></i> Việc làm tương tự
+        </h3>
+        <div class="d-grid gap-3">
           {% for s in similar_jobs %}
-            <li class="list-group-item">
-              <a href="{{ s.get_absolute_url }}" class="fw-semibold text-decoration-none d-block">{{ s.title }}</a>
-              <div class="small text-body-secondary">{{ s.company.name }} · {{ s.salary_display }} · chung {{ s.shared }} kỹ năng</div>
-            </li>
+            <div class="p-2 rounded-2 hover-bg-light transition-all border-bottom border-light-subtle pb-2">
+              <a href="{{ s.get_absolute_url }}" class="fw-bold text-decoration-none text-dark d-block mb-1 hover-brand">{{ s.title }}</a>
+              <div class="small text-muted d-flex justify-content-between align-items-center">
+                <span>{{ s.company.name }}</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle">{{ s.salary_display }}</span>
+              </div>
+              <div class="small text-brand mt-1" style="font-size:0.75rem;"><i class="bi bi-intersect me-1"></i>Trùng {{ s.shared }} kỹ năng</div>
+            </div>
           {% endfor %}
-        </ul>
+        </div>
       </div>
     {% endif %}
   </aside>
