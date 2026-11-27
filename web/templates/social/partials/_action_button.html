@@ -1,0 +1,10 @@
+{# Nút tương tác. Khách chưa đăng nhập → link đăng nhập (giữ ?next=). Biến: action, label, target, count (tùy chọn) #}
+{% if user.is_authenticated %}
+  <button type="button" class="cm-action" data-action="{{ action }}" data-target="{{ target }}" aria-pressed="false">
+    <span data-label>{{ label }}</span>{% if count is not None %} <span class="cm-count" data-count>{{ count }}</span>{% endif %}
+  </button>
+{% else %}
+  <a class="cm-action" href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}" title="Đăng nhập để {{ label|lower }}">
+    <span>{{ label }}</span>{% if count is not None %} <span class="cm-count">{{ count }}</span>{% endif %}
+  </a>
+{% endif %}

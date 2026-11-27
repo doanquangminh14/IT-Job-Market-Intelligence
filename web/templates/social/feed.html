@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if tag %}#{{ tag }} · {% endif %}Cộng đồng IT{% endblock %}
+{% block extra_head %}<link href="{% static 'css/social.css' %}" rel="stylesheet">{% endblock %}
+
+{% block content %}
+{% include "social/partials/_demo_banner.html" %}
+
+<div class="row g-4">
+  <aside class="col-lg-3 order-2 order-lg-1">
+    {% include "social/partials/_tag_sidebar.html" %}
+  </aside>
+
+  <section class="col-lg-6 order-1 order-lg-2" aria-labelledby="feed-title">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+      <h1 id="feed-title" class="h4 fw-bold mb-0">{% if tag %}Chủ đề #{{ tag }}{% else %}Cộng đồng IT{% endif %}</h1>
+      <div class="cm-tabs" role="group" aria-label="Chọn bảng tin">
+        <button type="button" class="cm-tab" data-tab="latest" aria-pressed="true">Mới nhất</button>
+        <button type="button" class="cm-tab" data-tab="following" aria-pressed="false">Đang theo dõi</button>
+      </div>
+    </div>
+    {% if tag %}<p class="small text-muted"><a href="{% url 'jobs:list' %}?q={{ tag|urlencode }}">Xem việc làm yêu cầu {{ tag }}</a></p>{% endif %}
+
+    {% include "social/partials/_composer.html" %}
+
+    <div class="d-grid gap-3 mt-3" data-feed>
+      {% for post in page_obj %}
+        {% include "social/partials/_post_card.html" %}
+      {% empty %}
+        {% include "social/partials/_empty_state.html" with title="Chưa có bài viết nào" text="Hãy là người đầu tiên chia sẻ với cộng đồng." %}
+      {% endfor %}
+    </div>
+    <div data-following-empty hidden>
+      {% include "social/partials/_empty_state.html" with title="Bạn chưa theo dõi ai trong trang này" text="Bấm Theo dõi ở phần Gợi ý theo dõi để xem bài của họ tại đây." %}
+    </div>
+
+    {% include "partials/_pagination.html" %}
+  </section>
+
+  <aside class="col-lg-3 order-3">
+    {% include "social/partials/_suggested_users.html" %}
+  </aside>
+</div>
+
+{% include "social/partials/_toast.html" %}
+{% include "social/partials/_js_templates.html" %}
+{{ known|json_script:"community-known" }}
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'js/social.js' %}"></script>{% endblock %}

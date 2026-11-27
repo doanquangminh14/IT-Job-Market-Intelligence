@@ -1,0 +1,35 @@
+{% load humanize %}
+{# Thẻ một bài viết. Biến: post, detail (tùy chọn: đang ở trang chi tiết) #}
+<article class="cm-card" data-post data-post-id="{{ post.id }}" data-author="{{ post.author.username }}" aria-labelledby="post-{{ post.id }}-author">
+  <header class="d-flex align-items-center gap-2 mb-2">
+    {% include "social/partials/_avatar.html" with author=post.author %}
+    <div class="min-w-0">
+      <a id="post-{{ post.id }}-author" class="fw-semibold text-dark text-decoration-none" href="{% url 'community:profile' post.author.username %}">{{ post.author.username }}</a>
+      <div class="small text-muted text-truncate">{{ post.author.title }} · <time datetime="{{ post.created_at|date:'c' }}">{{ post.created_at|naturaltime }}</time></div>
+    </div>
+  </header>
+
+  <p class="cm-body mb-2">{{ post.body|linebreaksbr }}</p>
+
+  {% if post.tags %}
+    <div class="d-flex flex-wrap gap-1 mb-2">
+      {% for t in post.tags %}{% include "social/partials/_tag_chip.html" with name=t %}{% endfor %}
+    </div>
+  {% endif %}
+  {% include "social/partials/_job_link_chip.html" with job=post.job %}
+
+  <footer class="cm-actions">
+    {% include "social/partials/_action_button.html" with action="like" label="Thích" target=post.id count=post.like_count %}
+    {% if detail %}
+      <a class="cm-action" href="#comments">Bình luận <span class="cm-count">{{ post.comment_count }}</span></a>
+    {% else %}
+      <a class="cm-action" href="{% url 'community:post' post.id %}">Bình luận <span class="cm-count">{{ post.comment_count }}</span></a>
+    {% endif %}
+    {% if post.tags %}
+      <a class="cm-action" href="{% url 'jobs:list' %}?q={{ post.tags.0|urlencode }}">Xem việc làm {{ post.tags.0 }}</a>
+    {% endif %}
+    {% if user.is_authenticated %}
+      <button type="button" class="cm-action ms-auto" data-action="report" data-target="{{ post.id }}">Báo cáo</button>
+    {% endif %}
+  </footer>
+</article>

@@ -12,6 +12,7 @@ urlpatterns = [
     path("accounts/", include("apps.accounts.urls")),
     path("jobs/", include("apps.jobs.urls")),
     path("analytics/", include("apps.analytics.urls")),
+    path("community/", include("apps.social.urls")),
 ]
 
 if settings.DEBUG:

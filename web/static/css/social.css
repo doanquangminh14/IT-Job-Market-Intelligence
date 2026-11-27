@@ -1,0 +1,186 @@
+/* Trang Cộng đồng (thảo luận #002). Dùng lại biến màu/khoảng cách của main.css, không ghi đè rule có sẵn. */
+
+.cm-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  padding: 1rem 1.25rem;
+}
+.cm-narrow { max-width: 760px; }
+
+.cm-body {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--text-main);
+}
+
+/* Avatar chữ cái đầu */
+.cm-avatar {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--brand-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.cm-avatar-sm { width: 32px; height: 32px; font-size: 0.75rem; }
+.cm-avatar-lg { width: 72px; height: 72px; font-size: 1.4rem; }
+
+/* Thẻ chủ đề */
+.cm-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+  background: var(--surface-hover);
+  border: 1px solid var(--surface-border);
+  color: var(--text-sub);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.cm-tag:hover, .cm-tag.active {
+  background: var(--brand-soft);
+  border-color: var(--brand-border);
+  color: var(--brand);
+}
+
+.cm-job-chip {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px dashed var(--brand-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: var(--text-main);
+}
+
+/* Hàng nút tương tác: vùng bấm tối thiểu 44px */
+.cm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  border-top: 1px solid var(--surface-border);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+.cm-action {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-sub);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.cm-action:hover { background: var(--surface-hover); color: var(--text-main); }
+.cm-action[aria-pressed="true"] {
+  background: var(--brand-soft);
+  border-color: var(--brand-border);
+  color: var(--brand);
+}
+.cm-count { color: var(--text-muted); font-weight: 500; }
+
+.cm-action:focus-visible, .cm-tab:focus-visible, .cm-tag:focus-visible, .cm-preview:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Tab bảng tin */
+.cm-tabs {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--surface-hover);
+  border-radius: var(--radius-sm);
+}
+.cm-tab {
+  min-height: 40px;
+  padding: 0.35rem 0.9rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-sub);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+.cm-tab[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--brand);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Bình luận */
+.cm-comment { display: flex; gap: 0.6rem; align-items: flex-start; }
+
+/* Ô viết bài */
+.cm-composer-tags { max-width: 320px; }
+
+/* Bài / bình luận xem trước (chưa lưu) */
+.cm-preview { border-style: dashed; }
+.cm-badge-demo {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--amber-text);
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-full);
+  padding: 0 0.45rem;
+}
+
+/* Banner demo + trạng thái trống + toast */
+.cm-demo-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: var(--amber-text);
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+}
+.cm-demo-banner[hidden] { display: none; }
+
+.cm-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  background: var(--surface);
+  border: 1px dashed var(--surface-border);
+  border-radius: var(--radius-md);
+}
+
+.cm-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 1080;
+  max-width: calc(100% - 2rem);
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--brand-dark);
+  color: #ffffff;
+  font-size: 0.875rem;
+  box-shadow: var(--shadow-lg);
+}
+.cm-toast[hidden] { display: none; }
+
+[data-post][hidden] { display: none; }

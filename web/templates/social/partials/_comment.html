@@ -1,0 +1,10 @@
+{% load humanize %}
+{# Một bình luận. Biến: comment #}
+<div class="cm-comment">
+  {% include "social/partials/_avatar.html" with author=comment.author size="sm" %}
+  <div class="min-w-0">
+    <div class="small"><a class="fw-semibold text-dark text-decoration-none" href="{% url 'community:profile' comment.author.username %}">{{ comment.author.username }}</a>
+      <span class="text-muted">· <time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|naturaltime }}</time></span></div>
+    <p class="mb-0 cm-body">{{ comment.body|linebreaksbr }}</p>
+  </div>
+</div>

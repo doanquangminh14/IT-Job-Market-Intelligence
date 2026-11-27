@@ -1,0 +1,10 @@
+{# Thẻ thịnh hành. Biến: trending_tags, tag (đang chọn) #}
+<nav class="cm-card" aria-labelledby="tags-title">
+  <h2 id="tags-title" class="h6 fw-bold mb-3">Chủ đề nổi bật</h2>
+  <div class="d-flex flex-wrap gap-1">
+    {% for t in trending_tags %}
+      {% include "social/partials/_tag_chip.html" with name=t.name active=t.active %}
+    {% endfor %}
+  </div>
+  {% if tag %}<a class="small d-inline-block mt-3" href="{% url 'community:feed' %}">Bỏ lọc chủ đề</a>{% endif %}
+</nav>

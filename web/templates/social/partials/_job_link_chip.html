@@ -1,0 +1,7 @@
+{# Link tới tin tuyển dụng được chia sẻ; ẩn nếu tin không còn. Biến: job #}
+{% if job %}
+  <a class="cm-job-chip" href="{{ job.get_absolute_url }}">
+    <span class="fw-semibold">{{ job.title }}</span>
+    <span class="text-muted">· {{ job.company.name }}</span>
+  </a>
+{% endif %}

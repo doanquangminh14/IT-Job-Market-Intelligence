@@ -1,0 +1,2 @@
+{# Chip thẻ kỹ năng. Biến: name, active (tùy chọn) #}
+<a class="cm-tag {% if active %}active{% endif %}" href="{% url 'community:feed' %}?tag={{ name|urlencode }}"{% if active %} aria-current="true"{% endif %}>#{{ name }}</a>

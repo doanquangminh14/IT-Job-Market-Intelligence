@@ -1,0 +1,18 @@
+{# Gợi ý theo dõi (danh sách tĩnh). Biến: suggested #}
+{% if suggested %}
+<section class="cm-card" aria-labelledby="suggested-title">
+  <h2 id="suggested-title" class="h6 fw-bold mb-3">Gợi ý theo dõi</h2>
+  <ul class="list-unstyled mb-0 d-grid gap-3">
+    {% for a in suggested %}
+      <li class="d-flex align-items-center gap-2">
+        {% include "social/partials/_avatar.html" with author=a size="sm" %}
+        <div class="min-w-0 flex-grow-1">
+          <a class="fw-semibold text-dark text-decoration-none small" href="{% url 'community:profile' a.username %}">{{ a.username }}</a>
+          <div class="small text-muted text-truncate">{{ a.title }}</div>
+        </div>
+        {% include "social/partials/_action_button.html" with action="follow" label="Theo dõi" target=a.username %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

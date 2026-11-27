@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ author.username }} · Cộng đồng IT{% endblock %}
+{% block extra_head %}<link href="{% static 'css/social.css' %}" rel="stylesheet">{% endblock %}
+
+{% block content %}
+{% include "social/partials/_demo_banner.html" %}
+
+{% include "social/partials/_profile_header.html" %}
+
+<section class="mt-4" aria-labelledby="posts-title">
+  <h2 id="posts-title" class="h6 fw-bold mb-3">Bài viết của {{ author.username }}</h2>
+  <div class="d-grid gap-3 cm-narrow">
+    {% for post in posts %}
+      {% include "social/partials/_post_card.html" %}
+    {% empty %}
+      {% include "social/partials/_empty_state.html" with title="Chưa có bài viết" text="Thành viên này chưa chia sẻ gì." %}
+    {% endfor %}
+  </div>
+</section>
+
+{% include "social/partials/_toast.html" %}
+{{ known|json_script:"community-known" }}
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'js/social.js' %}"></script>{% endblock %}
