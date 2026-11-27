@@ -1,16 +1,15 @@
-{# Đầu trang hồ sơ công khai: username, chức danh, kỹ năng (không hiện email / lương). Biến: author, counts #}
+{# Đầu trang hồ sơ công khai: CHỈ username, chức danh, kỹ năng (không email / lương / CV). Biến: author, counts, is_following #}
 <section class="cm-card d-flex flex-wrap align-items-center gap-3">
   {% include "social/partials/_avatar.html" with author=author size="lg" %}
   <div class="flex-grow-1 min-w-0">
     <h1 class="h4 fw-bold mb-1">{{ author.username }}</h1>
     {% if author.title %}<div class="text-muted">{{ author.title }}</div>{% endif %}
-    {% if author.bio %}<p class="small mb-2 mt-1">{{ author.bio }}</p>{% endif %}
     {% if author.skills %}
-      <div class="d-flex flex-wrap gap-1">{% for s in author.skills %}{% include "social/partials/_tag_chip.html" with name=s %}{% endfor %}</div>
+      <div class="d-flex flex-wrap gap-1 mt-2">{% for s in author.skills %}{% include "social/partials/_tag_chip.html" with name=s %}{% endfor %}</div>
     {% endif %}
     <div class="small text-muted mt-2">
       <strong class="text-dark">{{ counts.posts }}</strong> bài viết ·
-      <strong class="text-dark">{{ counts.followers }}</strong> người theo dõi ·
+      <strong class="text-dark" data-follower-count>{{ counts.followers }}</strong> người theo dõi ·
       <strong class="text-dark">{{ counts.following }}</strong> đang theo dõi
     </div>
   </div>
@@ -18,7 +17,8 @@
     {% if user.is_authenticated and user.username == author.username %}
       <a class="btn btn-outline-brand btn-sm" href="{% url 'accounts:profile' %}">Sửa hồ sơ của tôi</a>
     {% else %}
-      {% include "social/partials/_action_button.html" with action="follow" label="Theo dõi" target=author.username %}
+      {% url 'community:follow' author.username as follow_url %}
+      {% include "social/partials/_action_button.html" with url=follow_url label="Theo dõi" pressed_label="Đang theo dõi" pressed=is_following %}
     {% endif %}
   </div>
 </section>

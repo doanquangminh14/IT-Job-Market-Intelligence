@@ -1,4 +1,4 @@
-{# Gợi ý theo dõi (danh sách tĩnh). Biến: suggested #}
+{# Gợi ý theo dõi. Biến: suggested #}
 {% if suggested %}
 <section class="cm-card" aria-labelledby="suggested-title">
   <h2 id="suggested-title" class="h6 fw-bold mb-3">Gợi ý theo dõi</h2>
@@ -10,7 +10,8 @@
           <a class="fw-semibold text-dark text-decoration-none small" href="{% url 'community:profile' a.username %}">{{ a.username }}</a>
           <div class="small text-muted text-truncate">{{ a.title }}</div>
         </div>
-        {% include "social/partials/_action_button.html" with action="follow" label="Theo dõi" target=a.username %}
+        {% url 'community:follow' a.username as follow_url %}
+        {% include "social/partials/_action_button.html" with url=follow_url label="Theo dõi" pressed_label="Đang theo dõi" pressed=False %}
       </li>
     {% endfor %}
   </ul>

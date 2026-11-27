@@ -1,8 +1,14 @@
-{# Nút tương tác. Khách chưa đăng nhập → link đăng nhập (giữ ?next=). Biến: action, label, target, count (tùy chọn) #}
+{# Nút Thích / Theo dõi. Đã đăng nhập: form POST (+CSRF), social.js gửi bằng fetch để không tải lại trang.
+   Khách: link đăng nhập giữ ?next=. Biến: url, label, pressed_label, pressed, count (tùy chọn) #}
 {% if user.is_authenticated %}
-  <button type="button" class="cm-action" data-action="{{ action }}" data-target="{{ target }}" aria-pressed="false">
-    <span data-label>{{ label }}</span>{% if count is not None %} <span class="cm-count" data-count>{{ count }}</span>{% endif %}
-  </button>
+  <form method="post" action="{{ url }}" class="d-inline" data-toggle-form>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button type="submit" class="cm-action" aria-pressed="{% if pressed %}true{% else %}false{% endif %}"
+            data-label-on="{{ pressed_label }}" data-label-off="{{ label }}">
+      <span data-label>{% if pressed %}{{ pressed_label }}{% else %}{{ label }}{% endif %}</span>{% if count is not None %} <span class="cm-count" data-count>{{ count }}</span>{% endif %}
+    </button>
+  </form>
 {% else %}
   <a class="cm-action" href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}" title="Đăng nhập để {{ label|lower }}">
     <span>{{ label }}</span>{% if count is not None %} <span class="cm-count">{{ count }}</span>{% endif %}

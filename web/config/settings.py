@@ -45,7 +45,8 @@ INSTALLED_APPS = [
     "apps.social",
 ]
 
-# Trang Cộng đồng (thảo luận #002): dữ liệu demo chỉ bật khi DEBUG, tắt ở production trừ khi đặt COMMUNITY_DEMO=1
+# Trang Cộng đồng (thảo luận #002): trang luôn bật; lệnh `seed_community` (nạp dữ liệu demo)
+# chỉ chạy khi COMMUNITY_DEMO bật — mặc định theo DEBUG, nên production không có bài giả
 COMMUNITY_DEMO = env_bool("COMMUNITY_DEMO", DEBUG)
 
 MIDDLEWARE = [
@@ -72,7 +73,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "apps.social.context_processors.community",
             ],
         },
     },

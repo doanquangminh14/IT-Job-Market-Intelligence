@@ -4,8 +4,6 @@
 {% block extra_head %}<link href="{% static 'css/social.css' %}" rel="stylesheet">{% endblock %}
 
 {% block content %}
-{% include "social/partials/_demo_banner.html" %}
-
 <nav aria-label="breadcrumb" class="mb-3">
   <ol class="breadcrumb small mb-0">
     <li class="breadcrumb-item"><a href="{% url 'community:feed' %}">Cộng đồng</a></li>
@@ -17,20 +15,36 @@
   <div class="col-lg-8">
     {% include "social/partials/_post_card.html" with detail=True %}
 
+    {% if user.is_authenticated and user.username != post.author.username %}
+      <details class="cm-report mt-2">
+        <summary class="small text-muted">Báo cáo bài viết</summary>
+        <form method="post" action="{% url 'community:report' post.id %}" class="d-flex flex-wrap gap-2 align-items-center mt-2">
+          {% csrf_token %}
+          <label for="report-reason" class="visually-hidden">Lý do báo cáo</label>
+          <select id="report-reason" name="reason" class="form-select form-select-sm w-auto" required>
+            <option value="">Chọn lý do…</option>
+            {% for value, label in report_reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select>
+          <button type="submit" class="btn btn-outline-danger btn-sm">Gửi báo cáo</button>
+        </form>
+      </details>
+    {% endif %}
+
     <section id="comments" class="cm-card mt-3" aria-labelledby="comments-title">
       <h2 id="comments-title" class="h6 fw-bold mb-3">Bình luận ({{ post.comment_count }})</h2>
-      <div class="d-grid gap-3" data-comments>
+      <div class="d-grid gap-3">
         {% for comment in post.comments %}
           {% include "social/partials/_comment.html" %}
         {% empty %}
-          <p class="small text-muted mb-0" data-comments-empty>Chưa có bình luận nào.</p>
+          <p class="small text-muted mb-0">Chưa có bình luận nào.</p>
         {% endfor %}
       </div>
 
       {% if user.is_authenticated %}
-        <form class="mt-3" data-comment-form novalidate>
+        <form method="post" action="{% url 'community:comment' post.id %}" class="mt-3">
+          {% csrf_token %}
           <label for="comment-body" class="form-label small fw-semibold">Viết bình luận</label>
-          <textarea id="comment-body" name="body" class="form-control" rows="2" maxlength="1000" required></textarea>
+          <textarea id="comment-body" name="body" class="form-control" rows="2" maxlength="{{ comment_max }}" required></textarea>
           <div class="text-end mt-2"><button type="submit" class="btn btn-brand btn-sm px-3">Gửi bình luận</button></div>
         </form>
       {% else %}
@@ -43,10 +57,6 @@
     {% include "social/partials/_suggested_users.html" %}
   </aside>
 </div>
-
-{% include "social/partials/_toast.html" %}
-{% include "social/partials/_js_templates.html" %}
-{{ known|json_script:"community-known" }}
 {% endblock %}
 
 {% block extra_js %}<script src="{% static 'js/social.js' %}"></script>{% endblock %}

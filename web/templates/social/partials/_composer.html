@@ -1,16 +1,19 @@
-{# Ô viết bài. Stage 1: chỉ xem trước trên trình duyệt (social.js), không gửi lên server #}
+{# Ô viết bài. Biến: post_max #}
 {% if user.is_authenticated %}
-  <form class="cm-card cm-composer" data-composer novalidate>
+  <form method="post" action="{% url 'community:create' %}" class="cm-card cm-composer" data-composer>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
     <label for="composer-body" class="form-label fw-semibold">Chia sẻ với cộng đồng</label>
-    <textarea id="composer-body" name="body" class="form-control" rows="3" maxlength="2000" required
+    <textarea id="composer-body" name="body" class="form-control" rows="3" maxlength="{{ post_max }}" required
               placeholder="Bạn đang học gì, làm gì, hay cần hỏi gì?"></textarea>
     <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
-      <label for="composer-tags" class="visually-hidden">Thẻ kỹ năng</label>
-      <input id="composer-tags" name="tags" class="form-control form-control-sm cm-composer-tags" maxlength="100"
-             placeholder="Thẻ, cách nhau bởi dấu phẩy: Python, SQL">
-      <span class="small text-muted ms-auto" data-composer-count aria-live="polite">0/2000</span>
+      <label for="composer-tags" class="visually-hidden">Chủ đề (kỹ năng)</label>
+      <input id="composer-tags" name="tags" class="form-control form-control-sm cm-composer-tags" maxlength="200"
+             placeholder="Chủ đề, cách nhau dấu phẩy: Python, SQL">
+      <span class="small text-muted ms-auto" data-composer-count aria-live="polite">0/{{ post_max }}</span>
       <button type="submit" class="btn btn-brand btn-sm px-3">Đăng bài</button>
     </div>
+    <p class="small text-muted mb-0 mt-1">Chủ đề phải là kỹ năng có trong hệ thống (tối đa 5).</p>
   </form>
 {% else %}
   <div class="cm-card d-flex flex-wrap align-items-center justify-content-between gap-2">

@@ -4,8 +4,6 @@
 {% block extra_head %}<link href="{% static 'css/social.css' %}" rel="stylesheet">{% endblock %}
 
 {% block content %}
-{% include "social/partials/_demo_banner.html" %}
-
 <div class="row g-4">
   <aside class="col-lg-3 order-2 order-lg-1">
     {% include "social/partials/_tag_sidebar.html" %}
@@ -14,37 +12,39 @@
   <section class="col-lg-6 order-1 order-lg-2" aria-labelledby="feed-title">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
       <h1 id="feed-title" class="h4 fw-bold mb-0">{% if tag %}Chủ đề #{{ tag }}{% else %}Cộng đồng IT{% endif %}</h1>
-      <div class="cm-tabs" role="group" aria-label="Chọn bảng tin">
-        <button type="button" class="cm-tab" data-tab="latest" aria-pressed="true">Mới nhất</button>
-        <button type="button" class="cm-tab" data-tab="following" aria-pressed="false">Đang theo dõi</button>
-      </div>
+      {% if user.is_authenticated %}
+        <nav class="cm-tabs" aria-label="Chọn bảng tin">
+          <a class="cm-tab" href="{{ tab_urls.latest }}"{% if tab == "latest" %} aria-current="page"{% endif %}>Mới nhất</a>
+          <a class="cm-tab" href="{{ tab_urls.following }}"{% if tab == "following" %} aria-current="page"{% endif %}>Đang theo dõi</a>
+        </nav>
+      {% endif %}
     </div>
     {% if tag %}<p class="small text-muted"><a href="{% url 'jobs:list' %}?q={{ tag|urlencode }}">Xem việc làm yêu cầu {{ tag }}</a></p>{% endif %}
 
-    {% include "social/partials/_composer.html" %}
+    {% if is_first_page %}{% include "social/partials/_composer.html" %}{% endif %}
 
-    <div class="d-grid gap-3 mt-3" data-feed>
-      {% for post in page_obj %}
+    <div class="d-grid gap-3 mt-3">
+      {% for post in posts %}
         {% include "social/partials/_post_card.html" %}
       {% empty %}
-        {% include "social/partials/_empty_state.html" with title="Chưa có bài viết nào" text="Hãy là người đầu tiên chia sẻ với cộng đồng." %}
+        {% if tab == "following" %}
+          {% include "social/partials/_empty_state.html" with title="Chưa có bài từ người bạn theo dõi" text="Bấm Theo dõi ở phần Gợi ý theo dõi để xem bài của họ tại đây." %}
+        {% else %}
+          {% include "social/partials/_empty_state.html" with title="Chưa có bài viết nào" text="Hãy là người đầu tiên chia sẻ với cộng đồng." %}
+        {% endif %}
       {% endfor %}
     </div>
-    <div data-following-empty hidden>
-      {% include "social/partials/_empty_state.html" with title="Bạn chưa theo dõi ai trong trang này" text="Bấm Theo dõi ở phần Gợi ý theo dõi để xem bài của họ tại đây." %}
-    </div>
 
-    {% include "partials/_pagination.html" %}
+    <div class="d-flex justify-content-between mt-4">
+      {% if not is_first_page %}<a class="btn btn-outline-secondary btn-sm" href="{{ first_page_url }}">Về bài mới nhất</a>{% else %}<span></span>{% endif %}
+      {% if older_url %}<a class="btn btn-outline-brand btn-sm" href="{{ older_url }}">Xem bài cũ hơn</a>{% endif %}
+    </div>
   </section>
 
   <aside class="col-lg-3 order-3">
     {% include "social/partials/_suggested_users.html" %}
   </aside>
 </div>
-
-{% include "social/partials/_toast.html" %}
-{% include "social/partials/_js_templates.html" %}
-{{ known|json_script:"community-known" }}
 {% endblock %}
 
 {% block extra_js %}<script src="{% static 'js/social.js' %}"></script>{% endblock %}

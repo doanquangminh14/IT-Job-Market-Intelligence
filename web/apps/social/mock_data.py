@@ -1,7 +1,7 @@
-"""Dữ liệu DEMO cho trang Cộng đồng (thảo luận #002, Stage 1).
+"""Dữ liệu DEMO cho trang Cộng đồng (thảo luận #002).
 
-Không phải người dùng thật. Các khóa trùng tên với trường của model Stage 2 (Post, Comment, Follow)
-để chỉ cần thay selectors, không phải sửa template. Chỉ hiển thị khi settings.COMMUNITY_DEMO bật.
+Không phải người dùng thật. Stage 1 hiển thị trực tiếp; từ Stage 2 chỉ được nạp vào DB bằng
+`python manage.py seed_community`, lệnh này chỉ chạy khi settings.COMMUNITY_DEMO bật (DEBUG).
 """
 from datetime import datetime
 from zoneinfo import ZoneInfo

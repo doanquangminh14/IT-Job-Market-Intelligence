@@ -118,8 +118,11 @@
   color: var(--text-sub);
   font-weight: 600;
   font-size: 0.875rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
-.cm-tab[aria-pressed="true"] {
+.cm-tab[aria-current="page"] {
   background: var(--surface);
   color: var(--brand);
   box-shadow: var(--shadow-sm);
@@ -127,6 +130,8 @@
 
 /* Bình luận */
 .cm-comment { display: flex; gap: 0.6rem; align-items: flex-start; }
+
+.cm-report summary { cursor: pointer; }
 
 /* Ô viết bài */
 .cm-composer-tags { max-width: 320px; }
